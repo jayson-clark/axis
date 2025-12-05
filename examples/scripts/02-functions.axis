@@ -1,0 +1,51 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Functions - definitions, composition and the built-in library
+// ─────────────────────────────────────────────────────────────────────────────
+
+config {
+    showGrid: true
+}
+
+"Functions"
+
+// f(x) = ... defines a function. It graphs, and it can be called elsewhere.
+f(x) = x ^ 2 - 4x + 3 # color: #c74440
+g(x) = 2x - 1 # color: #2d70b3
+
+// Composition is just a call inside a call.
+h(x) = f(g(x)) # color: #388c46, lineStyle: DASHED
+
+// A function of two arguments does not graph on its own - it is a helper.
+area(w, h) = w * h # hidden
+
+folder "Trigonometry" {
+    y = sin(x) # color: #c74440,
+    y = cos(x) # color: #2d70b3,
+    y = tan(x) # color: #388c46, lineOpacity: 0.5,
+    y = arctan(x) # color: #6042a6, lineStyle: DASHED,
+    y = tanh(x) # color: #fa7e19
+}
+
+folder "Powers and roots" {
+    y = sqrt(x) # color: #c74440,
+    y = nthroot(x, 3) # color: #2d70b3,
+    y = exp(x) # color: #388c46,
+    y = ln(x) # color: #6042a6,
+    y = log(x) # color: #fa7e19
+}
+
+folder "Rounding and sign" {
+    y = floor(x) # color: #c74440, lines: false,
+    y = ceil(x) # color: #2d70b3, lines: false,
+    y = round(x) # color: #388c46, lines: false,
+    y = sign(x) # color: #6042a6, lines: false,
+    y = abs(x) # color: #fa7e19
+}
+
+folder "Number theory" {
+    y = mod(x, 3) # color: #c74440, lines: false,
+    d = gcd(12, 18) # hidden,
+    m = lcm(4, 6) # hidden,
+    y = factorial(3) # hidden,
+    "gcd(12, 18) and lcm(4, 6) evaluate in the expression list."
+}

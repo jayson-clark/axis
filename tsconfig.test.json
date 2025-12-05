@@ -1,0 +1,20 @@
+// Typechecks the test suites. They run on Node against each package's built
+// `dist/`, so they resolve like any other consumer would rather than reaching
+// into `src/`.
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "lib": ["ES2022"],
+        "types": ["node"],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noEmit": true
+    },
+    "include": ["packages/*/test/**/*"]
+}

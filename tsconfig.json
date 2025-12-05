@@ -1,0 +1,34 @@
+// Base compiler options for every package that builds to CommonJS for the
+// VSCode extension host, and the solution file that builds them in order.
+// Browser-bundled packages extend tsconfig.web.json instead.
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "node16",
+        "moduleResolution": "node16",
+        "lib": ["ES2020"],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        // Ambient @types are opted into per package via "types"; nothing is
+        // picked up implicitly from node_modules.
+        "types": [],
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "isolatedModules": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true
+    },
+    // No inputs of its own: the packages below are what it builds.
+    "files": [],
+    "references": [
+        { "path": "packages/desmos" },
+        { "path": "packages/protocol" },
+        { "path": "packages/language" },
+        { "path": "packages/compiler" },
+        { "path": "packages/extension" }
+    ]
+}

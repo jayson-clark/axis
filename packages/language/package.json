@@ -1,0 +1,58 @@
+{
+    "name": "@axis-dsl/language",
+    "version": "0.0.1",
+    "description": "Axis language services: completions, formatting, diagnostics, the manifest and the grammar, with VSCode and Monaco bindings",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "watch": "tsc --watch"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/vscode": "catalog:",
+        "monaco-editor": "catalog:"
+    },
+    "license": "MIT",
+    "author": "Jayson Clark",
+    "homepage": "https://github.com/jayson-clark/axis#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jayson-clark/axis.git",
+        "directory": "packages/language"
+    },
+    "bugs": {
+        "url": "https://github.com/jayson-clark/axis/issues"
+    },
+    "keywords": [
+        "axis",
+        "axis-dsl",
+        "desmos",
+        "graphing",
+        "dsl"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./vscode": {
+            "types": "./dist/vscode/index.d.ts",
+            "default": "./dist/vscode/index.js"
+        },
+        "./monaco": {
+            "types": "./dist/monaco/index.d.ts",
+            "default": "./dist/monaco/index.js"
+        },
+        "./syntaxes/axis.tmLanguage.json": "./syntaxes/axis.tmLanguage.json",
+        "./language-configuration.json": "./dist/language-configuration.json"
+    },
+    "files": [
+        "dist",
+        "syntaxes",
+        "README.md"
+    ],
+    "sideEffects": false,
+    "publishConfig": {
+        "access": "public"
+    }
+}

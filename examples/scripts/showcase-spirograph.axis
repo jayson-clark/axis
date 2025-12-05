@@ -1,0 +1,44 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Showcase - spirograph
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A small circle rolling inside a big one, with a pen offset from its centre.
+// Change the three radii and the pattern changes completely.
+
+config {
+    showGrid: false,
+    showXAxis: false,
+    showYAxis: false,
+    backgroundColor: "#11131a",
+    textColor: "#e6e8ef",
+    lockViewport: false
+}
+
+"Spirograph"
+
+folder "Dials" {
+    big = 7 # sliderBounds: {min: 2, max: 12, step: 1},
+    small = 3 # sliderBounds: {min: 1, max: 11, step: 1},
+    pen = 4 # sliderBounds: {min: 0.5, max: 8, step: 0.1}
+}
+
+"The hypotrochoid the pen traces."
+
+diff = big - small # hidden
+ratio = diff / small # hidden
+
+trace(t) = (diff * cos(t) + pen * cos(ratio * t), diff * sin(t) - pen * sin(ratio * t)) # hidden
+
+trace(t) # color: #fa7e19, lineWidth: 2
+
+folder "The rolling circles" {
+    "The fixed outer circle.",
+    x ^ 2 + y ^ 2 = big ^ 2 # color: #2d70b3, lineWidth: 2, lineOpacity: 0.5,
+    "The rolling one, at angle w.",
+    w = 0 # sliderBounds: {min: 0, max: 6.283, step: 0.005}, playing: true,
+    centre = (diff * cos(w), diff * sin(w)) # color: #6042a6, pointSize: 10,
+    (centre.x + small * cos(t), centre.y + small * sin(t)) # color: #6042a6, lineWidth: 2, lineOpacity: 0.6,
+    "The pen, riding the small circle.",
+    tip = trace(w) # color: #fa7e19, pointSize: 16,
+    arm = [centre, tip] # color: #fa7e19, points: false, lineOpacity: 0.7
+}

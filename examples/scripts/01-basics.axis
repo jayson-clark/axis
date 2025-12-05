@@ -1,0 +1,42 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Basics - statements, comments, notes and metadata
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// An Axis script is a list of statements, one per line. Each becomes one
+// expression in the graph, in the order it is written.
+
+"Basics"
+
+// A line starting with // is a comment. It never reaches the graph.
+
+// A bare string on its own line is a note - the yellow text card in Desmos.
+"Notes explain a graph to whoever opens it next."
+
+// An equation is graphed.
+y = 2x + 1
+
+// A definition names a value. Referring to it below re-uses it.
+c = 3
+y = c * x - 4
+
+// Anything after a # is metadata: how the statement should look and behave.
+y = x ^ 2 # color: #c74440
+
+// Several properties are separated by commas.
+y = x ^ 3 # color: #2d70b3, lineWidth: 4, lineOpacity: 0.6
+
+// A statement may span lines while a bracket is open.
+P = [
+    (-2, 4),
+    (0, 0),
+    (2, 4)
+] # color: #388c46, pointSize: 14
+
+// hidden keeps a statement in the list but off the graph; it is still defined
+// and usable. Written bare, with no value.
+k = 10 # hidden
+
+// secret hides it from the expression list entirely.
+scale = 0.5 # secret
+
+y = k * sin(scale * x) # color: #6042a6

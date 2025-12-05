@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/packages/extension",
+                "--disable-extensions"
+            ],
+            "outFiles": ["${workspaceFolder}/packages/extension/dist/**/*.js"],
+            "preLaunchTask": "build:all",
+            "sourceMaps": true
+        },
+        {
+            "name": "Extension (Watch Mode)",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/packages/extension",
+                "--disable-extensions"
+            ],
+            "outFiles": ["${workspaceFolder}/packages/extension/dist/**/*.js"],
+            "preLaunchTask": "watch:all",
+            "sourceMaps": true
+        }
+    ]
+}

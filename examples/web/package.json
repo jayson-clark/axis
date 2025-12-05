@@ -1,0 +1,28 @@
+{
+    "name": "@axis-dsl/web",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "description": "Axis playground - Monaco editor + live Desmos graph in the browser",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@axis-dsl/compiler": "workspace:*",
+        "@axis-dsl/desmos": "workspace:*",
+        "@axis-dsl/editor": "workspace:*",
+        "@axis-dsl/viewer": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@vitejs/plugin-react": "catalog:",
+        "monaco-editor": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:",
+        "vite": "catalog:"
+    }
+}

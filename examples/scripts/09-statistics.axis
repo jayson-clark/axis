@@ -1,0 +1,47 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Statistics and combinatorics
+// ─────────────────────────────────────────────────────────────────────────────
+
+"Statistics"
+
+data = [2, 4, 4, 4, 5, 5, 7, 9] # hidden
+
+folder "Summaries" {
+    "Each of these reduces the list to a single number.",
+    n = length(data) # hidden,
+    sum = total(data) # hidden,
+    avg = mean(data) # hidden,
+    mid = median(data) # hidden,
+    low = min(data) # hidden,
+    high = max(data) # hidden
+}
+
+folder "Spread" {
+    "Sample and population standard deviation, variance, mean absolute deviation.",
+    s = stdev(data) # hidden,
+    sp = stdevp(data) # hidden,
+    v = var(data) # hidden,
+    vp = varp(data) # hidden,
+    dev = mad(data) # hidden
+}
+
+folder "Seeing the data" {
+    "The samples along a line.",
+    (data, 0) # color: #2d70b3, pointSize: 14,
+    "The mean, and one standard deviation either side.",
+    x = avg # color: #c74440, lineWidth: 3,
+    x = avg - s # color: #c74440, lineStyle: DASHED, lineOpacity: 0.6,
+    x = avg + s # color: #c74440, lineStyle: DASHED, lineOpacity: 0.6,
+    "A bell curve over the same centre and spread.",
+    y = exp(-0.5 * ((x - avg) / s) ^ 2) # color: #388c46, lineWidth: 3
+}
+
+folder "Combinatorics" {
+    "Choose, permute, factorial.",
+    ways = nCr(5, 2) # hidden,
+    orders = nPr(5, 2) # hidden,
+    fact = factorial(5) # hidden,
+    "Row 6 of Pascal's triangle, as points.",
+    K = [0, 1, 2, 3, 4, 5, 6] # hidden,
+    (K, nCr(6, K)) # color: #6042a6, pointSize: 14
+}

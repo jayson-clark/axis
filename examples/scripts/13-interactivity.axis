@@ -1,0 +1,41 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Interactivity - dragging and click actions
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// dragMode says how a point may be moved. onClick attaches an action, written
+// `target -> new value`, that runs when the object is clicked.
+
+config {
+    actions: true
+}
+
+"Interactivity"
+
+folder "Dragging" {
+    "dragMode: XY, X, Y or NONE.",
+    A = (-4, 3) # color: #c74440, pointSize: 18, dragMode: XY, label: "free", showLabel: true,
+    B = (0, 3) # color: #2d70b3, pointSize: 18, dragMode: X, label: "x only", showLabel: true,
+    C = (4, 3) # color: #388c46, pointSize: 18, dragMode: Y, label: "y only", showLabel: true,
+    D = (0, 0) # color: #6042a6, pointSize: 18, dragMode: NONE, label: "pinned", showLabel: true
+}
+
+folder "A counter" {
+    "Click the point to step n along.",
+    n = 0 # sliderBounds: {min: 0, max: 10, step: 1},
+    (n, -2) # color: #fa7e19, pointSize: 20, onClick: n -> n + 1, description: "Increase n by one",
+    "And back to zero.",
+    (0, -3) # color: #c74440, pointSize: 20, onClick: n -> 0, description: "Reset n"
+}
+
+folder "Clicking a shape" {
+    "A whole polygon can carry an action.",
+    polygon((-6, -5), (-3, -5), (-3, -8), (-6, -8)) # color: #2d70b3, fill: true, fillOpacity: 0.3, onClick: n -> n + 2, description: "Add two to n",
+    "Setting a point from an action moves it.",
+    E = (2, -6) # color: #388c46, pointSize: 18,
+    (5, -6) # color: #388c46, pointSize: 14, onClick: E -> (2, -6), description: "Send E home"
+}
+
+folder "Switching an action off" {
+    "clickable: false keeps the action but disables it - the same as unticking the box in Desmos.",
+    (6, 2) # color: #6042a6, pointSize: 18, onClick: n -> 99, clickable: false
+}

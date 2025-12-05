@@ -1,0 +1,55 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build:all",
+            "type": "npm",
+            "script": "build",
+            "path": ".",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            },
+            "problemMatcher": "$tsc"
+        },
+        {
+            // Builds once, then watches every package. The launch config's
+            // "Extension (Watch Mode)" runs this.
+            "label": "watch:all",
+            "type": "npm",
+            "script": "dev",
+            "path": ".",
+            "isBackground": true,
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            },
+            "problemMatcher": {
+                "pattern": "$tsc",
+                "background": {
+                    // pnpm prefixes every line with "packages/<name> watch: ",
+                    // so these must not be anchored to the start of the line.
+                    // tsc --watch and esbuild --watch each print their own pair.
+                    "activeOnStart": true,
+                    "beginsPattern": "Starting compilation in watch mode|File change detected|\\[watch\\] build started",
+                    "endsPattern": "Found \\d+ errors?\\. Watching for file changes|\\[watch\\] build finished"
+                }
+            }
+        },
+        {
+            "label": "clean",
+            "type": "npm",
+            "script": "clean",
+            "path": ".",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always"
+            }
+        }
+    ]
+}

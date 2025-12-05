@@ -1,0 +1,63 @@
+{
+    "name": "@axis-dsl/viewer",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "Every Axis React component: the results panel and the Desmos graph and JSON inspector it is built from, shared by the web playground and the VSCode webview",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "tsc && esbuild src/entry.tsx --bundle --outfile=dist/webview.js --external:vscode --target=es2020",
+        "watch": "esbuild src/entry.tsx --bundle --outfile=dist/webview.js --external:vscode --target=es2020 --watch",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "esbuild": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "dependencies": {
+        "@axis-dsl/desmos": "workspace:*",
+        "@axis-dsl/protocol": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "^19"
+    },
+    "license": "MIT",
+    "author": "Jayson Clark",
+    "homepage": "https://github.com/jayson-clark/axis#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jayson-clark/axis.git",
+        "directory": "packages/viewer"
+    },
+    "bugs": {
+        "url": "https://github.com/jayson-clark/axis/issues"
+    },
+    "keywords": [
+        "axis",
+        "axis-dsl",
+        "desmos",
+        "graphing",
+        "dsl"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "!dist/webview.js",
+        "!dist/webview.js.map",
+        "README.md"
+    ],
+    "sideEffects": [
+        "./dist/entry.js"
+    ],
+    "publishConfig": {
+        "access": "public"
+    }
+}

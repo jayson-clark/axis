@@ -1,0 +1,38 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Tables
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// table { … } becomes a Desmos table: one entry per column, each a name and its
+// values. The first column is the x values; the rest plot against it.
+
+"Tables"
+
+// Written out, one column per line.
+table {
+    x = [1, 2, 3, 4, 5],
+    y = [2, 4, 8, 16, 32]
+} # color: #c74440
+
+// Or inline - the two forms compile identically.
+table { x = [0, 1, 2, 3], y = [0, 1, 4, 9] } # color: #2d70b3, lines: true
+
+// Each column carries its own styling.
+table {
+    t = [0, 1, 2, 3, 4, 5],
+    pos = [0, 5, 20, 45, 80, 125] # color: #388c46, lines: true, lineStyle: DASHED,
+    vel = [0, 10, 20, 30, 40, 50] # color: #fa7e19, pointStyle: OPEN, pointSize: 12
+}
+
+// A column with no values is a computed one: it evaluates the expression
+// against the column before it.
+table {
+    u = [-3, -2, -1, 0, 1, 2, 3],
+    u ^ 2 # color: #6042a6,
+    u ^ 3 # color: #c74440, hidden: true
+}
+
+folder "Fitting a curve by eye" {
+    "Drag the slider until the curve meets the data.",
+    k = 1 # sliderBounds: {min: 0, max: 3, step: 0.05},
+    y = k * x ^ 2 # color: #2d70b3, lineWidth: 3
+}
