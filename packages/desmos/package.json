@@ -1,0 +1,45 @@
+{
+    "name": "@axis-dsl/desmos",
+    "version": "0.0.1",
+    "description": "The Desmos calculator API: its TypeScript surface, its constants, and the script URL every host loads",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "watch": "tsc --watch"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:"
+    },
+    "license": "MIT",
+    "author": "Jayson Clark",
+    "homepage": "https://github.com/jayson-clark/axis#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jayson-clark/axis.git",
+        "directory": "packages/desmos"
+    },
+    "bugs": {
+        "url": "https://github.com/jayson-clark/axis/issues"
+    },
+    "keywords": [
+        "axis",
+        "axis-dsl",
+        "desmos",
+        "graphing",
+        "dsl"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "sideEffects": false,
+    "publishConfig": {
+        "access": "public"
+    }
+}

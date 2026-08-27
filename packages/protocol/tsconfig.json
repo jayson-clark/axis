@@ -1,0 +1,12 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        // The VSCode transport talks to `window`.
+        "lib": ["ES2020", "DOM"],
+        "composite": true,
+        "outDir": "./dist",
+        "rootDir": "src"
+    },
+    "references": [{ "path": "../desmos" }],
+    "include": ["src/**/*"]
+}

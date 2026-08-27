@@ -1,0 +1,38 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Showcase - the unit circle
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Sine and cosine read off a rotating radius. Drag the angle, or let it run.
+
+config {
+    showGrid: true,
+    xAxisStep: 1,
+    yAxisStep: 1,
+    pointsOfInterest: true
+}
+
+"The unit circle"
+
+ang = 0.9 # sliderBounds: {min: 0, max: 6.283, step: 0.005}, playing: true
+
+folder "The circle" {
+    (cos(t), sin(t)) # color: #000000, lineWidth: 2, lineOpacity: 0.5,
+    P = (cos(ang), sin(ang)) # color: #6042a6, pointSize: 18,
+    "The radius out to P.",
+    R = [(0, 0), P] # color: #6042a6, points: false, lineWidth: 3
+}
+
+folder "Reading off the components" {
+    "cos is the horizontal leg, sin the vertical one.",
+    A = [(0, 0), (cos(ang), 0)] # color: #c74440, points: false, lineWidth: 4,
+    B = [(cos(ang), 0), P] # color: #2d70b3, points: false, lineWidth: 4,
+    (cos(ang), 0) # color: #c74440, pointSize: 14, label: "cos", showLabel: true, labelOrientation: below,
+    (0, sin(ang)) # color: #2d70b3, pointSize: 14, label: "sin", showLabel: true, labelOrientation: left
+}
+
+folder "Unrolled onto the wave" {
+    "The same angle, plotted along the x-axis to the right of the circle.",
+    y = sin(x - 3) {3 < x < 9.3} # color: #2d70b3, lineWidth: 3,
+    (ang + 3, sin(ang)) # color: #2d70b3, pointSize: 16,
+    T = [P, (ang + 3, sin(ang))] # color: #2d70b3, points: false, lineStyle: DOTTED, lineOpacity: 0.6
+}

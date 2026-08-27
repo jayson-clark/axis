@@ -1,0 +1,17 @@
+{
+    "extends": "../../tsconfig.web.json",
+    "compilerOptions": {
+        "types": ["vite/client"],
+        // Matches the alias in vite.config.ts: every `@axis-dsl/*` import resolves
+        // to that package's TypeScript source, so there is no build step
+        // between editing a package and seeing it here.
+        // TypeScript allows only one wildcard per pattern, so package subpath
+        // exports are listed individually.
+        "paths": {
+            "@axis-dsl/language/monaco": ["../../packages/language/src/monaco/index.ts"],
+            "@axis-dsl/language/vscode": ["../../packages/language/src/vscode/index.ts"],
+            "@axis-dsl/*": ["../../packages/*/src/index.ts"]
+        }
+    },
+    "include": ["src/**/*", "vite.config.ts"]
+}

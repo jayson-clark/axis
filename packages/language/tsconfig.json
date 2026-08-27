@@ -1,0 +1,12 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        // DOM is here for monaco-editor's types, which the ./monaco binding
+        // imports; nothing under src/core touches the DOM.
+        "lib": ["ES2020", "DOM"],
+        "composite": true,
+        "outDir": "./dist",
+        "rootDir": "src"
+    },
+    "include": ["src/**/*", "src/**/*.json"]
+}

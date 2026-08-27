@@ -1,0 +1,22 @@
+// Shared by the packages a bundler compiles from source rather than from dist:
+// @axis-dsl/editor, @axis-dsl/viewer, and the web playground.
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "jsx": "react-jsx",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        // Ambient @types are opted into per package via "types"; nothing is
+        // picked up implicitly from node_modules.
+        "types": [],
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noEmit": true
+    }
+}

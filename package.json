@@ -1,0 +1,25 @@
+{
+    "name": "axis-monorepo",
+    "version": "0.0.1",
+    "description": "Axis (Desmos Scripting Language) monorepo",
+    "private": true,
+    "packageManager": "pnpm@11.24.0",
+    "engines": {
+        "node": ">=22",
+        "pnpm": ">=11"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "prettier": "catalog:",
+        "typescript": "catalog:"
+    },
+    "scripts": {
+        "build": "tsc --build --force && pnpm -r run build",
+        "dev": "pnpm run build && pnpm -r --parallel run watch",
+        "typecheck": "tsc --build --force && tsc -p tsconfig.test.json && pnpm -r run typecheck",
+        "test": "pnpm run build && node --test \"packages/*/test/*.test.mts\"",
+        "clean": "find . -maxdepth 3 \\( -name dist -o -name '*.tsbuildinfo' \\) -not -path '*/node_modules/*' -exec rm -rf {} +",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    }
+}

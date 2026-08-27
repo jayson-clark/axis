@@ -1,0 +1,78 @@
+{
+    "name": "axis-dsl",
+    "displayName": "Axis — Desmos Scripting Language",
+    "description": "Graphs the .axis file you have open, with Axis language support",
+    "version": "0.0.1",
+    "publisher": "axis",
+    "engines": {
+        "vscode": "^1.134.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "scripts": {
+        "build": "node scripts/copy-viewer-bundle.mjs",
+        "watch": "tsc --watch"
+    },
+    "main": "dist/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "axis",
+                "aliases": [
+                    "Axis",
+                    "axis"
+                ],
+                "extensions": [
+                    ".axis"
+                ],
+                "configuration": "../language/src/language-configuration.json",
+                "icon": {
+                    "light": "./icons/axis-light.svg",
+                    "dark": "./icons/axis-dark.svg"
+                }
+            }
+        ],
+        "grammars": [
+            {
+                "language": "axis",
+                "scopeName": "source.axis",
+                "path": "../language/syntaxes/axis.tmLanguage.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "axis.openWebview",
+                "title": "Axis - Open Webview"
+            }
+        ],
+        "configuration": {
+            "title": "Axis",
+            "properties": {
+                "axis.apiKey": {
+                    "type": "string",
+                    "default": "",
+                    "markdownDescription": "API key for the Desmos Graphing Calculator. Leave blank to use Desmos’ public demo key, which works with no setup but logs a console warning and is not licensed for distribution. Get your own at https://www.desmos.com/api."
+                }
+            }
+        }
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "@types/vscode": "catalog:"
+    },
+    "dependencies": {
+        "@axis-dsl/compiler": "workspace:*",
+        "@axis-dsl/language": "workspace:*",
+        "@axis-dsl/desmos": "workspace:*",
+        "@axis-dsl/protocol": "workspace:*",
+        "@axis-dsl/viewer": "workspace:*"
+    },
+    "private": true,
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jayson-clark/axis.git",
+        "directory": "packages/extension"
+    }
+}

@@ -1,0 +1,40 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Colour
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// color takes a hex string or a colour name. Left off, Desmos cycles through
+// its own palette in order.
+
+"Colour"
+
+folder "The Desmos palette" {
+    y = 6 # color: #c74440, lineWidth: 6,
+    y = 5 # color: #2d70b3, lineWidth: 6,
+    y = 4 # color: #388c46, lineWidth: 6,
+    y = 3 # color: #6042a6, lineWidth: 6,
+    y = 2 # color: #fa7e19, lineWidth: 6,
+    y = 1 # color: #000000, lineWidth: 6
+}
+
+folder "Named colours" {
+    y = -1 # color: red, lineWidth: 6,
+    y = -2 # color: blue, lineWidth: 6,
+    y = -3 # color: green, lineWidth: 6,
+    y = -4 # color: purple, lineWidth: 6,
+    y = -5 # color: orange, lineWidth: 6,
+    y = -6 # color: black, lineWidth: 6
+}
+
+folder "No colour given" {
+    "Left unset, each statement takes the next palette colour.",
+    y = x + 8,
+    y = x + 9,
+    y = x + 10
+}
+
+folder "Opacity" {
+    "Three ways to fade: lineOpacity, pointOpacity, fillOpacity.",
+    y = 0.5x + 12 # color: #c74440, lineWidth: 10, lineOpacity: 1,
+    y = 0.5x + 14 # color: #c74440, lineWidth: 10, lineOpacity: 0.6,
+    y = 0.5x + 16 # color: #c74440, lineWidth: 10, lineOpacity: 0.25
+}

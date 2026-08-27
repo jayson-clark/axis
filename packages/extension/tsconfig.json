@@ -1,0 +1,17 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "composite": true,
+        // webview.ts imports node's "path".
+        "types": ["node"],
+        "outDir": "./dist",
+        "rootDir": "src"
+    },
+    "references": [
+        { "path": "../desmos" },
+        { "path": "../protocol" },
+        { "path": "../language" },
+        { "path": "../compiler" }
+    ],
+    "include": ["src/**/*"]
+}

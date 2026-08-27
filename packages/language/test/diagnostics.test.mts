@@ -1,0 +1,138 @@
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { validateAxis, type AxisDiagnosticCode } from '../dist/index.js';
+
+const codes = (source: string): AxisDiagnosticCode[] =>
+    validateAxis(source).map(diagnostic => diagnostic.code);
+
+describe('brackets', () => {
+    test('reports a bracket left open, at the bracket', () => {
+        const [diagnostic, ...rest] = validateAxis('y = (x');
+        assert.deepEqual(rest, []);
+        assert.equal(diagnostic.code, 'unclosed-bracket');
+        assert.equal(diagnostic.severity, 'error');
+        assert.deepEqual(
+            [diagnostic.line, diagnostic.startCharacter, diagnostic.endCharacter],
+            [0, 4, 5],
+        );
+    });
+
+    test('reports a closer with nothing open', () => {
+        assert.deepEqual(codes('y = x)'), ['unmatched-bracket']);
+    });
+
+    test('reports a closer of the wrong kind', () => {
+        assert.deepEqual(codes('y = (x]'), ['mismatched-bracket']);
+    });
+
+    test('ignores brackets inside strings and comments', () => {
+        assert.deepEqual(codes('"an unmatched ( here"'), []);
+        assert.deepEqual(codes('y = x // an unmatched ( here'), []);
+    });
+
+    test('reports a string with no closing quote', () => {
+        assert.deepEqual(codes('y = "abc'), ['unterminated-string']);
+    });
+});
+
+describe('block headers', () => {
+    test('accepts the canonical spellings', () => {
+        assert.deepEqual(codes('folder "A" {\ny = x\n}'), []);
+        assert.deepEqual(codes('table {\nx = [1]\n}'), []);
+        assert.deepEqual(codes('config {\nshowGrid: true\n}'), []);
+    });
+
+    test('accepts metadata on a block header', () => {
+        assert.deepEqual(codes('folder "A" { # collapsed: true\n}'), []);
+    });
+
+    test('accepts header metadata alongside entries that carry their own', () => {
+        assert.deepEqual(
+            codes(
+                'folder "Closed by default" { # collapsed: true\n' +
+                    'y = sin(2x) # color: #388c46,\n' +
+                    'y = cos(2x) # color: #6042a6\n' +
+                    '}',
+            ),
+            [],
+        );
+    });
+
+    test('rejects a folder with no name', () => {
+        assert.deepEqual(codes('folder {\n}'), ['block-header']);
+    });
+
+    test('rejects a nested folder', () => {
+        assert.deepEqual(codes('folder "A" {\nfolder "B" {\n}\n}'), ['nested-folder']);
+    });
+
+    test('rejects a config block inside another block', () => {
+        assert.deepEqual(codes('folder "A" {\nconfig {\n}\n}'), ['config-placement']);
+    });
+
+    test('warns about a second config block', () => {
+        assert.deepEqual(codes('config {\n}\nconfig {\n}'), ['duplicate-config']);
+    });
+});
+
+describe('entries', () => {
+    test('reports an entry that lost its comma', () => {
+        assert.deepEqual(codes('table {\n  x = [1]\n  y = [2]\n}'), ['missing-comma']);
+    });
+
+    test('accepts a block written inline', () => {
+        assert.deepEqual(codes('table { x = [1, 2], y = [1, 4] }'), []);
+    });
+
+    test('reports a config entry that is not `key: value`', () => {
+        assert.deepEqual(codes('config {\nshowGrid\n}'), ['entry-syntax']);
+    });
+
+    test('reports a property with no value', () => {
+        assert.deepEqual(codes('config {\nshowGrid:\n}'), ['missing-value']);
+    });
+});
+
+describe('property names', () => {
+    test('warns, rather than errors, on an unknown metadata property', () => {
+        const [diagnostic] = validateAxis('y = x # colr: red');
+        assert.equal(diagnostic.code, 'unknown-metadata-property');
+        assert.equal(diagnostic.severity, 'warning');
+    });
+
+    test('warns on an unknown config property', () => {
+        assert.deepEqual(codes('config {\nshowGrud: true\n}'), ['unknown-config-property']);
+    });
+
+    test('accepts the bare metadata flags', () => {
+        assert.deepEqual(codes('y = x # hidden'), []);
+        assert.deepEqual(codes('y = x # secret'), []);
+    });
+});
+
+test('reports diagnostics in document order', () => {
+    const diagnostics = validateAxis('y = x)\nz = (1\nw = x]');
+    const positions = diagnostics.map(d => [d.line, d.startCharacter]);
+    assert.deepEqual(
+        positions,
+        [...positions].sort((a, b) => a[0] - b[0] || a[1] - b[1]),
+    );
+});
+
+test('a clean document reports nothing', () => {
+    assert.deepEqual(
+        codes(
+            [
+                '// a comment',
+                'config { showGrid: true }',
+                '"A note"',
+                'folder "Curves" {',
+                '    f(x) = x^2 # color: #c74440,',
+                '    g(x) = sin(x) # lineWidth: 2',
+                '}',
+                'table { x = [1, 2], y = [1, 4] }',
+            ].join('\n'),
+        ),
+        [],
+    );
+});

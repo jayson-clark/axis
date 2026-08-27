@@ -1,0 +1,30 @@
+packages:
+  - 'packages/*'
+  # examples/scripts holds .axis files, not a package; pnpm skips any directory
+  # here without a package.json.
+  - 'examples/*'
+
+# All third-party dependency versions are pinned here. Packages reference them
+# with "catalog:" instead of a version range.
+catalog:
+  '@types/node': 26.4.0
+  '@types/react': 19.2.18
+  '@types/react-dom': 19.2.5
+  '@types/vscode': 1.134.0
+  esbuild: 0.28.2
+  monaco-editor: 0.56.0
+  prettier: 3.9.6
+  react: 19.2.8
+  react-dom: 19.2.8
+  typescript: 7.0.2
+  vite: 8.2.2
+  '@vitejs/plugin-react': 6.1.0
+
+# pnpm holds brand-new releases back by default; these are the versions pinned
+# above that are newer than that window.
+minimumReleaseAgeExclude:
+  - '@types/node@26.4.0'
+
+# esbuild's postinstall installs its platform-native binary.
+allowBuilds:
+  esbuild: true

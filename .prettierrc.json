@@ -1,0 +1,25 @@
+{
+    "printWidth": 100,
+    "tabWidth": 4,
+    "useTabs": false,
+    "semi": true,
+    "singleQuote": true,
+    "quoteProps": "as-needed",
+    "jsxSingleQuote": false,
+    "trailingComma": "all",
+    "bracketSpacing": true,
+    "bracketSameLine": false,
+    "arrowParens": "avoid",
+    "endOfLine": "lf",
+    "embeddedLanguageFormatting": "off",
+    "overrides": [
+        {
+            "files": ["*.yaml", "*.yml", "*.md"],
+            "options": { "tabWidth": 2 }
+        },
+        {
+            "files": ["*.css", "*.scss", "*.less", "*.html"],
+            "options": { "singleQuote": false }
+        }
+    ]
+}

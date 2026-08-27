@@ -1,0 +1,70 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Config - the calculator's own settings
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// One config block per script, at the top level. Every entry maps to a Desmos
+// calculator setting, so this is where the graph's chrome, axes and behaviour
+// are set rather than any single expression's.
+
+config {
+    // Angles
+    degreeMode: false,
+
+    // Grid and axes
+    showGrid: true,
+    showXAxis: true,
+    showYAxis: true,
+    xAxisNumbers: true,
+    yAxisNumbers: true,
+    xAxisLabel: "time (s)",
+    yAxisLabel: "height (m)",
+    xAxisStep: 1,
+    yAxisStep: 2,
+    xAxisMinorSubdivisions: 2,
+    yAxisMinorSubdivisions: 2,
+    xAxisArrowMode: POSITIVE,
+    yAxisArrowMode: POSITIVE,
+
+    // Coordinate system
+    polarMode: false,
+
+    // Interface
+    expressions: true,
+    expressionsCollapsed: false,
+    settingsMenu: true,
+    zoomButtons: true,
+    keypad: true,
+    border: true,
+    lockViewport: false,
+    trace: true,
+    pointsOfInterest: true,
+
+    // Theming
+    backgroundColor: "#ffffff",
+    textColor: "#222222",
+    fontSize: 16,
+
+    // Features
+    actions: true,
+    sliders: true,
+    folders: true,
+    notes: true,
+    images: true,
+    graphpaper: true
+}
+
+"Config"
+
+"Everything above is calculator setup: axis labels, grid steps, theme, and which parts of the Desmos interface appear."
+
+h(t) = 20t - 4.9t ^ 2 # color: #c74440, lineWidth: 3
+
+"Peak of the flight."
+
+(2.04, 20.4) # color: C, pointSize: 16, label: "apex", showLabel: true, labelOrientation: above
+
+"Ground level."
+
+y = 0 # color: \C, lineOpacity: 0.4
+
+C = rgb(177, 75, 75)
