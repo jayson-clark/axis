@@ -1,0 +1,15 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        // DOM is here for the code that runs inside the page — the bootstrap
+        // and the evaluate callbacks are authored as real functions so they are
+        // typechecked, then serialized across to the browser by Playwright.
+        "lib": ["ES2020", "DOM"],
+        "types": ["node"],
+        "composite": true,
+        "outDir": "./dist",
+        "rootDir": "src"
+    },
+    "references": [{ "path": "../desmos" }, { "path": "../language" }, { "path": "../compiler" }],
+    "include": ["src/**/*"]
+}

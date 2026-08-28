@@ -21,6 +21,16 @@ import {
 const BUILT_IN_NAMES = new Set([...AXIS_FUNCTION_NAMES, ...AXIS_CONSTANT_NAMES]);
 
 /**
+ * What may not come before a name being recognised.
+ *
+ * Not `\b`: a word boundary also refuses to open a name after a digit, and
+ * `3cos(t)` is a coefficient times a cosine — the way anybody writes it, and
+ * the way Desmos reads it. A letter before the name is different, since
+ * `xcos(t)` is one identifier, so only letters block the match.
+ */
+const NOT_AFTER_NAME = '(?<![a-zA-Z_])';
+
+/**
  * `alpha2` → `\alpha_{2}`: a constant with a LaTeX form, carrying a suffix.
  *
  * Only constants that survive to become commands are listed - matching `e`
@@ -29,19 +39,19 @@ const BUILT_IN_NAMES = new Set([...AXIS_FUNCTION_NAMES, ...AXIS_CONSTANT_NAMES])
  * constant list so `eta` is not read as `e` + `ta`.
  */
 const CONSTANT_PREFIX_PATTERNS = [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => ({
-    pattern: new RegExp(`\\b${name}([a-zA-Z0-9]+)\\b`, 'g'),
+    pattern: new RegExp(`${NOT_AFTER_NAME}${name}([a-zA-Z0-9]+)\\b`, 'g'),
     latex,
 }));
 
 /** `sin` → `\sin`, longest first so `arcsin` is not clipped to `arc` + `sin`. */
 const FUNCTION_PATTERNS = AXIS_FUNCTION_NAMES.map(name => ({
-    pattern: new RegExp(`\\b${name}(?=\\s*\\\\left\\(|\\s|$)`, 'g'),
+    pattern: new RegExp(`${NOT_AFTER_NAME}${name}(?=\\s*\\\\left\\(|\\s|$)`, 'g'),
     latex: getFunctionLatex(name),
 }));
 
 /** `pi` → `\pi`, for a constant standing on its own. */
 const CONSTANT_PATTERNS = [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => ({
-    pattern: new RegExp(`\\b${name}\\b`, 'g'),
+    pattern: new RegExp(`${NOT_AFTER_NAME}${name}\\b`, 'g'),
     latex,
 }));
 
@@ -172,7 +182,9 @@ function convertShapedCalls(input: string): string {
 /** The shaped function whose call opens at `index`, if one does. */
 function shapedNameAt(input: string, index: number): string | undefined {
     // A name carried by a longer one - `y_{abs}`, `arcsqrt` - is not a call.
-    if (/[a-zA-Z0-9\\]/.test(input[index - 1] ?? '')) {
+    // A digit before it is not: `2sqrt(4)` is two times a square root, the same
+    // reading {@link NOT_AFTER_NAME} gives every other name.
+    if (/[a-zA-Z\\]/.test(input[index - 1] ?? '')) {
         return undefined;
     }
 
@@ -255,7 +267,7 @@ function subscriptNames(input: string): string {
     }
 
     return latex.replace(
-        /\b([a-zA-Z])([a-zA-Z0-9]+)\b/g,
+        /(?<![a-zA-Z_])([a-zA-Z])([a-zA-Z0-9]+)\b/g,
         (match, first: string, rest: string, offset: number, text: string) => {
             if (BUILT_IN_NAMES.has(match)) {
                 return match;

@@ -179,17 +179,57 @@ React 19 and Monaco 0.56+ are peer dependencies, so your app owns both.
 | `@axis-dsl/viewer`   | The results panel: the graph and JSON inspector |
 | `@axis-dsl/protocol` | Messages and transports that drive the viewer   |
 | `@axis-dsl/desmos`   | Typed Desmos calculator API                     |
+| `@axis-dsl/harness`  | Runs a script against a real headless Desmos    |
+
+## Testing against a real Desmos graph
+
+The compiler can only tell you what it emitted.
+[`@axis-dsl/harness`](./packages/harness) tells you what Desmos made of it: it
+loads a script into a real calculator in a headless Chromium and hands back the
+graph state, the expression list, and Desmos' own verdict on every expression.
+
+```sh
+pnpm test:browser   # download Chromium, once
+```
+
+```sh
+$ npx axis-inspect examples/scripts/16-imports.axis
+16-imports.axis — 15 expressions, 0 errors
+
+  0  text       Two libraries, each arriving as one folder.
+  1  folder     Waves
+  2  ok         a_{mp}=1 = 1
+  …
+```
+
+`--json` makes that machine-readable and the command exits `1` on a graph with
+errors, which is what makes it useful to an agent or a CI check. In a test:
+
+```ts
+await calculator.load('f(x) = 2x + 1\ny = f(x)');
+assert.deepEqual(await calculator.getErrors(), []);
+assert.equal((await calculator.evaluate('f(20)')).numericValue, 41);
+```
+
+Its suites drive every metadata property, every config option, and every
+function and constant in the language manifest through a live calculator, so a
+name that Desmos does not accept fails a test rather than a graph.
+
+The real `calculator.js` is cached on disk after the first run, so the suite
+does not depend on desmos.com being up. The harness tests skip themselves when
+no Chromium is installed.
 
 ## Scripts
 
-| Command          | Description                                 |
-| ---------------- | ------------------------------------------- |
-| `pnpm build`     | Build every package in dependency order     |
-| `pnpm dev`       | Build once, then watch every package        |
-| `pnpm test`      | Build, then run the suites on `node --test` |
-| `pnpm typecheck` | Typecheck everything, tests included        |
-| `pnpm format`    | Rewrite with Prettier                       |
-| `pnpm clean`     | Remove every `dist/` and `*.tsbuildinfo`    |
+| Command             | Description                                 |
+| ------------------- | ------------------------------------------- |
+| `pnpm build`        | Build every package in dependency order     |
+| `pnpm dev`          | Build once, then watch every package        |
+| `pnpm test`         | Build, then run the suites on `node --test` |
+| `pnpm test:browser` | Download the Chromium the harness needs     |
+| `pnpm typecheck`    | Typecheck everything, tests included        |
+| `pnpm format`       | Rewrite with Prettier                       |
+| `pnpm clean`        | Remove every `dist/` and `*.tsbuildinfo`    |
 
 ## License
 

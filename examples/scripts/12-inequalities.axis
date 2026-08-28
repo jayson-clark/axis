@@ -25,8 +25,8 @@ folder "Regions from curves" {
 }
 
 folder "A bounded strip" {
-    "Two inequalities in one statement bound a band.",
-    -1 < y - sin(x) < 1 # color: #c74440, fillOpacity: 0.25,
+    "Two inequalities in one statement bound a band, with y on its own in the middle - Desmos only shades a band that is solved for a variable.",
+    sin(x) - 1 < y < sin(x) + 1 # color: #c74440, fillOpacity: 0.25,
     y = sin(x) # color: #c74440, lineWidth: 3
 }
 

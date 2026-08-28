@@ -57,6 +57,26 @@ export interface SliderBounds {
     step?: string | number;
 }
 
+/**
+ * A slider as the graph state carries it — which is not how `setExpression`
+ * takes one. The API accepts `sliderBounds` and `playing`; the serialized state
+ * this object belongs to spells the same thing `slider`, with the bounds as
+ * latex strings and `hardMin`/`hardMax` marking a bound the user cannot drag
+ * past. Anything applied with `setState` has to be written this way, and
+ * `setState` is what carries folder membership, so it is the form Axis emits.
+ */
+export interface SliderState {
+    min?: string;
+    max?: string;
+    step?: string;
+    /** Whether `min`/`max` are limits rather than just the initial range. */
+    hardMin?: boolean;
+    hardMax?: boolean;
+    isPlaying?: boolean;
+    loopMode?: 'LOOP_FORWARD_REVERSE' | 'LOOP_FORWARD' | 'PLAY_ONCE' | 'PLAY_INDEFINITELY';
+    playDirection?: 1 | -1;
+}
+
 export interface TableColumn {
     id?: string;
     latex: string;
@@ -106,8 +126,12 @@ export interface Expression {
     fill?: boolean;
     hidden?: boolean;
     secret?: boolean;
+    /** `setExpression` only — `setState` ignores it. See {@link SliderState}. */
     sliderBounds?: SliderBounds;
+    /** `setExpression` only — `setState` ignores it. See {@link SliderState}. */
     playing?: boolean;
+    /** Slider range and animation, as `setState` takes them. */
+    slider?: SliderState;
     parametricDomain?: DomainBounds;
     polarDomain?: DomainBounds;
     dragMode?: DragMode | string;
