@@ -20,6 +20,7 @@ import {
     Folder,
     Note,
     SliderBounds,
+    SliderState,
     Table,
     TableColumn,
 } from '@axis-dsl/desmos';
@@ -440,8 +441,7 @@ function buildExpression(
         fill: asBoolean(metadata.fill),
         hidden: asBoolean(metadata.hidden),
         secret: asBoolean(metadata.secret),
-        sliderBounds: asSliderBounds(metadata.sliderBounds),
-        playing: asBoolean(metadata.playing),
+        slider: buildSlider(metadata),
         dragMode: asString(metadata.dragMode),
         label: asString(metadata.label),
         showLabel: asBoolean(metadata.showLabel),
@@ -456,6 +456,36 @@ function buildExpression(
     }
 
     return expression;
+}
+
+/**
+ * Turn `# sliderBounds: {…}` and `# playing` into the slider the graph state
+ * carries.
+ *
+ * Desmos' `setExpression` would take `sliderBounds` and `playing` as written,
+ * but nothing here applies expressions that way: folder membership only travels
+ * through `setState`, and `setState` reads the serialized form instead — bounds
+ * as latex strings under `slider`, with `hardMin`/`hardMax` for a bound the
+ * slider will not go past, and `isPlaying` for the animation.
+ */
+function buildSlider(metadata: Metadata): SliderState | undefined {
+    const bounds = asSliderBounds(metadata.sliderBounds);
+    const playing = asBoolean(metadata.playing);
+
+    if (!bounds && playing === undefined) {
+        return undefined;
+    }
+
+    return {
+        ...(bounds && {
+            min: String(bounds.min),
+            max: String(bounds.max),
+            hardMin: true,
+            hardMax: true,
+            ...(bounds.step !== undefined && { step: String(bounds.step) }),
+        }),
+        ...(playing !== undefined && { isPlaying: playing }),
+    };
 }
 
 /**
