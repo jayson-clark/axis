@@ -1,4 +1,5 @@
-import { CSSProperties, useRef, useState } from 'react';
+import { CSSProperties, Ref, useImperativeHandle, useRef, useState } from 'react';
+import type { AsyncScreenshotOptions } from '@axis-dsl/desmos';
 import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
 import { DesmosGraph, DesmosGraphHandle } from './DesmosGraph.js';
 import { JsonInspector, JsonView } from './JsonInspector.js';
@@ -7,7 +8,21 @@ import { AXIS_COLOR_SCHEME, AXIS_THEME } from './theme.js';
 
 export type AxisViewerTab = 'graph' | 'json';
 
+/**
+ * The graph the viewer owns, handed back to the host. What to do with an image
+ * - download it, put it on the clipboard, store it as a thumbnail - is the
+ * host's to decide; the viewer only takes the picture.
+ */
+export interface AxisViewerHandle {
+    /** The graph pane's own handle, for the rest of {@link DesmosGraphHandle}. */
+    getGraph(): DesmosGraphHandle | null;
+    /** Shorthand for `getGraph()?.capture(options)`, null before it mounts. */
+    capture(options?: AsyncScreenshotOptions): Promise<string | null>;
+}
+
 export interface AxisViewerProps {
+    /** Exposes {@link AxisViewerHandle}. A plain prop, as React 19 has it. */
+    ref?: Ref<AxisViewerHandle>;
     /** The viewer's only input. Everything it shows arrives over this. */
     transport: ViewerTransport;
     className?: string;
@@ -63,12 +78,23 @@ function tabStyle(isActive: boolean): CSSProperties {
  * and it looks the same in all of them. What differs between hosts is which
  * transport they hand it and nothing else.
  */
-export function AxisViewer({ transport, className, style }: AxisViewerProps) {
+export function AxisViewer({ ref, transport, className, style }: AxisViewerProps) {
     const graphRef = useRef<DesmosGraphHandle>(null);
     const [activeTab, setActiveTab] = useState<AxisViewerTab>('graph');
     const { apiKey, canSetApiKey, expressions, settings, status, connection, hasConnected } =
         useViewerState(transport);
     const notice = connectionNotice(connection, hasConnected);
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            getGraph: () => graphRef.current,
+            // The graph pane stays mounted on the JSON tab, so this works
+            // whichever tab is showing.
+            capture: options => graphRef.current?.capture(options) ?? Promise.resolve(null),
+        }),
+        [],
+    );
 
     const jsonViews: JsonView[] = [
         { id: 'compiled', label: 'Compiled', get: () => expressions },

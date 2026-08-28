@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/viewer",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "type": "module",
     "description": "Every Axis React component: the results panel and the Desmos graph and JSON inspector it is built from, shared by the web playground and the VSCode preview",
     "main": "./dist/index.js",

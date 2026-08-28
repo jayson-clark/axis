@@ -49,6 +49,33 @@ reconnection reads as "Reconnecting…", and a connection given up on reads as
 stopped. A transport that omits `onConnectionChange`, as the in-process channel
 does, is taken to be connected for as long as it exists.
 
+## Capturing an image
+
+A `ref` on `AxisViewer` hands back the graph it owns, whose `capture()` renders
+the graphpaper to a data URI — the expression list is never in it. It resolves
+`null` until Desmos has loaded and the calculator exists, so the affordance can
+be offered before knowing whether it has.
+
+```tsx
+const viewer = useRef<AxisViewerHandle>(null);
+
+async function download() {
+    const png = await viewer.current?.capture({ width: 1200, height: 800, targetPixelRatio: 2 });
+    if (png) {
+        // …it's yours: save it, put it on the clipboard, upload it as a thumbnail
+    }
+}
+
+return <AxisViewer ref={viewer} transport={transport} />;
+```
+
+The options are Desmos' own `asyncScreenshot` options (`width`, `height`,
+`targetPixelRatio`, `format`, `mode`, `mathBounds`, `showLabels`,
+`preserveAxisNumbers`), typed as `AsyncScreenshotOptions` in `@axis-dsl/desmos`.
+Passing none captures the graph as it is on screen. `getGraph()` on the same
+handle reaches the rest of `DesmosGraphHandle` — `getCalculator()`,
+`getExpressions()`, `getState()`.
+
 ## Theming
 
 The viewer brings its own palette and looks the same in every host — nothing
@@ -73,8 +100,9 @@ applied after the theme and therefore wins:
 
 | Export                      |                                                                 |
 | --------------------------- | --------------------------------------------------------------- |
-| `AxisViewer`                | The panel. Props: `transport`, `className?`, `style?`           |
+| `AxisViewer`                | The panel. Props: `transport`, `ref?`, `className?`, `style?`   |
 | `useLocalViewerHost(state)` | Turns React state into protocol messages; returns the transport |
+| `AxisViewerHandle`          | What its `ref` exposes: `capture(options?)`, `getGraph()`       |
 | `DesmosGraph`               | Just the graph, if you want to arrange things yourself          |
 | `JsonInspector`             | Just the JSON pane                                              |
 | `useDesmos(apiKey)`         | Loads the Desmos script once per page                           |
