@@ -1,7 +1,7 @@
 {
     "name": "axis-dsl",
     "displayName": "Axis — Desmos Scripting Language",
-    "description": "Graphs the .axis file you have open, with Axis language support",
+    "description": "Previews the .axis file you have open as a live Desmos graph, with Axis language support",
     "version": "0.0.1",
     "publisher": "axis",
     "engines": {
@@ -11,9 +11,12 @@
         "Other"
     ],
     "scripts": {
-        "build": "node scripts/copy-viewer-bundle.mjs",
+        "build": "node scripts/copy-assets.mjs",
         "watch": "tsc --watch"
     },
+    "activationEvents": [
+        "onLanguage:axis"
+    ],
     "main": "dist/extension.js",
     "contributes": {
         "languages": [
@@ -26,7 +29,7 @@
                 "extensions": [
                     ".axis"
                 ],
-                "configuration": "../language/src/language-configuration.json",
+                "configuration": "./dist/language-configuration.json",
                 "icon": {
                     "light": "./icons/axis-light.svg",
                     "dark": "./icons/axis-dark.svg"
@@ -37,13 +40,28 @@
             {
                 "language": "axis",
                 "scopeName": "source.axis",
-                "path": "../language/syntaxes/axis.tmLanguage.json"
+                "path": "./dist/axis.tmLanguage.json"
             }
         ],
         "commands": [
             {
-                "command": "axis.openWebview",
-                "title": "Axis - Open Webview"
+                "command": "axis.preview",
+                "title": "Preview Graph",
+                "category": "Axis",
+                "icon": {
+                    "light": "./icons/axis-action-light.svg",
+                    "dark": "./icons/axis-action-dark.svg"
+                }
+            },
+            {
+                "command": "axis.previewStatus",
+                "title": "Preview Server…",
+                "category": "Axis"
+            },
+            {
+                "command": "axis.stopPreviewServer",
+                "title": "Stop Preview Server",
+                "category": "Axis"
             }
         ],
         "configuration": {
@@ -53,8 +71,32 @@
                     "type": "string",
                     "default": "",
                     "markdownDescription": "API key for the Desmos Graphing Calculator. Leave blank to use Desmos’ public demo key, which works with no setup but logs a console warning and is not licensed for distribution. Get your own at https://www.desmos.com/api."
+                },
+                "axis.previewTarget": {
+                    "type": "string",
+                    "enum": [
+                        "ask",
+                        "editor",
+                        "browser"
+                    ],
+                    "enumDescriptions": [
+                        "Ask each time a preview is opened.",
+                        "Open in a Simple Browser tab inside VSCode.",
+                        "Open in your default browser."
+                    ],
+                    "default": "ask",
+                    "markdownDescription": "Where **Axis: Preview Graph** opens the graph. Pinning a choice in the prompt sets this; set it back to `ask` to be asked again."
                 }
             }
+        },
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "axis.preview",
+                    "when": "resourceLangId == axis",
+                    "group": "navigation"
+                }
+            ]
         }
     },
     "devDependencies": {
