@@ -39,8 +39,8 @@ Options
   --json                  print the whole inspection as JSON
   --errors-only           print only what Desmos rejected
   -e, --source <source>   the script itself, instead of a file
-      --eval <latex>      also evaluate an expression against the loaded graph
-                          (repeatable)
+      --eval <expr>       also evaluate an Axis expression against the loaded
+                          graph, e.g. --eval 'f(20)' (repeatable)
   --screenshot <file>     write a PNG of the graphpaper
   --api-key <key>         Desmos API key (default: the public demo key)
   --offline               fail rather than fetch from desmos.com

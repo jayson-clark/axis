@@ -25,8 +25,9 @@ import {
     ExpressionState,
     GraphState,
     MathBounds,
+    Point,
 } from '@axis-dsl/desmos';
-import { CompilationResult, CompileOptions, compileAxis } from '@axis-dsl/compiler';
+import { CompilationResult, CompileOptions, compileAxis, convertToLatex } from '@axis-dsl/compiler';
 import { acquireBrowser, releaseBrowser } from './browser';
 import { HARNESS_URL, installRouting } from './page';
 
@@ -59,6 +60,12 @@ export interface AxisCalculatorOptions {
      * after a state is applied reads a graph that is still thinking.
      */
     quietMs?: number;
+    /**
+     * How long to wait for that quiet before giving up on it. A graph with a
+     * playing slider on it never goes quiet, so the wait is capped rather than
+     * left to the timeout: its analysis is stable long before its values are.
+     */
+    maxSettleMs?: number;
     /** Extra Chromium launch options, for the shared browser's first launch. */
     launch?: LaunchOptions;
 }
@@ -110,13 +117,15 @@ export interface LoadOptions extends CompileOptions {
 /** A live headless Desmos calculator. Close it when the test is done. */
 export class AxisCalculator {
     readonly page: Page;
-    private readonly options: Required<Pick<AxisCalculatorOptions, 'timeout' | 'quietMs'>>;
+    private readonly options: Required<
+        Pick<AxisCalculatorOptions, 'timeout' | 'quietMs' | 'maxSettleMs'>
+    >;
     private readonly errors: string[] = [];
     private closed = false;
 
-    private constructor(page: Page, timeout: number, quietMs: number) {
+    private constructor(page: Page, timeout: number, quietMs: number, maxSettleMs: number) {
         this.page = page;
-        this.options = { timeout, quietMs };
+        this.options = { timeout, quietMs, maxSettleMs };
 
         page.on('pageerror', error => this.errors.push(String(error)));
         page.on('console', message => {
@@ -177,7 +186,12 @@ export class AxisCalculator {
                 ] as const,
             );
 
-            const calculator = new AxisCalculator(page, timeout, options.quietMs ?? 200);
+            const calculator = new AxisCalculator(
+                page,
+                timeout,
+                options.quietMs ?? 200,
+                options.maxSettleMs ?? 2_000,
+            );
             await calculator.settle();
             return calculator;
         } catch (error) {
@@ -242,12 +256,24 @@ export class AxisCalculator {
     /**
      * Wait until the calculator has stopped changing. Every mutating method
      * already does this, so a test only needs it after driving the page itself.
+     *
+     * An animating slider means the graph never stops changing, so this gives
+     * up on the quiet after `maxSettleMs` and returns rather than throwing —
+     * by then the analysis has long since stabilized even if the values have
+     * not, and a test that waits on a playing graph should not fail for it.
      */
     async settle(quietMs = this.options.quietMs): Promise<void> {
-        await this.page.waitForFunction(
-            quiet => Date.now() - window.__axisHarness!.lastChange >= quiet,
-            quietMs,
-            { timeout: this.options.timeout, polling: 50 },
+        await this.page.evaluate(
+            async ([quiet, limit]) => {
+                const deadline = Date.now() + limit;
+                while (
+                    Date.now() < deadline &&
+                    Date.now() - window.__axisHarness!.lastChange < quiet
+                ) {
+                    await new Promise(resolve => setTimeout(resolve, 25));
+                }
+            },
+            [quietMs, this.options.maxSettleMs] as const,
         );
     }
 
@@ -303,10 +329,19 @@ export class AxisCalculator {
     }
 
     /**
-     * Evaluate `latex` against the loaded graph, so a test can assert on what a
-     * function or a slider-driven definition actually comes out to.
+     * Evaluate an Axis expression against the loaded graph, so a test can
+     * assert on what a function or a slider-driven definition comes out to.
+     *
+     * The expression is Axis, not latex — `evaluate('amp')` asks about the
+     * variable the script calls `amp`, where the raw latex `amp` would be three
+     * variables multiplied together. {@link evaluateLatex} takes it verbatim.
      */
-    async evaluate(latex: string, timeout = 2000): Promise<EvaluatedValue> {
+    evaluate(expression: string, timeout?: number): Promise<EvaluatedValue> {
+        return this.evaluateLatex(convertToLatex(expression), timeout);
+    }
+
+    /** {@link evaluate}, given latex that is already latex. */
+    async evaluateLatex(latex: string, timeout = 2000): Promise<EvaluatedValue> {
         return this.page.evaluate(
             async ([expression, wait]) => {
                 const helper = window.__axisHarness!.calculator.HelperExpression({
@@ -336,6 +371,40 @@ export class AxisCalculator {
             },
             [latex, timeout] as const,
         );
+    }
+
+    /**
+     * Click the graphpaper at a point in math coordinates — which is how an
+     * `onClick` action is actually tested: Desmos exposes no way to fire one,
+     * so the harness moves a real mouse to where the object is drawn.
+     *
+     * The container fills the page, so Desmos' own pixel coordinates are the
+     * page's. Returns false if the point is off screen, where a click would
+     * land on nothing.
+     */
+    async click(point: Point): Promise<boolean> {
+        const at = await this.page.evaluate(target => {
+            const calculator = window.__axisHarness!.calculator;
+            const pixels = calculator.mathToPixels(target);
+            const bounds = calculator.graphpaperBounds.pixelCoordinates;
+            if (pixels.x === undefined || pixels.y === undefined) {
+                return null;
+            }
+            const onScreen =
+                pixels.x >= bounds.left &&
+                pixels.x <= bounds.right &&
+                pixels.y >= bounds.top &&
+                pixels.y <= bounds.bottom;
+            return onScreen ? { x: pixels.x, y: pixels.y } : null;
+        }, point);
+
+        if (!at) {
+            return false;
+        }
+
+        await this.page.mouse.click(at.x, at.y);
+        await this.settle();
+        return true;
     }
 
     async updateSettings(settings: CalculatorOptions): Promise<void> {
