@@ -2,7 +2,7 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "composite": true,
-        // webview.ts imports node's "path".
+        // The preview server is built on node's http, fs and crypto.
         "types": ["node"],
         "outDir": "./dist",
         "rootDir": "src"

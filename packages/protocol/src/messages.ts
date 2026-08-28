@@ -3,9 +3,9 @@
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // The viewer is a display surface driven entirely by these messages — it has no
-// other way in. Both hosts speak them: the extension over VSCode's postMessage
-// bridge, the playground over an in-memory channel. One path means a feature is
-// built once and both hosts get it.
+// other way in. Every host speaks them: the extension's preview server over an
+// HTTP event stream, the playground over an in-memory channel. One path means a
+// feature is built once and every host gets it.
 
 import type { CalculatorOptions, DesmosExpression } from '@axis-dsl/desmos';
 

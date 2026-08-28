@@ -1,9 +1,9 @@
 import { CSSProperties, useRef, useState } from 'react';
-import { isVsCodeWebview, type ViewerTransport } from '@axis-dsl/protocol';
+import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
 import { DesmosGraph, DesmosGraphHandle } from './DesmosGraph.js';
 import { JsonInspector, JsonView } from './JsonInspector.js';
 import { useViewerState } from './useViewerState.js';
-import { VSCODE_THEME_VARS } from './theme.js';
+import { AXIS_COLOR_SCHEME, AXIS_THEME } from './theme.js';
 
 export type AxisViewerTab = 'graph' | 'json';
 
@@ -11,6 +11,7 @@ export interface AxisViewerProps {
     /** The viewer's only input. Everything it shows arrives over this. */
     transport: ViewerTransport;
     className?: string;
+    /** Applied after the theme, so a host can override any `--axis-*` token. */
     style?: CSSProperties;
 }
 
@@ -19,16 +20,36 @@ const TABS: { id: AxisViewerTab; label: string }[] = [
     { id: 'json', label: 'JSON' },
 ];
 
-const BORDER = '1px solid var(--axis-border, rgba(127,127,127,0.3))';
-const MONO = 'var(--axis-mono, ui-monospace, SFMono-Regular, Menlo, monospace)';
+/**
+ * What to say about a connection that is not up, or null to say nothing.
+ *
+ * A first load is silent: `connecting` before anything has ever arrived is just
+ * the page starting, and a banner for it would flash on every open. After that
+ * the same state means the graph on screen has stopped tracking the file, which
+ * has to be said — a stale graph that still looks live is worse than no graph.
+ */
+function connectionNotice(
+    connection: ConnectionState,
+    hasConnected: boolean,
+): { text: string; tone: 'warning' | 'error' } | null {
+    if (connection === 'connected' || (connection === 'connecting' && !hasConnected)) {
+        return null;
+    }
+    return connection === 'connecting'
+        ? { text: 'Reconnecting to the preview server…', tone: 'warning' }
+        : {
+              text: 'The preview server has stopped. This graph is no longer live.',
+              tone: 'error',
+          };
+}
 
 function tabStyle(isActive: boolean): CSSProperties {
     return {
-        padding: '8px 14px',
+        padding: '8px 10px',
         background: 'none',
         border: 'none',
-        borderBottom: `2px solid ${isActive ? 'var(--axis-accent, #2d70b3)' : 'transparent'}`,
-        color: isActive ? 'var(--axis-fg, inherit)' : 'var(--axis-fg-muted, inherit)',
+        borderBottom: `2px solid ${isActive ? 'var(--axis-accent)' : 'transparent'}`,
+        color: isActive ? 'var(--axis-fg)' : 'var(--axis-fg-muted)',
         font: 'inherit',
         cursor: 'pointer',
     };
@@ -37,17 +58,17 @@ function tabStyle(isActive: boolean): CSSProperties {
 /**
  * The Axis results panel: a live Desmos graph beside the JSON behind it.
  *
- * Both hosts render this same component over the same protocol — the extension
- * across the webview bridge, the playground over an in-process channel. The one
- * thing it decides for itself is theming: inside a VSCode webview it maps its
- * `--axis-*` hooks onto the `--vscode-*` theme, and anywhere else it inherits
- * whatever the surrounding page defines.
+ * Every host renders this same component over the same protocol — the preview
+ * page over an HTTP event stream, the playground over an in-process channel —
+ * and it looks the same in all of them. What differs between hosts is which
+ * transport they hand it and nothing else.
  */
 export function AxisViewer({ transport, className, style }: AxisViewerProps) {
     const graphRef = useRef<DesmosGraphHandle>(null);
     const [activeTab, setActiveTab] = useState<AxisViewerTab>('graph');
-    const [inVsCode] = useState(isVsCodeWebview);
-    const { apiKey, canSetApiKey, expressions, settings, status } = useViewerState(transport);
+    const { apiKey, canSetApiKey, expressions, settings, status, connection, hasConnected } =
+        useViewerState(transport);
+    const notice = connectionNotice(connection, hasConnected);
 
     const jsonViews: JsonView[] = [
         { id: 'compiled', label: 'Compiled', get: () => expressions },
@@ -64,14 +85,17 @@ export function AxisViewer({ transport, className, style }: AxisViewerProps) {
         <div
             className={className}
             style={{
-                ...(inVsCode ? VSCODE_THEME_VARS : null),
+                ...AXIS_THEME,
+                colorScheme: AXIS_COLOR_SCHEME,
                 display: 'flex',
                 flexDirection: 'column',
                 flex: 1,
                 minHeight: 0,
                 height: '100%',
-                background: 'var(--axis-surface, transparent)',
-                color: 'var(--axis-fg, inherit)',
+                background: 'var(--axis-surface)',
+                color: 'var(--axis-fg)',
+                fontFamily: 'var(--axis-font)',
+                fontSize: 'var(--axis-font-size)',
                 ...style,
             }}
         >
@@ -80,10 +104,10 @@ export function AxisViewer({ transport, className, style }: AxisViewerProps) {
                 style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 2,
                     padding: '0 8px',
                     flex: 'none',
-                    borderBottom: BORDER,
+                    borderBottom: '1px solid var(--axis-border)',
                 }}
             >
                 {TABS.map(tab => (
@@ -102,15 +126,45 @@ export function AxisViewer({ transport, className, style }: AxisViewerProps) {
                         style={{
                             marginLeft: 'auto',
                             paddingRight: 8,
-                            color: 'var(--axis-fg-muted, inherit)',
-                            fontFamily: MONO,
-                            fontSize: 'var(--axis-mono-size, 12px)',
+                            color: 'var(--axis-fg-muted)',
+                            fontFamily: 'var(--axis-mono)',
+                            fontSize: 'var(--axis-mono-size)',
+                            // A long path shortens from the left, keeping the
+                            // file name - the part worth reading - on screen.
+                            direction: 'rtl',
+                            textAlign: 'left',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
                         }}
+                        title={status}
                     >
                         {status}
                     </span>
                 )}
             </div>
+
+            {notice && (
+                <div
+                    role="status"
+                    style={{
+                        flex: 'none',
+                        padding: '6px 12px',
+                        fontSize: 'var(--axis-mono-size)',
+                        fontFamily: 'var(--axis-mono)',
+                        color: notice.tone === 'error' ? 'var(--axis-danger)' : 'var(--axis-fg)',
+                        background:
+                            notice.tone === 'error'
+                                ? 'color-mix(in srgb, var(--axis-danger) 16%, var(--axis-surface))'
+                                : 'var(--axis-surface-raised)',
+                        borderBottom: `1px solid ${
+                            notice.tone === 'error' ? 'var(--axis-danger)' : 'var(--axis-border)'
+                        }`,
+                    }}
+                >
+                    {notice.text}
+                </div>
+            )}
 
             {/* Both panes stay mounted: unmounting the graph would tear down the
                 calculator and lose the user's viewport when switching tabs. */}
@@ -135,7 +189,7 @@ export function AxisViewer({ transport, className, style }: AxisViewerProps) {
                                 flexDirection: 'column',
                                 alignItems: 'flex-start',
                                 gap: 12,
-                                color: 'var(--axis-danger, #e06c6c)',
+                                color: 'var(--axis-danger)',
                             }}
                         >
                             <p style={{ margin: 0 }}>{message}</p>
@@ -149,9 +203,9 @@ export function AxisViewer({ transport, className, style }: AxisViewerProps) {
                                         padding: '5px 12px',
                                         borderRadius: 4,
                                         cursor: 'pointer',
-                                        border: BORDER,
-                                        background: 'var(--axis-surface-raised, transparent)',
-                                        color: 'var(--axis-fg, inherit)',
+                                        border: 'none',
+                                        background: 'var(--axis-accent)',
+                                        color: 'var(--axis-accent-fg)',
                                         font: 'inherit',
                                     }}
                                 >

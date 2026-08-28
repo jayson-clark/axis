@@ -2,12 +2,12 @@
     "name": "@axis-dsl/viewer",
     "version": "0.0.1",
     "type": "module",
-    "description": "Every Axis React component: the results panel and the Desmos graph and JSON inspector it is built from, shared by the web playground and the VSCode webview",
+    "description": "Every Axis React component: the results panel and the Desmos graph and JSON inspector it is built from, shared by the web playground and the VSCode preview",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
-        "build": "tsc && esbuild src/entry.tsx --bundle --outfile=dist/webview.js --external:vscode --target=es2020",
-        "watch": "esbuild src/entry.tsx --bundle --outfile=dist/webview.js --external:vscode --target=es2020 --watch",
+        "build": "tsc && esbuild src/entry.tsx --bundle --outfile=dist/preview.js --external:vscode --target=es2020",
+        "watch": "esbuild src/entry.tsx --bundle --outfile=dist/preview.js --external:vscode --target=es2020 --watch",
         "typecheck": "tsc --noEmit"
     },
     "devDependencies": {
@@ -50,8 +50,8 @@
     },
     "files": [
         "dist",
-        "!dist/webview.js",
-        "!dist/webview.js.map",
+        "!dist/preview.js",
+        "!dist/preview.js.map",
         "README.md"
     ],
     "sideEffects": [
