@@ -1,7 +1,22 @@
+// ═════════════════════════════════════════════════════════════════════════════
+// Monaco bound to the Axis language
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Axis ships no editor component: `registerAxisLanguage` teaches any Monaco
+// instance about the language, and wrapping Monaco in a component is the app's
+// job — the shape of that wrapper depends on the framework, and every bundler
+// loads Monaco differently. This file is that wrapper for the playground, and
+// a reference for apps that want their own.
+
 import { CSSProperties, Ref, useEffect, useImperativeHandle, useRef } from 'react';
 import type * as monacoTypes from 'monaco-editor/editor';
-import { AXIS_LANGUAGE_ID } from '@axis-dsl/language/monaco';
-import { AXIS_DARK_THEME, AXIS_LIGHT_THEME, setupAxis, type MonacoApi } from './monaco.js';
+import {
+    AXIS_DARK_THEME,
+    AXIS_LANGUAGE_ID,
+    AXIS_LIGHT_THEME,
+    registerAxisLanguage,
+    type MonacoApi,
+} from '@axis-dsl/language/monaco';
 
 export interface AxisEditorHandle {
     format(): void;
@@ -13,15 +28,11 @@ export interface AxisEditorHandle {
 export interface AxisEditorProps {
     /** Exposes {@link AxisEditorHandle}. A plain prop, as React 19 has it. */
     ref?: Ref<AxisEditorHandle>;
-    /**
-     * The Monaco namespace, loaded and worker-configured by the app — see the
-     * package README. Passing it in rather than importing it keeps this package
-     * bundler-agnostic and the Monaco instance shared.
-     */
+    /** The Monaco namespace, loaded and worker-configured in `./monaco.ts`. */
     monaco: MonacoApi;
     value: string;
     onChange: (value: string) => void;
-    /** The Axis themes are this package's own; apps pick a side, not a name. */
+    /** Picks between the two themes `registerAxisLanguage` defines. */
     theme?: 'dark' | 'light';
     /** Merged over the defaults, and re-applied when it changes. */
     options?: monacoTypes.editor.IStandaloneEditorConstructionOptions;
@@ -89,7 +100,8 @@ export function AxisEditor({
             return;
         }
 
-        setupAxis(monaco);
+        // Idempotent per Monaco instance, so calling it on every mount is free.
+        registerAxisLanguage(monaco);
 
         const initial = latestRef.current;
         const editor = monaco.editor.create(container, {

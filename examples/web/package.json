@@ -13,7 +13,7 @@
     "dependencies": {
         "@axis-dsl/compiler": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/editor": "workspace:*",
+        "@axis-dsl/language": "workspace:*",
         "@axis-dsl/viewer": "workspace:*"
     },
     "devDependencies": {

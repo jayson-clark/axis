@@ -34,19 +34,33 @@ editors and tests can match on the rule rather than on its wording.
 ## In an editor
 
 Monaco — `registerAxisLanguage` teaches an instance the whole language and
-returns a disposable that unregisters everything it added. Call it once per
-instance; a second call registers a second set of providers.
+returns a disposable that unregisters everything it added. It is idempotent per
+instance, so several editors can each call it.
 
 ```ts
 import * as monaco from 'monaco-editor';
-import { registerAxisLanguage } from '@axis-dsl/language/monaco';
+import {
+  registerAxisLanguage,
+  AXIS_LANGUAGE_ID,
+  AXIS_DARK_THEME,
+  AXIS_LIGHT_THEME,
+} from '@axis-dsl/language/monaco';
 
 const disposable = registerAxisLanguage(monaco);
+
+monaco.editor.create(container, {
+  language: AXIS_LANGUAGE_ID,
+  theme: AXIS_DARK_THEME,
+});
 ```
 
-If you want the themed React component rather than raw Monaco, use
-[`@axis-dsl/editor`](https://www.npmjs.com/package/@axis-dsl/editor), which does
-this for you.
+Registration also defines the `axis-dark` and `axis-light` themes, whose token
+colours match the Monarch grammar. They are ordinary Monaco themes: define your
+own with `monaco.editor.defineTheme` if you would rather, or call
+`defineAxisThemes` on its own if you register the language some other way.
+
+Loading Monaco and wrapping it in a component is your app's job — see
+`examples/web` in the repo for a React wrapper and the Vite worker setup.
 
 VSCode — the same call returns the disposables to push onto your extension's
 subscriptions:

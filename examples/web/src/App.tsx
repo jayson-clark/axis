@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DESMOS_DEMO_API_KEY } from '@axis-dsl/desmos';
-import { AxisEditor } from '@axis-dsl/editor';
+import { AxisEditor } from './AxisEditor';
 import { monaco } from './monaco';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 import { SplitPane } from './SplitPane';

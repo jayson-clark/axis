@@ -1,5 +1,5 @@
 // Shared by the packages a bundler compiles from source rather than from dist:
-// @axis-dsl/editor, @axis-dsl/viewer, and the web playground.
+// @axis-dsl/viewer and the web playground.
 {
     "compilerOptions": {
         "target": "ES2020",
