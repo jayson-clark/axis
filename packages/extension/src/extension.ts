@@ -4,7 +4,9 @@ import {
     AXIS_LANGUAGE_ID,
     registerAxisLanguage,
 } from '@axis-dsl/language/vscode';
-import { WebviewPanel } from './panel';
+import { PreviewServer } from './server';
+import { openPreview, resolvePreviewTarget } from './preview';
+import { PreviewStatus } from './status';
 
 /** A document VSCode has recognised as Axis, or one that simply ends in `.axis`. */
 function isAxisDocument(document: vscode.TextDocument): boolean {
@@ -14,40 +16,24 @@ function isAxisDocument(document: vscode.TextDocument): boolean {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    // There is one panel at a time. It lives in this closure rather than in
-    // module state, so a deactivate/activate cycle starts from nothing.
-    let panel: WebviewPanel | undefined;
-
-    /** Show `document` in the panel, opening one if there is none. */
-    const openWebview = (document?: vscode.TextDocument) => {
-        if (!panel) {
-            panel = new WebviewPanel(context, document?.uri);
-            panel.onDidDispose(() => {
-                panel = undefined;
-            });
-            return;
-        }
-
-        if (document) {
-            panel.setAxisFile(document.uri);
-        }
-        panel.reveal();
-    };
-
-    const activeDocument = vscode.window.activeTextEditor?.document;
-    if (activeDocument && isAxisDocument(activeDocument)) {
-        openWebview(activeDocument);
-    }
+    // Constructed here but not started: the server listens on the first preview
+    // and, for someone who only wants the language support, never at all.
+    const server = new PreviewServer(context);
+    const status = new PreviewStatus(server);
 
     context.subscriptions.push(
+        server,
+        status,
         // Completion, formatting and diagnostics, shared with the web app.
         ...registerAxisLanguage(),
-        vscode.commands.registerCommand('axis.openWebview', () => openWebview()),
-        vscode.workspace.onDidOpenTextDocument(document => {
-            if (isAxisDocument(document)) {
-                openWebview(document);
+        vscode.commands.registerCommand('axis.preview', async (argument: unknown) => {
+            const uri = await resolvePreviewTarget(argument, isAxisDocument);
+            if (uri) {
+                await openPreview(server, uri);
             }
         }),
+        vscode.commands.registerCommand('axis.previewStatus', () => status.showMenu()),
+        vscode.commands.registerCommand('axis.stopPreviewServer', () => server.stop()),
     );
 }
 

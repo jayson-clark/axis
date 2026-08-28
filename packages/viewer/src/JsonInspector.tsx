@@ -17,9 +17,8 @@ export interface JsonInspectorProps {
  * Debug panel that shows the JSON behind the graph — what was compiled and
  * sent, and what the calculator reports back.
  *
- * Colours come from `--axis-*` custom properties so each host can theme it: in
- * a VSCode webview `AxisViewer` maps them onto `--vscode-*`, in the browser the
- * surrounding page defines them.
+ * Colours are the `--axis-*` tokens `AxisViewer` defines, so this looks right
+ * mounted inside it and needs a host to have set nothing up.
  */
 export function JsonInspector({ views, className, style }: JsonInspectorProps) {
     const [activeId, setActiveId] = useState(views[0]?.id);
@@ -40,20 +39,21 @@ export function JsonInspector({ views, className, style }: JsonInspectorProps) {
                 flexDirection: 'column',
                 height: '100%',
                 overflow: 'hidden',
-                padding: 16,
+                padding: 12,
                 boxSizing: 'border-box',
-                background: 'var(--axis-surface, transparent)',
-                color: 'var(--axis-fg, inherit)',
+                background: 'var(--axis-surface)',
+                color: 'var(--axis-fg)',
                 ...style,
             }}
         >
             <div
                 style={{
                     display: 'flex',
-                    gap: 8,
-                    marginBottom: 16,
+                    flexWrap: 'wrap',
+                    gap: 6,
+                    marginBottom: 12,
                     paddingBottom: 8,
-                    borderBottom: '1px solid var(--axis-border, rgba(127,127,127,0.3))',
+                    borderBottom: '1px solid var(--axis-border)',
                 }}
             >
                 {views.map(view => {
@@ -66,13 +66,11 @@ export function JsonInspector({ views, className, style }: JsonInspectorProps) {
                                 padding: '6px 12px',
                                 borderRadius: 4,
                                 cursor: 'pointer',
-                                border: '1px solid var(--axis-border, rgba(127,127,127,0.3))',
+                                border: '1px solid var(--axis-border)',
                                 background: isActive
-                                    ? 'var(--axis-accent, #2d70b3)'
-                                    : 'var(--axis-surface-raised, transparent)',
-                                color: isActive
-                                    ? 'var(--axis-accent-fg, #fff)'
-                                    : 'var(--axis-fg, inherit)',
+                                    ? 'var(--axis-accent)'
+                                    : 'var(--axis-surface-raised)',
+                                color: isActive ? 'var(--axis-accent-fg)' : 'var(--axis-fg)',
                                 font: 'inherit',
                             }}
                         >
@@ -86,8 +84,8 @@ export function JsonInspector({ views, className, style }: JsonInspectorProps) {
                     margin: 0,
                     flex: 1,
                     overflow: 'auto',
-                    fontFamily: 'var(--axis-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
-                    fontSize: 'var(--axis-mono-size, 12px)',
+                    fontFamily: 'var(--axis-mono)',
+                    fontSize: 'var(--axis-mono-size)',
                 }}
             >
                 {json}

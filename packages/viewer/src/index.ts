@@ -16,5 +16,5 @@ export { useDesmos } from './useDesmos.js';
 export type { DesmosLoadState, DesmosLoadStatus } from './useDesmos.js';
 export { useViewerState } from './useViewerState.js';
 export type { ViewerState } from './useViewerState.js';
-export { VSCODE_THEME_VARS } from './theme.js';
+export { AXIS_COLOR_SCHEME, AXIS_THEME } from './theme.js';
 export type { CssVariables } from './theme.js';

@@ -33,9 +33,9 @@ function pushAll(host: HostTransport, state: LocalViewerHost) {
 }
 
 /**
- * Drives an `AxisViewer` rendered in the same page, for a host with no webview
- * boundary to cross. It speaks the same protocol the extension does — this hook
- * is only the ceremony of turning React state into messages.
+ * Drives an `AxisViewer` rendered in the same page, for a host with no wire to
+ * cross. It speaks the same protocol the extension does — this hook is only the
+ * ceremony of turning React state into messages.
  */
 export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
     // Written during render so the `ready` handler below, which fires from the
