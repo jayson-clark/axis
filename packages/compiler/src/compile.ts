@@ -8,6 +8,7 @@
 //     metadata (color, lineStyle, sliderBounds, onClick, …)
 //   - `folder "Name" { … }`, `table { … }` and `config { … }` are blocks
 //   - `"Text"` on its own is a note
+//   - `import "other.axis"` drops another script in, flattened into a folder
 //   - a block written inline reads the same as one spread over lines, because
 //     @axis-dsl/language flattens it first
 
@@ -25,16 +26,42 @@ import {
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     expandBlockEntries,
+    IMPORT_KEYWORD,
+    importTitle,
     joinContinuedLines,
+    parseImportStatement,
     splitTopLevel,
     splitTrailingMetadata,
 } from '@axis-dsl/language';
+import { ResolveImport } from './imports';
 import { convertToLatex } from './latex';
 
 export interface CompilationResult {
     expressions: DesmosExpression[];
-    /** The `config { … }` block, if the script has one. */
+    /**
+     * The `config { … }` block, if the script or anything it imports has one.
+     * Imported settings are merged first, so the entry script always wins.
+     */
     settings?: CalculatorOptions;
+    /**
+     * Every file pulled in by `import`, transitively, as the resolver named it.
+     * A host watching a script for changes has to watch these too.
+     */
+    imports: string[];
+}
+
+export interface CompileOptions {
+    /**
+     * Where the script itself lives. Handed back to {@link resolveImport} as the
+     * file a specifier was written in, so relative imports have something to be
+     * relative to.
+     */
+    path?: string;
+    /**
+     * How `import "…"` finds its source. A script with imports and no resolver
+     * fails to compile rather than quietly dropping them.
+     */
+    resolveImport?: ResolveImport;
 }
 
 /** A value as it is written after a `key:`, before any property claims it. */
@@ -61,150 +88,269 @@ const asBoolean = (value: MetadataValue | undefined): boolean | undefined =>
 const asSliderBounds = (value: MetadataValue | undefined): SliderBounds | undefined =>
     typeof value === 'object' ? value : undefined;
 
-/** Compile a `.axis` script into Desmos expressions and calculator settings. */
-export function compileAxis(script: string): CompilationResult {
-    // A statement can span lines while a `(` or `[` is open, so the continuation
-    // lines are folded back in; a block written inline is then spread back out,
-    // leaving exactly one statement per line either way.
-    const lines = expandBlockEntries(joinContinuedLines(script));
-    const expressions: DesmosExpression[] = [];
-    let settings: CalculatorOptions | undefined;
+/**
+ * What one file contributes, and where its expressions land.
+ *
+ * A file compiles the same way whether it is the script itself or something the
+ * script imports; these three fields are the whole of the difference.
+ */
+interface FileScope {
+    /** The file's own path, so the imports written in it resolve against it. */
+    path: string;
+    /** The folder everything in the file belongs to, if any. */
+    folderId?: string;
+    /**
+     * True for an imported file, whose own `folder` blocks are dropped and their
+     * contents hoisted: Desmos has one level of folders, and the import has
+     * already claimed it.
+     */
+    flatten: boolean;
+}
 
-    let currentFolderId: string | undefined;
-    let currentTable: { id: string; columns: TableColumn[] } | undefined;
-    let currentConfig: Record<string, unknown> | undefined;
-    let currentPiecewise: { variableName: string; items: string[]; metadata: Metadata } | undefined;
+/** Compile a `.axis` script into Desmos expressions and calculator settings. */
+export function compileAxis(script: string, options: CompileOptions = {}): CompilationResult {
+    const expressions: DesmosExpression[] = [];
+    const imports: string[] = [];
+    // Held apart rather than merged as they are found, so the entry script's
+    // settings win over an imported file's wherever its config block is written.
+    const importedConfigs: Record<string, unknown>[] = [];
+    const rootConfigs: Record<string, unknown>[] = [];
 
     let expressionCount = 0;
     const nextId = (prefix: string) => `${prefix}_${++expressionCount}`;
 
-    for (const rawLine of lines) {
-        let line = rawLine.replace(/\t/g, '    ').trim();
+    // The files being compiled, outermost first, so a cycle can be spotted -
+    // the entry script included, since a file can import itself.
+    const chain: string[] = options.path === undefined ? [] : [options.path];
 
-        if (!line || line.startsWith('//')) {
-            continue;
+    /**
+     * Compile one file's statements into `expressions`.
+     *
+     * A statement can span lines while a `(` or `[` is open, so the continuation
+     * lines are folded back in; a block written inline is then spread back out,
+     * leaving exactly one statement per line either way.
+     */
+    function emitFile(source: string, scope: FileScope): void {
+        const lines = expandBlockEntries(joinContinuedLines(source));
+
+        let currentFolderId = scope.folderId;
+        let currentTable: { id: string; columns: TableColumn[] } | undefined;
+        let currentConfig: Record<string, unknown> | undefined;
+        let currentPiecewise:
+            { variableName: string; items: string[]; metadata: Metadata } | undefined;
+        /** Set while inside a folder an import flattened away. */
+        let droppedFolder = false;
+
+        for (const rawLine of lines) {
+            let line = rawLine.replace(/\t/g, '    ').trim();
+
+            if (!line || line.startsWith('//')) {
+                continue;
+            }
+
+            let metadata: Metadata = {};
+            const split = splitTrailingMetadata(line);
+            if (split.metadata !== undefined) {
+                line = split.code;
+                metadata = parseMetadata(split.metadata);
+            }
+
+            // Folders
+            const folderMatch = /^folder\s+"([^"]+)"\s*\{/.exec(line);
+            if (folderMatch) {
+                // An imported file's folders are not folders of their own; what
+                // was in them joins the folder the import landed in.
+                if (scope.flatten) {
+                    droppedFolder = true;
+                    continue;
+                }
+                currentFolderId = nextId('folder');
+                expressions.push({
+                    type: 'folder',
+                    id: currentFolderId,
+                    title: folderMatch[1],
+                    collapsed: metadata.collapsed === true,
+                    hidden: metadata.hidden === true,
+                    secret: metadata.secret === true,
+                } satisfies Folder);
+                continue;
+            }
+
+            // Whichever block is open, closed
+            if (line === '}') {
+                if (currentPiecewise) {
+                    const items = convertToLatex(currentPiecewise.items.join(', '));
+                    const name = currentPiecewise.variableName;
+                    const latex = name
+                        ? `${convertToLatex(name)}=\\left\\{${items}\\right\\}`
+                        : `\\left\\{${items}\\right\\}`;
+                    expressions.push(
+                        buildExpression(
+                            nextId('expr'),
+                            latex,
+                            currentFolderId,
+                            currentPiecewise.metadata,
+                        ),
+                    );
+                    currentPiecewise = undefined;
+                } else if (currentConfig) {
+                    (scope.flatten ? importedConfigs : rootConfigs).push(currentConfig);
+                    currentConfig = undefined;
+                } else if (currentTable) {
+                    expressions.push({
+                        type: 'table',
+                        id: currentTable.id,
+                        columns: currentTable.columns,
+                        folderId: currentFolderId,
+                    } satisfies Table);
+                    currentTable = undefined;
+                } else if (droppedFolder) {
+                    droppedFolder = false;
+                } else {
+                    // Back to wherever the file itself sits: nothing for a
+                    // script, the import's folder for an imported one.
+                    currentFolderId = scope.folderId;
+                }
+                continue;
+            }
+
+            if (/^config\b/.test(line)) {
+                currentConfig = {};
+                continue;
+            }
+
+            if (/^table\b/.test(line)) {
+                currentTable = { id: nextId('table'), columns: [] };
+                continue;
+            }
+
+            if (currentConfig) {
+                applyConfigEntries(currentConfig, line);
+                continue;
+            }
+
+            if (currentPiecewise) {
+                const item = line.replace(/,$/, '').trim();
+                if (item) {
+                    currentPiecewise.items.push(item);
+                }
+                continue;
+            }
+
+            if (currentTable) {
+                const column = buildColumn(line, metadata);
+                if (column) {
+                    currentTable.columns.push({ id: nextId('col'), ...column });
+                }
+                continue;
+            }
+
+            // Imports
+            if (IMPORT_KEYWORD.test(line)) {
+                emitImport(line, metadata, currentFolderId, scope);
+                continue;
+            }
+
+            // Notes
+            if (line.startsWith('"') && line.endsWith('"')) {
+                expressions.push({
+                    type: 'text',
+                    id: nextId('note'),
+                    text: line.slice(1, -1),
+                    folderId: currentFolderId,
+                } satisfies Note);
+                continue;
+            }
+
+            // A multi-line piecewise or list: `a = {` or a bare `{`, whose body is
+            // collected until the closing `}`.
+            const piecewiseStart = /^([^=]+)=\s*\{$/.exec(line);
+            if (piecewiseStart || line === '{') {
+                currentPiecewise = {
+                    variableName: piecewiseStart ? piecewiseStart[1].trim() : '',
+                    items: [],
+                    metadata,
+                };
+                continue;
+            }
+
+            // Everything else - including piecewises, lists and constraints wherever
+            // they appear in the line (`p(x) = 3{x<0: -x}`, `y = x^2 {x > 0}`) -
+            // converts as one expression, since convertToLatex turns braces into
+            // \left\{ \right\} itself.
+            expressions.push(
+                buildExpression(nextId('expr'), convertToLatex(line), currentFolderId, metadata),
+            );
+        }
+    }
+
+    /**
+     * Drop an imported file in, flattened into a folder of its own.
+     *
+     * An import that is already inside a folder joins that folder instead of
+     * opening another, since Desmos cannot nest them - so importing a file into
+     * a folder, and importing a file that itself imports another, both come out
+     * as one flat folder.
+     */
+    function emitImport(
+        line: string,
+        metadata: Metadata,
+        folderId: string | undefined,
+        scope: FileScope,
+    ): void {
+        const statement = parseImportStatement(line);
+        if (!statement) {
+            throw new Error(
+                `\`${line}\` is not a valid import - write it as \`import "./file.axis"\`.`,
+            );
         }
 
-        let metadata: Metadata = {};
-        const split = splitTrailingMetadata(line);
-        if (split.metadata !== undefined) {
-            line = split.code;
-            metadata = parseMetadata(split.metadata);
+        const resolved = options.resolveImport?.(statement.specifier, scope.path);
+        if (!resolved) {
+            throw new Error(
+                `Cannot resolve import "${statement.specifier}"${scope.path ? ` from ${scope.path}` : ''}.`,
+            );
         }
 
-        // Folders
-        const folderMatch = /^folder\s+"([^"]+)"\s*\{/.exec(line);
-        if (folderMatch) {
-            currentFolderId = nextId('folder');
+        if (chain.includes(resolved.path)) {
+            throw new Error(
+                `Import cycle: ${[...chain.slice(chain.indexOf(resolved.path)), resolved.path].join(' -> ')}`,
+            );
+        }
+
+        if (!imports.includes(resolved.path)) {
+            imports.push(resolved.path);
+        }
+
+        let target = folderId;
+        if (target === undefined) {
+            target = nextId('folder');
             expressions.push({
                 type: 'folder',
-                id: currentFolderId,
-                title: folderMatch[1],
-                collapsed: metadata.collapsed === true,
+                id: target,
+                title: statement.title ?? importTitle(resolved.path),
+                // An import is a folder the reader did not write, holding a
+                // file they are not reading. It starts shut unless the import
+                // says `collapsed: false`.
+                collapsed: metadata.collapsed !== false,
                 hidden: metadata.hidden === true,
                 secret: metadata.secret === true,
             } satisfies Folder);
-            continue;
         }
 
-        // Whichever block is open, closed
-        if (line === '}') {
-            if (currentPiecewise) {
-                const items = convertToLatex(currentPiecewise.items.join(', '));
-                const name = currentPiecewise.variableName;
-                const latex = name
-                    ? `${convertToLatex(name)}=\\left\\{${items}\\right\\}`
-                    : `\\left\\{${items}\\right\\}`;
-                expressions.push(
-                    buildExpression(
-                        nextId('expr'),
-                        latex,
-                        currentFolderId,
-                        currentPiecewise.metadata,
-                    ),
-                );
-                currentPiecewise = undefined;
-            } else if (currentConfig) {
-                settings = currentConfig as CalculatorOptions;
-                currentConfig = undefined;
-            } else if (currentTable) {
-                expressions.push({
-                    type: 'table',
-                    id: currentTable.id,
-                    columns: currentTable.columns,
-                    folderId: currentFolderId,
-                } satisfies Table);
-                currentTable = undefined;
-            } else {
-                currentFolderId = undefined;
-            }
-            continue;
-        }
-
-        if (/^config\b/.test(line)) {
-            currentConfig = {};
-            continue;
-        }
-
-        if (/^table\b/.test(line)) {
-            currentTable = { id: nextId('table'), columns: [] };
-            continue;
-        }
-
-        if (currentConfig) {
-            applyConfigEntries(currentConfig, line);
-            continue;
-        }
-
-        if (currentPiecewise) {
-            const item = line.replace(/,$/, '').trim();
-            if (item) {
-                currentPiecewise.items.push(item);
-            }
-            continue;
-        }
-
-        if (currentTable) {
-            const column = buildColumn(line, metadata);
-            if (column) {
-                currentTable.columns.push({ id: nextId('col'), ...column });
-            }
-            continue;
-        }
-
-        // Notes
-        if (line.startsWith('"') && line.endsWith('"')) {
-            expressions.push({
-                type: 'text',
-                id: nextId('note'),
-                text: line.slice(1, -1),
-                folderId: currentFolderId,
-            } satisfies Note);
-            continue;
-        }
-
-        // A multi-line piecewise or list: `a = {` or a bare `{`, whose body is
-        // collected until the closing `}`.
-        const piecewiseStart = /^([^=]+)=\s*\{$/.exec(line);
-        if (piecewiseStart || line === '{') {
-            currentPiecewise = {
-                variableName: piecewiseStart ? piecewiseStart[1].trim() : '',
-                items: [],
-                metadata,
-            };
-            continue;
-        }
-
-        // Everything else - including piecewises, lists and constraints wherever
-        // they appear in the line (`p(x) = 3{x<0: -x}`, `y = x^2 {x > 0}`) -
-        // converts as one expression, since convertToLatex turns braces into
-        // \left\{ \right\} itself.
-        expressions.push(
-            buildExpression(nextId('expr'), convertToLatex(line), currentFolderId, metadata),
-        );
+        chain.push(resolved.path);
+        emitFile(resolved.source, { path: resolved.path, folderId: target, flatten: true });
+        chain.pop();
     }
 
-    return { expressions, settings };
+    emitFile(script, { path: options.path ?? '', flatten: false });
+
+    const layers = [...importedConfigs, ...rootConfigs];
+    const settings = layers.length
+        ? (Object.assign({}, ...layers) as CalculatorOptions)
+        : undefined;
+
+    return { expressions, settings, imports };
 }
 
 /**

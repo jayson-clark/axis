@@ -1,0 +1,40 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Imports - building a graph out of several files
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// `import "./file.axis"` drops the whole of another script in, exactly as if it
+// had been typed here, and puts it in a folder of its own. The path is relative
+// to this file, and the `.axis` may be left off.
+//
+// An imported file is flattened first: whatever folders it organises itself
+// with are dropped, and everything they held joins the one folder the import
+// makes. Desmos has one level of folders, and the import has claimed it.
+
+config {
+    showGrid: true
+}
+
+"Two libraries, each arriving as one folder."
+
+// The folder is named after the file - "waves" - unless the import says
+// otherwise, and metadata on the statement styles it like any other folder.
+// An import's folder starts collapsed, since what is in it is written and read
+// elsewhere; `collapsed: false` opens it.
+import "./lib/waves.axis" as "Waves" # collapsed: false
+
+// This one imports a file of its own; both land in the same folder.
+import "./lib/envelope.axis"
+
+// Everything an import brought is in scope from here on, so the graph itself
+// is written against it.
+y = sine(x) * envelope(x) # color: #c74440, lineWidth: 3
+y = envelope(x) # color: #000000, lineStyle: DOTTED
+y = -envelope(x) # color: #000000, lineStyle: DOTTED
+
+folder "Comparison" {
+    // An import inside a folder joins that folder rather than opening a new
+    // one, for the same reason: there is nowhere for a second level to go.
+    y = cosine(x) * envelope(x) # color: #2d70b3, lineWidth: 2
+}
+
+a

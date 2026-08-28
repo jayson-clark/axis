@@ -75,8 +75,15 @@ function formatLineContent(line: string): string {
         return line;
     }
 
-    // Block headers carry a string argument; leave their spacing alone.
-    if (line.startsWith('config') || line.startsWith('folder') || line.startsWith('table')) {
+    // Block headers and imports carry a quoted argument; leave their spacing
+    // alone, since a path is not an expression - `./a.axis` would come back
+    // with spaces around the `/`.
+    if (
+        line.startsWith('config') ||
+        line.startsWith('folder') ||
+        line.startsWith('table') ||
+        line.startsWith('import')
+    ) {
         return line;
     }
 

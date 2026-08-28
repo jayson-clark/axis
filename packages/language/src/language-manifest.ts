@@ -583,8 +583,8 @@ export const AXIS_MANIFEST = {
         },
     ] satisfies PropertyDefinition[],
 
-    /** The block keywords. */
-    keywords: ['folder', 'table', 'config'] satisfies string[],
+    /** The block keywords, plus the one statement keyword. */
+    keywords: ['folder', 'table', 'config', 'import'] satisfies string[],
 
     /** Entries of the `config` block, which become the calculator's settings. */
     configProperties: [

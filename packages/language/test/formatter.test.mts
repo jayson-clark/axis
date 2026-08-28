@@ -57,6 +57,17 @@ describe('formatAxisCode', () => {
     test('leaves a hex colour in metadata alone', () => {
         assert.equal(format('y = x # color: #c74440'), 'y = x # color: #c74440');
     });
+
+    test('leaves an import path alone', () => {
+        assert.equal(format('import "./lib/a.axis" as "A"'), 'import "./lib/a.axis" as "A"');
+    });
+
+    test('indents an import inside a folder', () => {
+        assert.equal(
+            format('folder "F" {\nimport "./a.axis"\n}'),
+            'folder "F" {\n    import "./a.axis"\n}',
+        );
+    });
 });
 
 describe('formatAxisCodeWithIndent', () => {
