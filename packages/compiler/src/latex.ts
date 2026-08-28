@@ -342,14 +342,181 @@ function removeSpaces(latex: string): string {
 /**
  * `a/b` → `\frac{a}{b}`.
  *
- * Pattern-based rather than parsed, so it reaches one level of parenthesised
- * group on either side; a deeper expression keeps its `/`, which Desmos still
- * reads as division.
+ * The operands are read rather than matched: the numerator is the term ending
+ * where the `/` is and the denominator the term starting after it, a term being
+ * a name, a number, a bracketed group, or a call - a name and the group it
+ * takes. That last one is why this is a scan and not a pattern. A pattern
+ * reaching one bracket sees `f(x)/2` as `(x)` over 2 and writes
+ * `f\frac{x}{2}`, which is a different expression, and one Desmos reports as
+ * "'f' is a function. Try using parentheses."
+ *
+ * A term that cannot be read - one closing on a brace or a square bracket, or a
+ * `^` between the operand and the slash - leaves the `/` where it is, which
+ * Desmos still reads as division.
  */
 function convertDivisionToFrac(expr: string): string {
-    return expr
-        .replace(/\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g, '\\frac{$1}{$2}')
-        .replace(/\(([^()]+)\)\s*\/\s*([a-zA-Z0-9\\]+)/g, '\\frac{$1}{$2}')
-        .replace(/([a-zA-Z0-9\\]+)\s*\/\s*\(([^()]+)\)/g, '\\frac{$1}{$2}')
-        .replace(/([a-zA-Z0-9]+|\\[a-zA-Z]+)\s*\/\s*([a-zA-Z0-9]+|\\[a-zA-Z]+)/g, '\\frac{$1}{$2}');
+    let output = '';
+    let index = 0;
+
+    while (index < expr.length) {
+        if (expr[index] !== '/') {
+            output += expr[index];
+            index += 1;
+            continue;
+        }
+
+        // The numerator is taken from what has been written rather than from
+        // the input, so a fraction already made of the term in front of this
+        // one is what gets divided.
+        const numerator = termBefore(output);
+        const denominator = termAfter(expr, index + 1);
+
+        if (!numerator || !denominator) {
+            output += '/';
+            index += 1;
+            continue;
+        }
+
+        output = `${output.slice(0, numerator.start)}\\frac{${numerator.text}}{${denominator.text}}`;
+        index = denominator.end;
+    }
+
+    return output;
+}
+
+/** The characters a name or a number is made of. */
+const TERM_CHARACTER = /[a-zA-Z0-9.]/;
+
+/** The term `text` ends with, and where it starts. */
+function termBefore(text: string): { start: number; text: string } | undefined {
+    let end = text.length;
+    while (end > 0 && /\s/.test(text[end - 1])) {
+        end -= 1;
+    }
+
+    if (end === 0) {
+        return undefined;
+    }
+
+    if (text[end - 1] === ')') {
+        const open = groupStart(text, end - 1);
+        if (open === -1) {
+            return undefined;
+        }
+
+        const start = nameStart(text, open);
+        return {
+            start,
+            // A group standing on its own is a bracket around the numerator,
+            // and the `\frac` about to be written does that job itself.
+            text: start === open ? text.slice(open + 1, end - 1) : text.slice(start, end),
+        };
+    }
+
+    const start = runStart(text, end);
+    return start === end ? undefined : { start, text: text.slice(start, end) };
+}
+
+/** The term starting at or after `from`, and where it ends. */
+function termAfter(expr: string, from: number): { text: string; end: number } | undefined {
+    let start = from;
+    while (start < expr.length && /\s/.test(expr[start])) {
+        start += 1;
+    }
+
+    if (expr[start] === '(') {
+        const close = groupEnd(expr, start);
+        return close === -1 ? undefined : { text: expr.slice(start + 1, close), end: close + 1 };
+    }
+
+    const end = runEnd(expr, start);
+    if (end === start) {
+        return undefined;
+    }
+
+    // A name takes the group after it: `2/f(x)` is 2 over f(x), not over f.
+    if (expr[end] === '(' && /[a-zA-Z]/.test(expr.slice(start, end))) {
+        const close = groupEnd(expr, end);
+        if (close !== -1) {
+            return { text: expr.slice(start, close + 1), end: close + 1 };
+        }
+    }
+
+    return { text: expr.slice(start, end), end };
+}
+
+/**
+ * Where the name calling the group at `open` starts, or `open` when the group
+ * is not a call.
+ *
+ * A coefficient is not a name: `2f(x)` is twice `f(x)`, so the numerator of
+ * `2f(x)/3` is the call and the 2 stays outside the fraction, where it means
+ * the same thing.
+ */
+function nameStart(text: string, open: number): number {
+    let start = open;
+    while (start > 0 && /[a-zA-Z0-9]/.test(text[start - 1])) {
+        start -= 1;
+    }
+    while (start < open && !/[a-zA-Z]/.test(text[start])) {
+        start += 1;
+    }
+
+    return start;
+}
+
+/** Where the name or number ending at `end` starts, command backslash included. */
+function runStart(text: string, end: number): number {
+    let start = end;
+    while (start > 0 && TERM_CHARACTER.test(text[start - 1])) {
+        start -= 1;
+    }
+
+    return start > 0 && text[start - 1] === '\\' ? start - 1 : start;
+}
+
+/** Where the name or number starting at `start` ends. */
+function runEnd(expr: string, start: number): number {
+    let end = expr[start] === '\\' ? start + 1 : start;
+    while (end < expr.length && TERM_CHARACTER.test(expr[end])) {
+        end += 1;
+    }
+
+    return end === start + 1 && expr[start] === '\\' ? start : end;
+}
+
+/** The index of the `(` opening the group closed at `close`, or -1. */
+function groupStart(text: string, close: number): number {
+    let depth = 0;
+
+    for (let index = close; index >= 0; index -= 1) {
+        if (text[index] === ')') {
+            depth += 1;
+        } else if (text[index] === '(') {
+            depth -= 1;
+            if (depth === 0) {
+                return index;
+            }
+        }
+    }
+
+    return -1;
+}
+
+/** The index of the `)` closing the group opened at `open`, or -1. */
+function groupEnd(expr: string, open: number): number {
+    let depth = 0;
+
+    for (let index = open; index < expr.length; index += 1) {
+        if (expr[index] === '(') {
+            depth += 1;
+        } else if (expr[index] === ')') {
+            depth -= 1;
+            if (depth === 0) {
+                return index;
+            }
+        }
+    }
+
+    return -1;
 }
