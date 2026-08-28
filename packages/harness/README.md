@@ -75,10 +75,26 @@ closes it again.
 | `consoleErrors()`                                   | anything the page logged as an error                         |
 | `page`                                              | the Playwright `Page`, for whatever this does not cover      |
 
+`evaluate` takes **Axis**, not latex: `evaluate('amp')` asks about the variable
+the script calls `amp`, where the raw latex `amp` would be three variables
+multiplied together. `evaluateLatex` takes it verbatim.
+
+`click` is how an `onClick` action gets tested — Desmos exposes no way to fire
+one, so the harness moves a real mouse to where the object is drawn:
+
+```ts
+await calculator.load('a = 0 # sliderBounds: {min: 0, max: 5, step: 1}\n(1, 1) # onClick: a -> a + 1');
+await calculator.click({ x: 1, y: 1 });
+assert.equal((await calculator.evaluate('a')).numericValue, 1);
+```
+
 Every method that changes the graph waits for the calculator to go quiet before
 it returns, because Desmos computes asynchronously: reading
 `expressionAnalysis` the tick after a state is applied reads a graph that is
-still thinking. `settle()` is exposed for a test that drives the page itself.
+still thinking. A graph with a playing slider never goes quiet, so the wait is
+capped by `maxSettleMs` and returns rather than throwing — its analysis is
+stable long before its values are. `settle()` is exposed for a test that drives
+the page itself.
 
 ## axis-inspect
 
@@ -104,11 +120,30 @@ axis-inspect -e 'y = x^2'             # source inline
 axis-inspect - < graph.axis           # source on stdin
   --json                              # the whole inspection, machine-readable
   --errors-only                       # only what Desmos rejected
-  --eval '<latex>'                    # also evaluate this against the graph
+  --eval '<expr>'                     # also evaluate this against the graph
   --screenshot out.png                # write a PNG of the graphpaper
   --api-key <key>                     # default: the public demo key
   --offline                           # fail rather than fetch from desmos.com
 ```
+
+## What the suites here check
+
+`packages/harness/test` is the Axis language checked against the calculator that
+has to accept it, rather than against the compiler's own idea of itself:
+
+| Suite      | What it pins                                                                        |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `metadata` | every one of the 24 `# key: value` properties, read back off the applied graph      |
+| `config`   | every one of the 81 `config { … }` properties, read back off `calculator.settings`  |
+| `language` | every function and constant in the manifest is one Desmos knows, plus the operators |
+| `graph`    | folders, tables, notes, imports, and all 20 example scripts                         |
+| `harness`  | the harness itself                                                                  |
+
+Each of the first three is driven from `@axis-dsl/language`'s manifest and fails
+if a name is added there without a test, so the coverage cannot quietly rot.
+They caught three real bugs when they were written: `sliderBounds` never
+reaching the calculator, `3cos(t)` compiling to three variables multiplied
+together, and a double inequality in an example that Desmos will not shade.
 
 ## The calculator it runs
 
@@ -138,8 +173,9 @@ await createCalculator({
     viewport,      // initial math bounds; fixed rather than fitted, for stability
     offline,       // fail on a cache miss instead of fetching
     headless,      // false to watch the graph in a real window while debugging
-    timeout,       // load and settle timeout, default 30s
+    timeout,       // load timeout, default 30s
     quietMs,       // how long the graph must be still to count as settled
+    maxSettleMs,   // how long to wait for that, for a graph that never stills
     launch,        // extra Chromium launch options
 });
 ```
