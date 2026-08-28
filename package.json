@@ -19,6 +19,7 @@
         "typecheck": "tsc --build --force && tsc -p tsconfig.test.json && pnpm -r run typecheck",
         "test": "pnpm run build && node --test \"packages/*/test/*.test.mts\"",
         "clean": "find . -maxdepth 3 \\( -name dist -o -name '*.tsbuildinfo' \\) -not -path '*/node_modules/*' -exec rm -rf {} +",
+        "assets": "node scripts/generate-assets.mjs",
         "format": "prettier --write .",
         "format:check": "prettier --check ."
     }
