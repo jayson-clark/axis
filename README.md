@@ -21,6 +21,7 @@ table { x = [1, 2, 3], y = [1, 4, 9] }
 ## Features
 
 - **Plain text graphs** — version them, diff them, review them
+- **Imports** — `import "./waves.axis"` drops a whole script in, as a folder
 - **Live preview** — the graph updates as you edit
 - **Editor support** — syntax highlighting, completions, formatting, diagnostics
 - **Embeddable** — the compiler, editor and viewer ship as npm packages
@@ -55,12 +56,41 @@ the server.
 
 Those examples are a tour of the language, one topic per file - functions,
 piecewise, styling, folders, sliders, lists, tables, parametric and polar
-curves, inequalities, click actions and config - plus four complete graphs to
-read as finished work.
+curves, inequalities, click actions, config and imports - plus four complete
+graphs to read as finished work.
 
 Desmos' public demo key is built in, so the graph works with no setup. To ship
 your own, [get a key](https://www.desmos.com/api) and set `axis.apiKey` in
 VSCode settings.
+
+## Imports
+
+`import` drops the whole of another script into this one, in a folder of its
+own — the way to keep a long graph in several files, and to reuse one across
+graphs.
+
+```
+import "./lib/waves.axis"                     // a folder called "waves"
+import "./lib/waves.axis" as "Waves"          // …or called whatever you like
+import "./lib/waves.axis" # collapsed: true   // styled like any other folder
+```
+
+The path is relative to the file the import is written in — a leading `/` is
+relative to the workspace instead — and the `.axis` may be left off.
+
+An imported file is **flattened**: whatever folders it organises itself with are
+dropped, and everything they held joins the one folder the import makes. That
+holds all the way down, so a file that imports a file that imports a file still
+arrives as one flat folder. Desmos has one level of folders, and the import has
+claimed it — which is also why an import written inside a folder joins that
+folder rather than opening another.
+
+The rest travels with it: an imported file's `config` block applies too, with
+the importing script's settings winning wherever the two disagree. A file that
+imports itself, however indirectly, is an error rather than a hang.
+
+A preview watches everything the script imports, so saving any file the graph is
+built from reloads it.
 
 ## Use it in your own app
 
@@ -75,6 +105,31 @@ import { compileAxis } from '@axis-dsl/compiler';
 
 const { expressions, settings } = compileAxis(source);
 ```
+
+Compilation is synchronous and touches no filesystem, so a script with imports
+is handed a resolver. `loadImports` walks the graph first over whatever reading
+a file means where you are — `node:fs`, a VSCode workspace, a `Map`:
+
+```ts
+import { compileAxis, createImportResolver, loadImports } from '@axis-dsl/compiler';
+import { withAxisExtension } from '@axis-dsl/language';
+import { dirname, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+
+const host = {
+    resolve: (specifier, from) => resolve(dirname(from), withAxisExtension(specifier)),
+    read: (path) => readFile(path, 'utf8'),
+};
+
+const files = await loadImports({ path, source }, host);
+const { expressions, settings, imports } = compileAxis(source, {
+    path,
+    resolveImport: createImportResolver(files, host.resolve),
+});
+```
+
+`imports` comes back naming every file that was read, which is what to watch if
+the graph is live.
 
 Or drop the editor and graph into a React app:
 
