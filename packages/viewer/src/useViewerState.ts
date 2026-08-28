@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CalculatorOptions, DesmosExpression } from '@axis-dsl/desmos';
-import type { ViewerTransport } from '@axis-dsl/protocol';
+import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
 
 export interface ViewerState {
     /** null until the host answers our `ready` with a key. */
@@ -10,6 +10,14 @@ export interface ViewerState {
     expressions: DesmosExpression[];
     settings: CalculatorOptions | undefined;
     status: string | null;
+    /** `connected` for a transport that does not report one. */
+    connection: ConnectionState;
+    /**
+     * Whether the connection has ever been up. Distinguishes a first load,
+     * where `connecting` is just the page starting and worth saying nothing
+     * about, from a reconnection, where it means the graph has gone stale.
+     */
+    hasConnected: boolean;
 }
 
 const INITIAL: ViewerState = {
@@ -18,6 +26,8 @@ const INITIAL: ViewerState = {
     expressions: [],
     settings: undefined,
     status: null,
+    connection: 'connecting',
+    hasConnected: false,
 };
 
 /**
@@ -56,6 +66,23 @@ export function useViewerState(transport: ViewerTransport): ViewerState {
         transport.send({ command: 'ready' });
 
         return unsubscribe;
+    }, [transport]);
+
+    useEffect(() => {
+        // A transport with no wire cannot lose one, so it reports nothing and
+        // is taken to be connected for as long as it exists.
+        if (!transport.onConnectionChange) {
+            setState(current => ({ ...current, connection: 'connected', hasConnected: true }));
+            return;
+        }
+
+        return transport.onConnectionChange(connection =>
+            setState(current => ({
+                ...current,
+                connection,
+                hasConnected: current.hasConnected || connection === 'connected',
+            })),
+        );
     }, [transport]);
 
     return state;
