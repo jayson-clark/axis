@@ -39,9 +39,19 @@ pnpm dev
 
 Press <kbd>F5</kbd> in VSCode (the "Extension" launch config) to open an
 Extension Development Host, then open a file from
-[`examples/scripts/`](./examples/scripts) or run the **Axis - Open Webview**
-command. The graph follows the buffer as you type, so there is nothing to save
-to see a change.
+[`examples/scripts/`](./examples/scripts) and hit the graph button in the editor
+title bar (or run **Axis: Preview Graph**). It asks whether to open in a Simple
+Browser tab or your real browser — pin an answer to stop being asked, or set
+`axis.previewTarget` back to `ask` to be asked again.
+
+The preview is a page served over loopback, not a panel inside the editor, so it
+never competes for a spot in the workbench and you can have as many open as you
+have files. Each one is bound to the file you launched it from and reloads when
+you save it, the same bargain a web dev server strikes.
+
+While the server is up there is an `$(broadcast) Axis` item in the status bar.
+Click it to reopen a preview whose tab you closed, serve another file, or stop
+the server.
 
 Those examples are a tour of the language, one topic per file - functions,
 piecewise, styling, folders, sliders, lists, tables, parametric and polar
