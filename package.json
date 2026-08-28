@@ -18,6 +18,7 @@
         "dev": "pnpm run build && pnpm -r --parallel run watch",
         "typecheck": "tsc --build --force && tsc -p tsconfig.test.json && pnpm -r run typecheck",
         "test": "pnpm run build && node --test \"packages/*/test/*.test.mts\"",
+        "test:browser": "pnpm --filter @axis-dsl/harness install-browser",
         "clean": "find . -maxdepth 3 \\( -name dist -o -name '*.tsbuildinfo' \\) -not -path '*/node_modules/*' -exec rm -rf {} +",
         "assets": "node scripts/generate-assets.mjs",
         "format": "prettier --write .",

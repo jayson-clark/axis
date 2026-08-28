@@ -1,0 +1,56 @@
+{
+    "name": "@axis-dsl/harness",
+    "version": "1.0.0",
+    "description": "Runs Axis source against a real headless Desmos calculator, so tests and agents can read the state, expressions and expression analysis a graph actually produces",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "bin": {
+        "axis-inspect": "./dist/cli.js"
+    },
+    "scripts": {
+        "watch": "tsc --watch",
+        "install-browser": "playwright-core install chromium"
+    },
+    "dependencies": {
+        "@axis-dsl/compiler": "workspace:*",
+        "@axis-dsl/desmos": "workspace:*",
+        "@axis-dsl/language": "workspace:*",
+        "playwright-core": "catalog:"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:"
+    },
+    "license": "MIT",
+    "author": "Jayson Clark",
+    "homepage": "https://github.com/jayson-clark/axis#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jayson-clark/axis.git",
+        "directory": "packages/harness"
+    },
+    "bugs": {
+        "url": "https://github.com/jayson-clark/axis/issues"
+    },
+    "keywords": [
+        "axis",
+        "axis-dsl",
+        "desmos",
+        "graphing",
+        "dsl",
+        "testing"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "sideEffects": false,
+    "publishConfig": {
+        "access": "public"
+    }
+}
