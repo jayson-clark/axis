@@ -6,6 +6,7 @@
         { "include": "#comments" },
         { "include": "#strings" },
         { "include": "#config" },
+        { "include": "#import" },
         { "include": "#folder" },
         { "include": "#table" },
         { "include": "#metadata" },
@@ -40,6 +41,18 @@
             ]
         },
 
+        "import": {
+            "patterns": [
+                {
+                    "name": "keyword.control.import.axis",
+                    "match": "^\\s*(import)\\b"
+                },
+                {
+                    "name": "keyword.control.import.axis",
+                    "match": "\\b(as)\\b(?=\\s*\")"
+                }
+            ]
+        },
         "folder": {
             "patterns": [
                 {

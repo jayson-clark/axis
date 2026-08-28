@@ -16,6 +16,7 @@ import {
     missingSeparators,
     scanBlockLine,
 } from './blocks';
+import { IMPORT_KEYWORD, parseImportStatement, type LocatedImport } from './imports';
 import { splitTopLevelParts, splitTrailingMetadata } from './metadata';
 import {
     CLOSER_FOR,
@@ -37,6 +38,9 @@ export type AxisDiagnosticCode =
     | 'mismatched-bracket'
     | 'missing-comma'
     | 'block-header'
+    | 'import-syntax'
+    | 'import-placement'
+    | 'import-not-found'
     | 'nested-folder'
     | 'config-placement'
     | 'duplicate-config'
@@ -142,6 +146,24 @@ export function validateAxis(text: string): AxisDiagnostic[] {
     // The checks run in passes rather than strictly left to right, so the list
     // is put back into document order before it is handed to an editor.
     return diagnostics.sort((a, b) => a.line - b.line || a.startCharacter - b.startCharacter);
+}
+
+/**
+ * The diagnostic for an import whose file is not there.
+ *
+ * Whether a path resolves is not something the language can answer - only the
+ * host knows what its paths mean and what it has - so this is built here and
+ * reported by whoever did the looking.
+ */
+export function missingImportDiagnostic(located: LocatedImport): AxisDiagnostic {
+    return {
+        severity: 'error',
+        code: 'import-not-found',
+        message: `Cannot find "${located.specifier}".`,
+        line: located.line,
+        startCharacter: located.startCharacter,
+        endCharacter: located.endCharacter,
+    };
 }
 
 type Report = (
@@ -446,6 +468,11 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         return;
     }
 
+    if (IMPORT_KEYWORD.test(code)) {
+        checkImport(code, segment, report);
+        return;
+    }
+
     const keyword = BLOCK_KEYWORDS.exec(code)?.[1];
     if (keyword) {
         report(
@@ -490,6 +517,40 @@ function checkEntry(segment: BlockSegment, report: Report): void {
             segment.line,
             segment.start + second,
             segment.start + code.length,
+        );
+    }
+}
+
+/**
+ * Check an `import` statement: its shape, and that it lands somewhere a folder
+ * of expressions can go.
+ */
+function checkImport(code: string, segment: BlockSegment, report: Report): void {
+    const { line, start } = segment;
+    const end = start + code.length;
+
+    if (!parseImportStatement(code)) {
+        report(
+            'error',
+            'import-syntax',
+            'An import is written as `import "./file.axis"`, optionally followed by `as "Name"`.',
+            line,
+            start,
+            end,
+        );
+        return;
+    }
+
+    // Anywhere else is a block whose entries are not expressions, so there is
+    // nowhere for an imported script to go.
+    if (segment.parent && segment.parent.kind !== 'folder') {
+        report(
+            'error',
+            'import-placement',
+            `An import belongs at the top level or inside a folder, not in a ${entryLabel(segment.parent.kind).toLowerCase()}.`,
+            line,
+            start,
+            end,
         );
     }
 }
