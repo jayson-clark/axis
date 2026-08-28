@@ -32,6 +32,36 @@ describe('division', () => {
 
     test('makes a fraction of two simple terms', () => {
         assert.equal(convertToLatex('x / 2'), '\\frac{x}{2}');
+        assert.equal(convertToLatex('1.5 / 2'), '\\frac{1.5}{2}');
+    });
+
+    test('divides a whole call, not the group it takes', () => {
+        // `f\frac{x}{2}` is a different expression, and one Desmos reports on.
+        assert.equal(convertToLatex('f(x) / 2'), '\\frac{f\\left(x\\right)}{2}');
+        assert.equal(convertToLatex('2 / f(x)'), '\\frac{2}{f\\left(x\\right)}');
+        assert.equal(
+            convertToLatex('sin(x) / cos(x)'),
+            '\\frac{\\sin\\left(x\\right)}{\\cos\\left(x\\right)}',
+        );
+    });
+
+    test('reads a call however deeply its arguments nest', () => {
+        assert.equal(
+            convertToLatex('f(g(x)) / 2'),
+            '\\frac{f\\left(g\\left(x\\right)\\right)}{2}',
+        );
+    });
+
+    test('leaves a coefficient outside the fraction, where it means the same', () => {
+        // `3(x)` is three times a group rather than a call, so the 3 is not
+        // part of the numerator - and `2/3(x)` stays two thirds of x.
+        assert.equal(convertToLatex('3(x) / 2'), '3\\frac{x}{2}');
+        assert.equal(convertToLatex('2 / 3(x)'), '\\frac{2}{3}\\left(x\\right)');
+    });
+
+    test('leaves a `/` it cannot read the operands of alone', () => {
+        // Desmos reads it as division either way.
+        assert.equal(convertToLatex('{x < 0: 1, 2} / 3'), '\\left\\{x<0:1,2\\right\\}/3');
     });
 });
 
