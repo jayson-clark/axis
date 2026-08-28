@@ -6,8 +6,8 @@
 export const DESMOS_API_VERSION = 'v1.12';
 
 /**
- * Origin the calculator is served from. A host that sandboxes the viewer - the
- * VSCode webview does - has to name this in its Content-Security-Policy.
+ * Origin the calculator is served from. A host that sandboxes the viewer has to
+ * name this in its Content-Security-Policy.
  */
 export const DESMOS_SCRIPT_ORIGIN = 'https://www.desmos.com';
 
