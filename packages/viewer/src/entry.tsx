@@ -1,9 +1,9 @@
-// Standalone entry for the VSCode webview: the extension loads the bundle this
-// produces and drives it over the webview postMessage bridge.
+// Standalone entry for the preview page: the extension's server serves the
+// bundle this produces, and drives it over the page's own event stream.
 import { createRoot } from 'react-dom/client';
-import { createVsCodeTransport } from '@axis-dsl/protocol';
+import { createHttpTransport } from '@axis-dsl/protocol';
 import { AxisViewer } from './AxisViewer.js';
 
 createRoot(document.getElementById('root')!).render(
-    <AxisViewer transport={createVsCodeTransport()} />,
+    <AxisViewer transport={createHttpTransport()} />,
 );

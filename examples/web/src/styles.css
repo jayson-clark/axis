@@ -1,8 +1,9 @@
 /* ═════════════════════════════════════════════════════════════════════════════
    Axis playground
    ═════════════════════════════════════════════════════════════════════════════
-   `--axis-*` are the theming hooks @axis/viewer reads; the rest is local to
-   this app. The palette follows the OS setting — there is no toggle. */
+   Local to this app. @axis-dsl/viewer brings its own palette, matched to these
+   values, so nothing here is passed to it. The palette follows the OS setting —
+   there is no toggle. */
 
 :root {
     --bg: #0f1116;
@@ -15,17 +16,6 @@
     --accent-fg: #ffffff;
     --danger: #e06c6c;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-
-    --axis-fg: var(--fg);
-    --axis-fg-muted: var(--fg-muted);
-    --axis-surface: var(--surface);
-    --axis-surface-raised: var(--surface-raised);
-    --axis-border: var(--border);
-    --axis-accent: var(--accent);
-    --axis-accent-fg: var(--accent-fg);
-    --axis-danger: var(--danger);
-    --axis-mono: var(--mono);
-    --axis-mono-size: 12px;
 
     color-scheme: dark;
 }
