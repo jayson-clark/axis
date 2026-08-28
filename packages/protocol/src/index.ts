@@ -4,5 +4,7 @@
 
 export type { AxisMessage, HostMessage, ViewerMessage } from './messages';
 export { createLocalChannel } from './transport';
-export type { HostTransport, LocalChannel, ViewerTransport } from './transport';
-export { createVsCodeTransport, isVsCodeWebview } from './vscode';
+export type { ConnectionState, HostTransport, LocalChannel, ViewerTransport } from './transport';
+export { createHttpTransport } from './http';
+export type { HttpTransportOptions } from './http';
+export { PREVIEW_PATHS, PREVIEW_QUERY } from './preview';
