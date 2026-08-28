@@ -20,17 +20,28 @@ export interface SplitLine {
  * rather than as metadata.
  */
 export function splitTrailingMetadata(line: string): SplitLine {
-    const match = line.match(/\s+#\s*(.+)$/);
-    if (!match || match.index === undefined) {
+    let hash = -1;
+
+    // A `#` inside a string is text - a note that mentions one, a label that is
+    // one - so the scan skips over quoted runs rather than taking the first
+    // `#` on the line.
+    scanCode(line, (char, index) => {
+        if (char === '#' && index > 0 && /\s/.test(line[index - 1])) {
+            hash = index;
+            return true;
+        }
+    });
+
+    if (hash === -1) {
         return { code: line, metadata: undefined };
     }
 
-    const metadata = match[1].trim();
+    const metadata = line.slice(hash + 1).trim();
     if (!metadata.includes(':') && metadata !== 'hidden' && metadata !== 'secret') {
         return { code: line, metadata: undefined };
     }
 
-    return { code: line.slice(0, match.index).trim(), metadata };
+    return { code: line.slice(0, hash).trim(), metadata };
 }
 
 /** One piece of a top-level split, with the column it starts at in the input. */
