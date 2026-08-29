@@ -8,8 +8,8 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync } from 'node:fs';
-import type { Expression, Folder, Note, Table } from '@axis-dsl/desmos';
+import { readdirSync, readFileSync } from 'node:fs';
+import type { Expression, Folder, GraphImage, Note, Table } from '@axis-dsl/desmos';
 import { compileAxis } from '@axis-dsl/compiler';
 import { readAxisFile } from '../dist/index.js';
 import { example, exampleDirectory, skip, useCalculator } from './support.mts';
@@ -203,6 +203,7 @@ describe('imports', { skip }, () => {
         await calculator().load(script.source, {
             path: script.path,
             resolveImport: script.resolveImport,
+            resolveImage: script.resolveImage,
         });
         const list = (await calculator().getState()).expressions?.list ?? [];
         const folders = list.filter(expression => expression.type === 'folder') as Folder[];
@@ -218,6 +219,7 @@ describe('imports', { skip }, () => {
         await calculator().load(script.source, {
             path: script.path,
             resolveImport: script.resolveImport,
+            resolveImage: script.resolveImage,
         });
 
         // `sine` and `envelope` are defined in the two imported files, and the
@@ -250,6 +252,49 @@ describe('imports', { skip }, () => {
     });
 });
 
+describe('images', { skip }, () => {
+    const calculator = useCalculator();
+
+    /** The picture `18-images.axis` draws, as it sits on disk. */
+    const picture = () => readFileSync(example('images/wave.png'));
+
+    test('a file beside the script arrives in the graph as a data URI', async () => {
+        const script = await readAxisFile(example('18-images.axis'));
+        await calculator().load(script.source, {
+            path: script.path,
+            resolveImport: script.resolveImport,
+            resolveImage: script.resolveImage,
+        });
+
+        const list = (await calculator().getState()).expressions?.list ?? [];
+        const images = list.filter(expression => expression.type === 'image') as GraphImage[];
+
+        assert.equal(images.length, 2);
+        assert.deepEqual(await calculator().getErrors(), []);
+        for (const image of images) {
+            // Byte for byte the file, which is the whole point of inlining it:
+            // a path would have reached Desmos as a URL nothing can fetch.
+            assert.equal(image.image_url, `data:image/png;base64,${picture().toString('base64')}`);
+        }
+    });
+
+    test('the placement Desmos keeps is the expression the script wrote', async () => {
+        const script = await readAxisFile(example('18-images.axis'));
+        await calculator().load(script.source, {
+            path: script.path,
+            resolveImport: script.resolveImport,
+            resolveImage: script.resolveImage,
+        });
+
+        const list = (await calculator().getState()).expressions?.list ?? [];
+        const [placed] = list.filter(expression => expression.type === 'image') as GraphImage[];
+
+        assert.equal(placed.name, 'Wave');
+        assert.equal(placed.center, 'c');
+        assert.equal(placed.width, 'w');
+    });
+});
+
 describe('the example scripts', { skip }, () => {
     const calculator = useCalculator();
 
@@ -268,6 +313,7 @@ describe('the example scripts', { skip }, () => {
             await calculator().load(script.source, {
                 path: script.path,
                 resolveImport: script.resolveImport,
+                resolveImage: script.resolveImage,
             });
 
             assert.deepEqual(await calculator().getErrors(), []);

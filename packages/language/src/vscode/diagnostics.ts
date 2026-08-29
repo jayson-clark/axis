@@ -5,14 +5,18 @@
 import * as vscode from 'vscode';
 import {
     AXIS_FILE_EXTENSION,
+    AXIS_IMAGE_EXTENSIONS,
     AXIS_LANGUAGE_ID,
     AxisDiagnostic,
     createDebouncer,
+    findImageStatements,
     findImportStatements,
+    isImageUrl,
+    missingImageDiagnostic,
     missingImportDiagnostic,
     validateAxis,
 } from '../index';
-import { importExists, resolveImportUri } from './imports';
+import { fileExists, resolveImageUri, resolveImportUri } from './imports';
 
 /** How long an edit sits before the document is re-checked. */
 const DEBOUNCE_MS = 250;
@@ -48,24 +52,33 @@ export function registerAxisDiagnostics(): vscode.Disposable[] {
     const pending = createDebouncer<string>(DEBOUNCE_MS);
 
     /**
-     * Report the imports that name a file which is not there.
+     * Report the imports and images that name a file which is not there.
      *
-     * Split out from the checks above because it is the only one that has to
-     * ask the filesystem, and so the only one that cannot answer immediately.
-     * The syntax diagnostics are already on screen by the time this runs; it
-     * adds to them, and only if the document has not moved on in the meantime.
+     * Split out from the checks above because these are the only ones that have
+     * to ask the filesystem, and so the only ones that cannot answer
+     * immediately. The syntax diagnostics are already on screen by the time this
+     * runs; it adds to them, and only if the document has not moved on in the
+     * meantime.
      */
-    const checkImports = async (document: vscode.TextDocument, checked: vscode.Diagnostic[]) => {
+    const checkFiles = async (document: vscode.TextDocument, checked: vscode.Diagnostic[]) => {
         const { version } = document;
-        const imports = findImportStatements(document.getText());
+        const text = document.getText();
 
-        const missing = await Promise.all(
-            imports.map(async statement =>
-                (await importExists(resolveImportUri(document.uri, statement.specifier)))
+        const missing = await Promise.all([
+            ...findImportStatements(text).map(async statement =>
+                (await fileExists(resolveImportUri(document.uri, statement.specifier)))
                     ? undefined
                     : toVscodeDiagnostic(missingImportDiagnostic(statement)),
             ),
-        );
+            // An image that names a URL is Desmos's to fetch, not ours to find.
+            ...findImageStatements(text)
+                .filter(statement => !isImageUrl(statement.url))
+                .map(async statement =>
+                    (await fileExists(resolveImageUri(document.uri, statement.url)))
+                        ? undefined
+                        : toVscodeDiagnostic(missingImageDiagnostic(statement)),
+                ),
+        ]);
 
         const found = missing.filter((diagnostic): diagnostic is vscode.Diagnostic =>
             Boolean(diagnostic),
@@ -83,7 +96,7 @@ export function registerAxisDiagnostics(): vscode.Disposable[] {
 
         const diagnostics = validateAxis(document.getText()).map(toVscodeDiagnostic);
         collection.set(document.uri, diagnostics);
-        void checkImports(document, diagnostics);
+        void checkFiles(document, diagnostics);
     };
 
     const forget = (document: vscode.TextDocument) => {
@@ -91,10 +104,11 @@ export function registerAxisDiagnostics(): vscode.Disposable[] {
         collection.delete(document.uri);
     };
 
-    // Creating the file an import names has to clear that import's error, and
-    // deleting one has to raise it, neither of which is an edit to the document
-    // holding the import.
-    const watcher = vscode.workspace.createFileSystemWatcher(`**/*${AXIS_FILE_EXTENSION}`);
+    // Creating the file an import or an image names has to clear that
+    // statement's error, and deleting one has to raise it, neither of which is
+    // an edit to the document holding it.
+    const watched = [AXIS_FILE_EXTENSION.slice(1), ...AXIS_IMAGE_EXTENSIONS].join(',');
+    const watcher = vscode.workspace.createFileSystemWatcher(`**/*.{${watched}}`);
     const revalidate = () => vscode.workspace.textDocuments.forEach(validate);
 
     vscode.workspace.textDocuments.forEach(validate);

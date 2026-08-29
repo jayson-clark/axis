@@ -95,6 +95,40 @@ only when it does.
 A script that imports something and is given no resolver fails to compile,
 rather than quietly dropping the import and graphing less than was asked for.
 
+## Images
+
+`image "./beach.png"` names a file the way an import does, and is reached the
+same way — through a resolver, because the compiler still touches no filesystem.
+What it resolves to is a `data:` URI, which is inlined into the graph: Desmos
+stores an image as its URL, and a path on the machine the script was written on
+is not one anybody else's browser can fetch, so a graph has to carry its
+pictures with it.
+
+```ts
+import { compileAxis, createImageResolver, loadImages } from '@axis-dsl/compiler';
+
+const pictures = {
+  resolve: (url, from) => resolve(dirname(from), url),
+  read: async path => new Uint8Array(await readFile(path)),
+};
+
+// `files` is what loadImports handed back: an imported script draws its own
+// images, so one walk of the import graph serves both.
+const images = await loadImages({ path, source }, files, pictures);
+const { expressions, images: drawn } = compileAxis(source, {
+  path,
+  resolveImage: createImageResolver(images, pictures.resolve),
+});
+```
+
+The media type comes from the extension, and a file whose extension is not an
+image's is an error rather than a picture a browser has to guess at. `images`
+names every file that was inlined — the other half of the set to watch if the
+graph is live.
+
+An `image` that names something Desmos can already load — `https:`, `data:` —
+reaches the graph exactly as it was written, and needs no resolver at all.
+
 ## Decompiling
 
 The other direction: a graph back into the script that builds it.
@@ -154,18 +188,22 @@ the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
 
 ## API
 
-| Export                                            |                                                                                     |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `compileAxis(script, options?)`                   | The compiler. Returns `{ expressions, settings?, imports }`                         |
-| `loadImports(entry, host)`                        | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path |
-| `createImportResolver(files, resolve)`            | Turns that `Map` into the synchronous `resolveImport` the compiler wants            |
-| `findImports(source)`                             | Just the specifiers one file imports, in order                                      |
-| `convertToLatex(expr)`                            | One Axis expression to the LaTeX Desmos expects                                     |
-| `decompileAxis(graph, options?)`                  | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source     |
-| `convertFromLatex(latex)`                         | One piece of Desmos LaTeX back into the Axis expression it compiles from            |
-| `DecompileInput` / `DecompileOptions`             | `{ expressions, settings? }` and `{ indent? }`                                      |
-| `CompileOptions`                                  | `{ path?, resolveImport? }`                                                         |
-| `CompilationResult`                               | `{ expressions, settings?, imports }`                                               |
-| `ImportHost` / `ResolveImport` / `ResolvedImport` | The resolver types                                                                  |
+| Export                                            |                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `compileAxis(script, options?)`                   | The compiler. Returns `{ expressions, settings?, imports, images }`                  |
+| `loadImports(entry, host)`                        | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path  |
+| `createImportResolver(files, resolve)`            | Turns that `Map` into the synchronous `resolveImport` the compiler wants             |
+| `findImports(source)`                             | Just the specifiers one file imports, in order                                       |
+| `loadImages(entry, files, host)`                  | Reads every image file the script and its imports draw; returns a `Map` of data URIs |
+| `createImageResolver(images, resolve)`            | Turns that `Map` into the synchronous `resolveImage` the compiler wants              |
+| `findImageFiles(source)`                          | Just the image paths one file draws, in order                                        |
+| `convertToLatex(expr)`                            | One Axis expression to the LaTeX Desmos expects                                      |
+| `decompileAxis(graph, options?)`                  | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source      |
+| `convertFromLatex(latex)`                         | One piece of Desmos LaTeX back into the Axis expression it compiles from             |
+| `DecompileInput` / `DecompileOptions`             | `{ expressions, settings? }` and `{ indent? }`                                       |
+| `CompileOptions`                                  | `{ path?, resolveImport?, resolveImage? }`                                           |
+| `CompilationResult`                               | `{ expressions, settings?, imports, images }`                                        |
+| `ImportHost` / `ResolveImport` / `ResolvedImport` | The import resolver types                                                            |
+| `ImageHost` / `ResolveImage` / `ResolvedImage`    | The image resolver types                                                             |
 
 MIT

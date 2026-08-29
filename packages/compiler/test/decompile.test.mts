@@ -14,7 +14,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Expression, Folder } from '@axis-dsl/desmos';
-import { withAxisExtension } from '@axis-dsl/language';
+import { imageMediaType, withAxisExtension } from '@axis-dsl/language';
 import { compileAxis, decompileAxis } from '../dist/index.js';
 import type { CompileOptions } from '../dist/index.js';
 
@@ -154,15 +154,19 @@ describe('the range a curve is drawn over', () => {
 describe('images', () => {
     test('writes the URL as the statement and the placement behind it', () => {
         assert.equal(
-            roundTrip('image "a.png" # name: "Reference", center: (1, 2), width: 4, height: 3'),
-            'image "a.png" # name: Reference, center: (1, 2), width: 4, height: 3\n',
+            roundTrip(
+                'image "https://example.com/a.png" # name: "Reference", center: (1, 2), width: 4, height: 3',
+            ),
+            'image "https://example.com/a.png" # name: Reference, center: (1, 2), width: 4, height: 3\n',
         );
     });
 
     test('reads a placement Desmos holds as an expression', () => {
         assert.equal(
-            roundTrip('image "a.png" # center: (x0, y0), angle: -pi / 200, foreground: true'),
-            'image "a.png" # center: (x0, y0), angle: -pi / 200, foreground: true\n',
+            roundTrip(
+                'image "https://example.com/a.png" # center: (x0, y0), angle: -pi / 200, foreground: true',
+            ),
+            'image "https://example.com/a.png" # center: (x0, y0), angle: -pi / 200, foreground: true\n',
         );
     });
 });
@@ -777,10 +781,19 @@ describe('round trip: the example scripts', () => {
         return { path, source: readFileSync(path, 'utf8') };
     };
 
+    /** And they draw pictures, which are inlined before a graph ever holds one. */
+    const resolveImage = (url: string, from: string) => {
+        const path = url.startsWith('/')
+            ? resolve(directory, url.slice(1))
+            : resolve(dirname(from), url);
+        const data = readFileSync(path).toString('base64');
+        return { path, dataUri: `data:${imageMediaType(path)};base64,${data}` };
+    };
+
     for (const name of readdirSync(directory).filter(file => file.endsWith('.axis'))) {
         test(name, () => {
             const path = resolve(directory, name);
-            roundTrip(readFileSync(path, 'utf8'), { path, resolveImport });
+            roundTrip(readFileSync(path, 'utf8'), { path, resolveImport, resolveImage });
         });
     }
 });
