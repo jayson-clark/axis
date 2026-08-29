@@ -19,7 +19,7 @@ folder "Building lists" {
     flat = repeat(3, 5) # hidden,
     "L[3] indexes, length counts.",
     third = ordered[3] # hidden,
-    count = length(ordered) # hidden
+    size = length(ordered) # hidden
 }
 
 folder "Lists as points" {

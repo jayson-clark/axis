@@ -99,16 +99,20 @@ export function convertFromLatex(latex: string): string {
     while (index < latex.length) {
         const rest = latex.slice(index);
 
-        // A bar holding another bar. Axis pairs bars in the order they appear,
-        // which is the only reading it has and the wrong one here: `|x/|a-b||`
-        // cannot say which bar opened what, and Desmos is handed `\right|`
-        // where an opener belongs. `abs` means the same thing and nests, so the
-        // outer one becomes a call and the inner keeps its bars.
+        // A bar holding another bar. Axis reads a bar as an opener or a closer
+        // from what precedes it, which recovers the nesting in every case but
+        // one - `||x|-1|`, where a bar follows a bar. So the bars are written
+        // and then checked, exactly as a name is: where they do not compile
+        // back to what they were read from, `abs` says the same thing and nests
+        // unambiguously.
         if (rest.startsWith('\\left|')) {
             const bars = readBars(latex, index);
             if (bars) {
                 const body = convertFromLatex(bars.body);
-                emit(body.includes('|') ? `abs(${body})` : `|${body}|`);
+                const written = `|${body}|`;
+                emit(
+                    pairsTheSame(written, latex.slice(index, bars.end)) ? written : `abs(${body})`,
+                );
                 index = bars.end;
                 continue;
             }
@@ -326,6 +330,20 @@ function readCommand(latex: string, index: number, command: string): { text: str
         default:
             return { text: command, end };
     }
+}
+
+/**
+ * Whether `code` compiles to bars paired exactly as `latex` pairs them.
+ *
+ * Only the bars: every other delimiter is sized or not according to how the
+ * expression was written, and `\left[1...n\right]` means what `[1...n]` means.
+ * A bar is the one delimiter whose `\left` or `\right` says which end of a pair
+ * it is, so that is the difference this looks for and the rest is normalised
+ * away.
+ */
+function pairsTheSame(code: string, latex: string): boolean {
+    const bars = (text: string) => text.replace(/\\(?:left|right)(?!\|)/g, '');
+    return bars(convertToLatex(code)) === bars(latex);
 }
 
 /**

@@ -277,6 +277,15 @@ function expressionProperties(expression: Expression): string[] {
         if (slider.step !== undefined) {
             bounds.push(`step: ${value(slider.step, 'coerced')}`);
         }
+        // A bound Desmos does not mark hard is one the slider may be dragged
+        // past, and `sliderBounds` hardens both ends unless told not to - so a
+        // soft bound is the one that has to be written down.
+        if (slider.hardMin !== true) {
+            bounds.push('hardMin: false');
+        }
+        if (slider.hardMax !== true) {
+            bounds.push('hardMax: false');
+        }
         entries.push(`sliderBounds: {${bounds.join(', ')}}`);
     }
     if (slider?.isPlaying !== undefined) {

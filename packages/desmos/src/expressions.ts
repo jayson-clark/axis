@@ -55,6 +55,13 @@ export interface SliderBounds {
     min: string | number;
     max: string | number;
     step?: string | number;
+    /**
+     * Whether the bound is a limit rather than just the initial range. Axis
+     * defaults both to true, which is not Desmos' own default — see
+     * {@link SliderState}.
+     */
+    hardMin?: boolean;
+    hardMax?: boolean;
 }
 
 /**

@@ -106,6 +106,43 @@ describe('absolute value', () => {
     test('sizes the bars around a tall expression', () => {
         assert.equal(convertToLatex('|x / 2|'), '\\left|\\frac{x}{2}\\right|');
     });
+
+    test('opens on a bar that has no value in front of it, so bars nest', () => {
+        assert.equal(
+            convertToLatex('|x / (|a - b|)|'),
+            '\\left|\\frac{x}{\\left|a-b\\right|}\\right|',
+        );
+    });
+
+    test('opens on a bar with nothing open to close, however it is preceded', () => {
+        assert.equal(convertToLatex('2|x|'), '2\\left|x\\right|');
+        assert.equal(convertToLatex('|x||y|'), '\\left|x\\right|\\left|y\\right|');
+    });
+});
+
+describe('action runs', () => {
+    test('drops the brackets that hold a run of actions together', () => {
+        // Bracketed, Desmos reads the run as a point and runs one coordinate of
+        // it; the brackets are Axis syntax, not part of what it means.
+        assert.equal(convertToLatex('A = (a -> 1, b -> 2)'), 'A=a\\to1,b\\to2');
+    });
+
+    test('drops them for a function, and for a run with nothing in front of it', () => {
+        assert.equal(convertToLatex('f(x) = (a -> x, b -> 2)'), 'f\\left(x\\right)=a\\to x,b\\to2');
+        assert.equal(convertToLatex('(a -> 1, b -> 2)'), 'a\\to1,b\\to2');
+    });
+
+    test('keeps the brackets around a point, which is what they are for', () => {
+        assert.equal(convertToLatex('P = (1, 2)'), 'P=\\left(1,2\\right)');
+        assert.equal(convertToLatex('A = (a -> 1)'), 'A=\\left(a\\to1\\right)');
+    });
+
+    test('leaves a bracketed run that is only part of the value', () => {
+        assert.equal(
+            convertToLatex('A = f((a -> 1, b -> 2))'),
+            'A=f\\left(\\left(a\\to1,b\\to2\\right)\\right)',
+        );
+    });
 });
 
 describe('names', () => {
