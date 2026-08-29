@@ -104,6 +104,7 @@ about what Desmos _does_ with the result goes in `packages/harness/test`:
 | `language.test.mts`  | every function and constant in the manifest, plus the operators    |
 | `graph.test.mts`     | folders, tables, notes, imports, and every example script          |
 | `ticker.test.mts`    | the `ticker` statement, and that a playing one actually ticks      |
+| `macros.test.mts`    | what a `macro` expands to, evaluated rather than just compiled     |
 | `decompile.test.mts` | decompiling the graph state a real calculator hands back           |
 | `harness.test.mts`   | the harness itself                                                 |
 
@@ -150,6 +151,17 @@ touched is the quick version.
   `expandBlockEntries` spreads an inline block back out. Fold first: the join
   runs lines together with a space, which between two properties would swallow
   the separator the newline stood for.
+- **Macros run before everything, and they are text.** `expandMacros` is applied
+  to a whole line in `emitFile` before the metadata is split off or a keyword is
+  looked for, so a macro can expand into any part of any statement - which also
+  means a new statement form needs no macro support of its own and gets it for
+  free. The definitions are gathered first, over the import graph, so a `macro`
+  line is in scope above itself and across files; that walk is in `compileAxis`,
+  separate from the one that emits.
+- **A macro is expanded and then forgotten.** Nothing about one survives into the
+  graph, so there is nothing for the decompiler to read back - which is why the
+  round trip holds over a script full of them without the decompiler knowing the
+  word.
 - **Desmos normalises what you give it.** It leaves a bound off the state when
   it matches its own default, and writes a switched-off clickable by omitting
   `enabled` rather than storing `false`. Assert against what it actually
