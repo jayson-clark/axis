@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Imports - what a specifier names in a VSCode workspace
+// Paths - what an import or an image names in a VSCode workspace
 // ═════════════════════════════════════════════════════════════════════════════
 
 import * as vscode from 'vscode';
@@ -14,7 +14,20 @@ import { withAxisExtension } from '../index';
  * open.
  */
 export function resolveImportUri(from: vscode.Uri, specifier: string): vscode.Uri {
-    const target = withAxisExtension(specifier);
+    return resolveFileUri(from, withAxisExtension(specifier));
+}
+
+/**
+ * The image file `url`, written in the file at `from`, names.
+ *
+ * The same resolution an import gets, minus the implied extension: a picture is
+ * named in full, `.png` and all.
+ */
+export function resolveImageUri(from: vscode.Uri, url: string): vscode.Uri {
+    return resolveFileUri(from, url);
+}
+
+function resolveFileUri(from: vscode.Uri, target: string): vscode.Uri {
     const directory = vscode.Uri.joinPath(from, '..');
 
     if (!target.startsWith('/')) {
@@ -25,8 +38,8 @@ export function resolveImportUri(from: vscode.Uri, specifier: string): vscode.Ur
     return vscode.Uri.joinPath(workspace?.uri ?? directory, target.slice(1));
 }
 
-/** True when there is a file at `uri`. A directory is not a script. */
-export async function importExists(uri: vscode.Uri): Promise<boolean> {
+/** True when there is a file at `uri`. A directory is neither script nor picture. */
+export async function fileExists(uri: vscode.Uri): Promise<boolean> {
     try {
         const stat = await vscode.workspace.fs.stat(uri);
         return (stat.type & vscode.FileType.File) !== 0;

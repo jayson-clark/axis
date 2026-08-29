@@ -20,6 +20,7 @@ import {
     missingSeparators,
     scanBlockLine,
 } from './blocks';
+import { type LocatedImage } from './images';
 import { IMPORT_KEYWORD, parseImportStatement, type LocatedImport } from './imports';
 import {
     expandMacros,
@@ -55,6 +56,7 @@ export type AxisDiagnosticCode =
     | 'import-syntax'
     | 'import-placement'
     | 'import-not-found'
+    | 'image-not-found'
     | 'nested-folder'
     | 'config-placement'
     | 'ticker-placement'
@@ -195,6 +197,24 @@ export function missingImportDiagnostic(located: LocatedImport): AxisDiagnostic 
         severity: 'error',
         code: 'import-not-found',
         message: `Cannot find "${located.specifier}".`,
+        line: located.line,
+        startCharacter: located.startCharacter,
+        endCharacter: located.endCharacter,
+    };
+}
+
+/**
+ * The diagnostic for an image whose file is not there.
+ *
+ * The same bargain as {@link missingImportDiagnostic}: an `image` that names a
+ * path rather than a URL is read off disk by the host, so the host is the only
+ * one that can say whether it is there.
+ */
+export function missingImageDiagnostic(located: LocatedImage): AxisDiagnostic {
+    return {
+        severity: 'error',
+        code: 'image-not-found',
+        message: `Cannot find image "${located.url}".`,
         line: located.line,
         startCharacter: located.startCharacter,
         endCharacter: located.endCharacter,
