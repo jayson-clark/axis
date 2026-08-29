@@ -68,3 +68,9 @@ h(t) = 20t - 4.9t ^ 2 # color: #c74440, lineWidth: 3
 y = 0 # color: \C, lineOpacity: 0.4
 
 C = rgb(177, 75, 75)
+folder "The viewport, read back" {
+    "width and height are the viewport in graph units, so an expression can size itself to the window.",
+    y = height / 4 # color: #388c46, lineStyle: DASHED,
+    "A point that stays a fifth of the way in from the left.",
+    (-width / 2 + width / 5, height / 4) # color: #388c46, pointSize: 14
+}

@@ -39,3 +39,16 @@ folder "A list of graphs" {
     R = [1, 2, 3, 4] # hidden,
     x ^ 2 + y ^ 2 = R ^ 2 # color: #fa7e19, lineOpacity: 0.7
 }
+
+folder "Lists built from a rule" {
+    "[1, ..., 10] is the range; `for` runs an expression over it.",
+    S = [i ^ 2 for i = [1, ..., 10]] # hidden,
+    "The comprehension is a list like any other.",
+    (S, sqrt(S)) # color: #c74440, pointSize: 12,
+    "Two variables after `for` pair off every combination.",
+    G = [(a, b) for a = [-4, ..., 4], b = [1, 2]] # color: #2d70b3, pointSize: 8, lines: false,
+    "random() draws a number in [0, 1); random(n) draws a list of n.",
+    seed = random() # hidden,
+    noise = random(length(N)) # hidden,
+    (N, noise) # color: #388c46, pointSize: 12, lines: false
+}
