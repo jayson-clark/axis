@@ -46,10 +46,7 @@ describe('division', () => {
     });
 
     test('reads a call however deeply its arguments nest', () => {
-        assert.equal(
-            convertToLatex('f(g(x)) / 2'),
-            '\\frac{f\\left(g\\left(x\\right)\\right)}{2}',
-        );
+        assert.equal(convertToLatex('f(g(x)) / 2'), '\\frac{f\\left(g\\left(x\\right)\\right)}{2}');
     });
 
     test('leaves a coefficient outside the fraction, where it means the same', () => {
@@ -131,6 +128,44 @@ describe('names', () => {
     test('writes infinity as a single \\infty', () => {
         assert.equal(convertToLatex('infinity'), '\\infty');
         assert.equal(convertToLatex('x / infinity'), '\\frac{x}{\\infty}');
+    });
+});
+
+describe('the bare operators', () => {
+    test('writes each as an \\operatorname of its own', () => {
+        assert.equal(convertToLatex('width'), '\\operatorname{width}');
+        assert.equal(convertToLatex('height'), '\\operatorname{height}');
+    });
+
+    test('keeps an operator whole inside an expression', () => {
+        assert.equal(convertToLatex('y = height / 4'), 'y=\\frac{\\operatorname{height}}{4}');
+    });
+
+    test('leaves a name that merely opens with one a variable', () => {
+        // Unlike a constant, an operator does not carry the rest of a longer
+        // name as a subscript: `heightMap` is a variable somebody named.
+        assert.equal(convertToLatex('heightMap = 2'), 'h_{eightMap}=2');
+        assert.equal(convertToLatex('force = 1'), 'f_{orce}=1');
+    });
+
+    test('leaves an operator that names a subscript alone', () => {
+        assert.equal(convertToLatex('a_for = 1'), 'a_{for}=1');
+    });
+
+    test('joins a list comprehension with for', () => {
+        assert.equal(
+            convertToLatex('L = [i for i = [1, ..., 10]]'),
+            'L=[i\\operatorname{for}i=[1,...,10]]',
+        );
+        assert.equal(
+            convertToLatex('S = [i ^ 2 for i = [1, ..., 10]]'),
+            'S=[i^2\\operatorname{for}i=[1,...,10]]',
+        );
+    });
+
+    test('writes random as the call it is, not a variable', () => {
+        assert.equal(convertToLatex('a = random()'), 'a=\\operatorname{random}\\left(\\right)');
+        assert.equal(convertToLatex('R = random(5)'), 'R=\\operatorname{random}\\left(5\\right)');
     });
 });
 
