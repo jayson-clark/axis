@@ -6,6 +6,7 @@ import {
     DesmosExpression,
     GraphSettings,
     GraphState,
+    TickerState,
 } from '@axis-dsl/desmos';
 import { useDesmos } from './useDesmos.js';
 
@@ -33,6 +34,11 @@ export interface DesmosGraphProps {
      * keeps them in the graph state: `updateSettings` would ignore them.
      */
     graph?: GraphSettings;
+    /**
+     * The graph's ticker. Separate for the same reason: Desmos keeps it beside
+     * the expression list rather than in it.
+     */
+    ticker?: TickerState;
     /** Rendered instead of the graph while the Desmos script is loading. */
     loadingFallback?: ReactNode;
     /** Rendered instead of the graph when the script or key fails. */
@@ -57,7 +63,11 @@ const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
  * first. A script that names only some edges gets the defaults for the rest —
  * `xmin: 0` alone is a half-written rectangle, and Desmos would ignore it.
  */
-function graphState(expressions: DesmosExpression[], graph: GraphSettings | undefined): GraphState {
+function graphState(
+    expressions: DesmosExpression[],
+    graph: GraphSettings | undefined,
+    ticker: TickerState | undefined,
+): GraphState {
     return {
         version: 11,
         // `# pointStyle: SQUARE` means that style, on a draggable point as much
@@ -70,7 +80,9 @@ function graphState(expressions: DesmosExpression[], graph: GraphSettings | unde
             ...graph,
             viewport: { ...DEFAULT_VIEWPORT, ...graph?.viewport },
         },
-        expressions: { list: expressions },
+        // The ticker rides beside the list rather than in it, and a graph
+        // without one says so by carrying no ticker at all.
+        expressions: { list: expressions, ...(ticker && { ticker }) },
     };
 }
 
@@ -102,6 +114,7 @@ export function DesmosGraph({
     expressions,
     settings,
     graph,
+    ticker,
     loadingFallback,
     renderError,
     className,
@@ -147,7 +160,7 @@ export function DesmosGraph({
             return;
         }
 
-        const state = graphState(expressions, graph);
+        const state = graphState(expressions, graph, ticker);
 
         // Every compile hands us fresh object identities, so compare contents:
         // re-applying an identical state would churn the calculator for nothing.
@@ -193,7 +206,7 @@ export function DesmosGraph({
         // MathQuill focuses itself a tick after the list is rebuilt.
         const frame = requestAnimationFrame(restore);
         return () => cancelAnimationFrame(frame);
-    }, [status, expressions, settings, graph]);
+    }, [status, expressions, settings, graph, ticker]);
 
     if (status === 'error' && error) {
         return <>{renderError ? renderError(error) : <div style={{ padding: 20 }}>{error}</div>}</>;

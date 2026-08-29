@@ -53,7 +53,7 @@ export function App() {
     const [source, setSource] = useState(STARTER_SOURCE);
     const theme = useSystemTheme();
 
-    const { expressions, settings, graph, error, isStale } = useCompiledAxis(source);
+    const { expressions, settings, graph, ticker, error, isStale } = useCompiledAxis(source);
 
     // The playground drives the viewer over the same protocol the extension
     // uses; the only difference is that the channel never leaves the page.
@@ -64,6 +64,7 @@ export function App() {
         expressions,
         settings,
         graph,
+        ticker,
         status: isStale
             ? 'Compiling…'
             : `${expressions.length} expression${expressions.length === 1 ? '' : 's'}`,

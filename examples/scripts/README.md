@@ -16,7 +16,7 @@ Read in order, each file assumes only what came before it.
 | `10-tables.axis`                | `table { … }`, per-column styling, computed columns                 |
 | `11-parametric-and-polar.axis`  | Curves in `t`, equations in `r` and `theta`                         |
 | `12-inequalities.axis`          | Shaded half-planes and regions                                      |
-| `13-interactivity.axis`         | `dragMode`, `onClick` actions, `clickable`                          |
+| `13-interactivity.axis`         | `dragMode`, `onClick` actions, `clickable`, `ticker`                |
 | `14-colors.axis`                | The palette, named colours, opacity                                 |
 | `15-config.axis`                | Every calculator setting worth knowing; `width` and `height`        |
 | `16-imports.axis`               | `import "./file.axis"`, `as "Name"`, and how a file is flattened    |

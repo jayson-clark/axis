@@ -19,6 +19,7 @@ export {
     AXIS_MANIFEST,
     AXIS_METADATA_PROPERTY_NAMES,
     AXIS_OPERATOR_NAMES,
+    AXIS_TICKER_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
     getFunctionLatex,
 } from './language-manifest';

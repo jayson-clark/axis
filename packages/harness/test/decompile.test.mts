@@ -35,22 +35,31 @@ type Comparable = Record<string, unknown>;
  * and the direction it is travelling in are left out of the comparison. The
  * bounds it is animating between are not — those are the graph.
  *
+ * A playing *ticker* moves a graph the same way, except that what it moves is
+ * whatever its action names rather than the expression it is attached to — the
+ * ticker is not attached to one. Nothing in the state says which definitions it
+ * will reach, so when one is running every definition is compared by its name
+ * alone. What is being checked either way is that the shape of the graph came
+ * back, not that a value nobody is holding still happened to match.
+ *
  * A property Desmos holds as `undefined` is one it does not have, but whether
  * the key is there at all depends on what it was handed, so those go too.
  */
-function comparable(list: ExpressionState[]): Comparable[] {
+function comparable(list: ExpressionState[], ticking = false): Comparable[] {
     const position = new Map(list.map((expression, index) => [expression.id, index]));
 
     return list.map(expression => {
         const { id, folderId, slider, latex, ...rest } = expression as Expression;
-        const playing = slider?.isPlaying === true;
+        const moving = slider?.isPlaying === true || ticking;
 
         return set({
             ...rest,
             ...(folderId !== undefined && { folder: position.get(folderId) }),
-            ...(slider && { slider: set({ ...slider, ...(playing && { playDirection: 0 }) }) }),
-            // A playing slider's value is whatever the animation had reached.
-            ...(latex !== undefined && { latex: playing ? latex.split('=')[0] : latex }),
+            ...(slider && {
+                slider: set({ ...slider, ...(slider.isPlaying && { playDirection: 0 }) }),
+            }),
+            // A moving value is whatever the animation had reached.
+            ...(latex !== undefined && { latex: moving ? latex.split('=')[0] : latex }),
         });
     });
 }
@@ -65,8 +74,19 @@ function set<T extends object>(value: T): Comparable {
 /** Load a script, then load what its own graph state decompiles to. */
 async function reload(calculator: AxisCalculator): Promise<Comparable[]> {
     const state = await calculator.getState();
-    await calculator.load(decompileAxis({ expressions: state.expressions?.list ?? [] }));
-    return comparable((await calculator.getState()).expressions?.list ?? []);
+    const ticker = state.expressions?.ticker;
+    await calculator.load(
+        decompileAxis({
+            expressions: state.expressions?.list ?? [],
+            // The ticker is not in the list, so a decompile handed only the list
+            // would drop it — and the graph would come back looking identical
+            // and simply never tick.
+            ticker,
+        }),
+    );
+    const after = await calculator.getState();
+    assert.deepEqual(after.expressions?.ticker, ticker);
+    return comparable(after.expressions?.list ?? [], ticker?.playing === true);
 }
 
 describe('a graph read back off the calculator', { skip }, () => {
@@ -82,7 +102,11 @@ describe('a graph read back off the calculator', { skip }, () => {
                 resolveImport: script.resolveImport,
             });
 
-            const before = comparable((await calculator().getState()).expressions?.list ?? []);
+            const state = await calculator().getState();
+            const before = comparable(
+                state.expressions?.list ?? [],
+                state.expressions?.ticker?.playing === true,
+            );
             const after = await reload(calculator());
 
             assert.deepEqual(await calculator().getErrors(), []);
@@ -152,6 +176,22 @@ describe('what Desmos leaves out of a graph state', { skip }, () => {
 
         const [after] = (await reload(calculator())) as [Comparable];
         assert.deepEqual((after as Expression).slider, (before as Expression).slider);
+    });
+
+    test('a ticker survives the round trip, still paced and still playing', async () => {
+        await calculator().load(
+            'a = 0\nticker a -> a + 1 # minStep: 200, playing: true, open: true',
+        );
+        const before = (await calculator().getState()).expressions?.ticker;
+        assert.deepEqual(before, {
+            handlerLatex: 'a\\to a+1',
+            minStepLatex: '200',
+            playing: true,
+            open: true,
+        });
+
+        await reload(calculator());
+        assert.deepEqual((await calculator().getState()).expressions?.ticker, before);
     });
 
     test('the words Desmos writes as operators survive as themselves', async () => {

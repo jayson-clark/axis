@@ -651,8 +651,38 @@ export const AXIS_MANIFEST = {
         },
     ] satisfies PropertyDefinition[],
 
-    /** The block keywords, plus the one statement keyword. */
-    keywords: ['folder', 'table', 'config', 'import'] satisfies string[],
+    /** The block keywords, plus the statement keywords. */
+    keywords: ['folder', 'table', 'config', 'import', 'ticker'] satisfies string[],
+
+    /**
+     * The `# key: value` properties a `ticker` statement takes.
+     *
+     * Their own list rather than entries of {@link AXIS_MANIFEST.metadata},
+     * because a ticker is not an expression and none of them means anything on
+     * one: `minStep` on `y = x` would be as wrong as `lineWidth` on a ticker.
+     * `playing` is spelled the same in both places and means the same thing in
+     * each - start moving as soon as the graph opens.
+     */
+    tickerProperties: [
+        {
+            name: 'minStep',
+            detail: 'Shortest gap between ticks, in milliseconds, 0 for every frame [default: 0]',
+            snippet: 'minStep: ${1:50}',
+            valueType: 'number',
+        },
+        {
+            name: 'playing',
+            detail: 'Start the ticker running when the graph opens [default: false]',
+            snippet: 'playing: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+        {
+            name: 'open',
+            detail: 'Show the ticker expanded in the expression list [default: false]',
+            snippet: 'open: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+    ] satisfies PropertyDefinition[],
 
     /** Entries of the `config` block, which become the calculator's settings. */
     configProperties: [
@@ -1205,6 +1235,10 @@ export const AXIS_METADATA_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.met
 );
 
 export const AXIS_CONFIG_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.configProperties.map(
+    property => property.name,
+);
+
+export const AXIS_TICKER_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.tickerProperties.map(
     property => property.name,
 );
 

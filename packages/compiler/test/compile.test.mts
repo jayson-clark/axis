@@ -91,6 +91,53 @@ describe('config', () => {
     });
 });
 
+describe('the ticker', () => {
+    test('compiles the statement into the ticker the state carries', () => {
+        const { ticker } = compileAxis('a = 0\nticker a -> a + 1 # minStep: 50, playing: true');
+        assert.deepEqual(ticker, {
+            handlerLatex: 'a\\to a+1',
+            minStepLatex: '50',
+            playing: true,
+        });
+    });
+
+    test('emits no expression for it - a ticker is not in the list', () => {
+        assert.deepEqual(compile('ticker a -> a + 1'), []);
+    });
+
+    test('switches actions on, since `auto` cannot see a ticker', () => {
+        assert.deepEqual(compileAxis('ticker a -> a + 1').settings, { actions: true });
+        assert.deepEqual(
+            compileAxis('config {\n    actions: false\n}\nticker a -> a + 1').settings,
+            { actions: false },
+        );
+    });
+
+    test('leaves the ticker undefined for a script that has none', () => {
+        assert.equal(compileAxis('y = x').ticker, undefined);
+        assert.equal(compileAxis('ticker').ticker, undefined);
+    });
+
+    test('a variable called ticker is still a variable', () => {
+        const expression = only<Expression>('ticker = 3');
+        assert.equal(expression.latex, 't_{icker}=3');
+    });
+
+    test('the entry script wins over an imported ticker', () => {
+        const { ticker } = compileAxis('import "lib"\nticker b -> b + 1', {
+            resolveImport: () => ({ path: 'lib', source: 'ticker a -> a + 1' }),
+        });
+        assert.equal(ticker?.handlerLatex, 'b\\to b+1');
+    });
+
+    test('an imported ticker applies when the entry script has none', () => {
+        const { ticker } = compileAxis('import "lib"', {
+            resolveImport: () => ({ path: 'lib', source: 'ticker a -> a + 1' }),
+        });
+        assert.equal(ticker?.handlerLatex, 'a\\to a+1');
+    });
+});
+
 describe('metadata', () => {
     test('applies styling properties', () => {
         const expression = only<Expression>('y = x # color: #c74440, lineStyle: DASHED');

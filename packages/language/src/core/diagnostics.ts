@@ -7,7 +7,11 @@
 // misspelled property names). Anything that only Desmos can judge - whether an
 // expression evaluates, whether a variable is defined - is left alone.
 
-import { AXIS_CONFIG_PROPERTY_NAMES, AXIS_METADATA_PROPERTY_NAMES } from '../language-manifest';
+import {
+    AXIS_CONFIG_PROPERTY_NAMES,
+    AXIS_METADATA_PROPERTY_NAMES,
+    AXIS_TICKER_PROPERTY_NAMES,
+} from '../language-manifest';
 import {
     BLOCK_KEYWORDS,
     BlockFrame,
@@ -17,6 +21,7 @@ import {
     scanBlockLine,
 } from './blocks';
 import { IMPORT_KEYWORD, parseImportStatement, type LocatedImport } from './imports';
+import { parseTickerStatement, TICKER_KEYWORD } from './ticker';
 import { splitTopLevelParts, splitTrailingMetadata } from './metadata';
 import {
     CLOSER_FOR,
@@ -44,6 +49,8 @@ export type AxisDiagnosticCode =
     | 'import-not-found'
     | 'nested-folder'
     | 'config-placement'
+    | 'ticker-placement'
+    | 'empty-ticker'
     | 'duplicate-config'
     | 'entry-syntax'
     | 'missing-value'
@@ -124,7 +131,10 @@ export function validateAxis(text: string): AxisDiagnostic[] {
         }
 
         if (scan.metadata) {
-            checkMetadata(scan.metadata, i, report);
+            // Which properties are legal depends on what is being annotated: a
+            // ticker takes `minStep` and nothing an expression takes, and an
+            // expression takes the reverse.
+            checkMetadata(scan.metadata, i, TICKER_KEYWORD.test(scan.code), report);
         }
 
         applyBrackets(scan, i, brackets, report);
@@ -489,6 +499,11 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         return;
     }
 
+    if (TICKER_KEYWORD.test(code)) {
+        checkTicker(code, segment, report);
+        return;
+    }
+
     const keyword = BLOCK_KEYWORDS.exec(code)?.[1];
     if (keyword) {
         report(
@@ -533,6 +548,43 @@ function checkEntry(segment: BlockSegment, report: Report): void {
             segment.line,
             segment.start + second,
             segment.start + code.length,
+        );
+    }
+}
+
+/**
+ * Check a `ticker` statement: that it has an action to run, and that it is
+ * written where the graph's own ticker belongs.
+ *
+ * A graph has exactly one, kept beside the expression list rather than in it,
+ * so a ticker inside a folder is not a ticker for that folder - it is the same
+ * one graph's ticker, written somewhere misleading.
+ */
+function checkTicker(code: string, segment: BlockSegment, report: Report): void {
+    const { line, start } = segment;
+    const end = start + code.length;
+    const handler = parseTickerStatement(code)?.handler;
+
+    if (!handler) {
+        report(
+            'error',
+            'empty-ticker',
+            'A ticker is written as `ticker a -> a + 1` - give it an action to run.',
+            line,
+            start,
+            end,
+        );
+        return;
+    }
+
+    if (segment.parent) {
+        report(
+            'error',
+            'ticker-placement',
+            'A ticker belongs to the whole graph, so it is written at the top level, outside every folder and table.',
+            line,
+            start,
+            end,
         );
     }
 }
@@ -662,15 +714,21 @@ function checkEntries(
 
 const CONFIG_PROPERTIES = new Set(AXIS_CONFIG_PROPERTY_NAMES);
 const METADATA_PROPERTIES = new Set(AXIS_METADATA_PROPERTY_NAMES);
+const TICKER_PROPERTIES = new Set(AXIS_TICKER_PROPERTY_NAMES);
 
-function checkMetadata(metadata: MetadataSpan, line: number, report: Report): void {
+function checkMetadata(
+    metadata: MetadataSpan,
+    line: number,
+    onTicker: boolean,
+    report: Report,
+): void {
     checkEntries(
         metadata.text,
         line,
         metadata.start,
-        METADATA_PROPERTIES,
-        'Metadata',
-        true,
+        onTicker ? TICKER_PROPERTIES : METADATA_PROPERTIES,
+        onTicker ? 'Ticker' : 'Metadata',
+        !onTicker,
         'unknown-metadata-property',
         report,
     );

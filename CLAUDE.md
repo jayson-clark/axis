@@ -103,6 +103,7 @@ about what Desmos _does_ with the result goes in `packages/harness/test`:
 | `config.test.mts`    | every `config { … }` property, read back off `calculator.settings` |
 | `language.test.mts`  | every function and constant in the manifest, plus the operators    |
 | `graph.test.mts`     | folders, tables, notes, imports, and every example script          |
+| `ticker.test.mts`    | the `ticker` statement, and that a playing one actually ticks      |
 | `decompile.test.mts` | decompiling the graph state a real calculator hands back           |
 | `harness.test.mts`   | the harness itself                                                 |
 
@@ -139,6 +140,10 @@ touched is the quick version.
 - **A config option can gate another.** `logScales: false` forces
   `xAxisScale` back to linear, so config properties are tested one at a time
   rather than in one big block.
+- **`actions: auto` cannot see a ticker.** Desmos decides `auto` from the
+  expression list, and the ticker is not in it - so a graph whose only action is
+  its ticker gets actions switched off and simply never ticks. The compiler sets
+  `actions: true` for a script with a ticker for that reason.
 - **Desmos normalises what you give it.** It leaves a bound off the state when
   it matches its own default, and writes a switched-off clickable by omitting
   `enabled` rather than storing `false`. Assert against what it actually

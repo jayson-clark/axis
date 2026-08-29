@@ -33,6 +33,7 @@ import {
     Expression,
     GraphSettings,
     TableColumn,
+    TickerState,
 } from '@axis-dsl/desmos';
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
@@ -56,6 +57,12 @@ export interface DecompileInput {
      * through unchanged.
      */
     graph?: GraphSettings;
+    /**
+     * The graph's ticker, which a state off desmos.com keeps under
+     * `expressions.ticker` — beside the list rather than in it, so it has to be
+     * handed over separately from the expressions.
+     */
+    ticker?: TickerState;
 }
 
 export interface DecompileOptions {
@@ -119,7 +126,8 @@ export function decompileAxis(input: DecompileInput, options: DecompileOptions =
     const indent = options.indent ?? '    ';
     const document = new Document();
 
-    document.add(decompileConfig(input.settings, input.graph, indent));
+    document.add(decompileConfig(input.settings, input.graph, input.ticker !== undefined, indent));
+    document.add(decompileTicker(input.ticker), true);
 
     // A folder's contents are wherever the expression list happens to keep
     // them, so they are gathered up front: the folder is written where it
@@ -343,10 +351,41 @@ function expressionProperties(expression: Expression): string[] {
     return entries;
 }
 
+/**
+ * The `ticker …` statement, or nothing when the graph has no ticker.
+ *
+ * Written near the top, under the config block: a ticker belongs to the graph
+ * rather than to any expression, and where it stands says nothing about when it
+ * runs.
+ */
+function decompileTicker(ticker: TickerState | undefined): string[] {
+    if (!ticker?.handlerLatex) {
+        return [];
+    }
+
+    const entries: string[] = [];
+    if (ticker.minStepLatex !== undefined) {
+        entries.push(`minStep: ${value(convertFromLatex(ticker.minStepLatex), 'coerced')}`);
+    }
+    // Desmos says "not playing" and "not open" by leaving the key off rather
+    // than by storing false, so only the true ones are worth writing.
+    if (ticker.playing === true) {
+        entries.push('playing: true');
+    }
+    if (ticker.open === true) {
+        entries.push('open: true');
+    }
+
+    const handler = formatExpression(convertFromLatex(ticker.handlerLatex));
+
+    return [`ticker ${handler}${trailing(entries)}`];
+}
+
 /** The `config { … }` block for a graph's settings, or nothing when it has none. */
 function decompileConfig(
     settings: CalculatorOptions | undefined,
     graph: GraphSettings | undefined,
+    hasTicker: boolean,
     indent: string,
 ): string[] {
     if (!settings && !graph) {
@@ -356,6 +395,14 @@ function decompileConfig(
     // Manifest order first, so the block reads the way the language documents
     // it; anything else the graph carries follows in the order it is held.
     const record = { ...settings, ...flattenGraph(graph) } as Record<string, unknown>;
+
+    // The inverse of the compiler switching actions on for a ticker: written
+    // back, it would grow a config block the author never wrote, and the
+    // `ticker` statement standing next to it puts the setting there again.
+    if (hasTicker && record.actions === true) {
+        delete record.actions;
+    }
+
     const named = AXIS_CONFIG_PROPERTY_NAMES.filter(name => record[name] !== undefined);
     const rest = Object.keys(record).filter(key => !named.includes(key));
 
@@ -541,15 +588,21 @@ function formatExpression(code: string): string {
 class Document {
     private readonly lines: string[] = [];
 
-    add(statement: string[]): void {
+    /**
+     * `apart` is what puts a blank line either side. It defaults to whether the
+     * statement is a block, which is what the rule was written for; the ticker
+     * asks for it on one line, being preamble rather than one of the statements
+     * the list is made of.
+     */
+    add(statement: string[], apart = statement.length > 1): void {
         if (!statement.length) {
             return;
         }
-        if (statement.length > 1 && this.lines.length && this.lines[this.lines.length - 1] !== '') {
+        if (apart && this.lines.length && this.lines[this.lines.length - 1] !== '') {
             this.lines.push('');
         }
         this.lines.push(...statement);
-        if (statement.length > 1) {
+        if (apart) {
             this.lines.push('');
         }
     }

@@ -30,6 +30,9 @@ export {
 } from './imports';
 export type { ImportStatement, LocatedImport } from './imports';
 
+export { parseTickerStatement, TICKER_KEYWORD } from './ticker';
+export type { TickerStatement } from './ticker';
+
 export { createDebouncer } from './debounce';
 export type { Debouncer } from './debounce';
 

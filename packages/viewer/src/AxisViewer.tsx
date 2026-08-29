@@ -81,8 +81,17 @@ function tabStyle(isActive: boolean): CSSProperties {
 export function AxisViewer({ ref, transport, className, style }: AxisViewerProps) {
     const graphRef = useRef<DesmosGraphHandle>(null);
     const [activeTab, setActiveTab] = useState<AxisViewerTab>('graph');
-    const { apiKey, canSetApiKey, expressions, settings, graph, status, connection, hasConnected } =
-        useViewerState(transport);
+    const {
+        apiKey,
+        canSetApiKey,
+        expressions,
+        settings,
+        graph,
+        ticker,
+        status,
+        connection,
+        hasConnected,
+    } = useViewerState(transport);
     const notice = connectionNotice(connection, hasConnected);
 
     useImperativeHandle(
@@ -100,6 +109,7 @@ export function AxisViewer({ ref, transport, className, style }: AxisViewerProps
         { id: 'compiled', label: 'Compiled', get: () => expressions },
         { id: 'settings', label: 'Settings', get: () => settings ?? null },
         { id: 'graph', label: 'Viewport', get: () => graph ?? null },
+        { id: 'ticker', label: 'Ticker', get: () => ticker ?? null },
         {
             id: 'getExpressions',
             label: 'getExpressions()',
@@ -209,6 +219,7 @@ export function AxisViewer({ ref, transport, className, style }: AxisViewerProps
                     expressions={expressions}
                     settings={settings}
                     graph={graph}
+                    ticker={ticker}
                     renderError={message => (
                         <div
                             style={{

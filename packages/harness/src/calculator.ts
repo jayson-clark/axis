@@ -24,6 +24,7 @@ import {
     ExpressionAnalysis,
     ExpressionState,
     GraphSettings,
+    TickerState,
     GraphState,
     MathBounds,
     Point,
@@ -209,6 +210,7 @@ export class AxisCalculator {
             compiled.expressions,
             { ...compiled.settings, ...options.settings },
             compiled.graph,
+            compiled.ticker,
         );
         return compiled;
     }
@@ -221,9 +223,10 @@ export class AxisCalculator {
         expressions: DesmosExpression[],
         settings?: CalculatorOptions,
         graph?: GraphSettings,
+        ticker?: TickerState,
     ): Promise<void> {
         await this.page.evaluate(
-            ([list, options, graphSettings]) => {
+            ([list, options, graphSettings, tickerState]) => {
                 const { calculator } = window.__axisHarness!;
                 // setState, not setExpressions: folder membership only travels
                 // as part of a whole graph state.
@@ -248,14 +251,22 @@ export class AxisCalculator {
                             ...graphSettings?.viewport,
                         },
                     },
-                    expressions: { list },
+                    // The ticker sits beside the list, not in it, and is left
+                    // off entirely rather than set to nothing: Desmos reads a
+                    // ticker with no handler as no ticker at all.
+                    expressions: { list, ...(tickerState && { ticker: tickerState }) },
                 });
                 // updateSettings has to follow setState, which resets them.
                 if (options) {
                     calculator.updateSettings(options);
                 }
             },
-            [expressions as ExpressionState[], settings ?? null, graph ?? null] as const,
+            [
+                expressions as ExpressionState[],
+                settings ?? null,
+                graph ?? null,
+                ticker ?? null,
+            ] as const,
         );
         await this.settle();
     }

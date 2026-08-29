@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CalculatorOptions, DesmosExpression, GraphSettings } from '@axis-dsl/desmos';
-import { createLocalChannel, type HostTransport, type ViewerTransport } from '@axis-dsl/protocol';
+import type {
+    CalculatorOptions,
+    DesmosExpression,
+    GraphSettings,
+    TickerState,
+} from '@axis-dsl/desmos';
+import {
+    createLocalChannel,
+    type HostTransport,
+    type ViewerMessage,
+    type ViewerTransport,
+} from '@axis-dsl/protocol';
 
 export interface LocalViewerHost {
     apiKey: string | null;
@@ -8,6 +18,8 @@ export interface LocalViewerHost {
     settings?: CalculatorOptions;
     /** The viewport and `squareAxes`, applied through the calculator's state. */
     graph?: GraphSettings;
+    /** The graph's ticker, applied the same way. */
+    ticker?: TickerState;
     /** Shown in the tab strip. */
     status?: string | null;
     /**
@@ -15,6 +27,28 @@ export interface LocalViewerHost {
      * affordance at all, rather than leaving a button that does nothing.
      */
     onRequestApiKey?: () => void;
+}
+
+/** The half of a host's state that describes the graph rather than the page. */
+type CompiledGraph = Pick<LocalViewerHost, 'expressions' | 'settings' | 'graph' | 'ticker'>;
+
+/**
+ * The compiled graph, as the one message that carries it.
+ *
+ * Built here rather than at each of the two places that send it — the first
+ * push when the viewer says `ready`, and the effect that re-sends on every
+ * recompile. They have to agree: whichever one leaves out a part of the
+ * compilation replaces what the other delivered with nothing, and the graph
+ * loses it a render later. The ticker is the part that shows this up, being the
+ * one thing that can change while the expression list does not.
+ */
+function expressionsMessage({
+    expressions,
+    settings,
+    graph,
+    ticker,
+}: CompiledGraph): ViewerMessage {
+    return { command: 'setExpressions', data: { expressions, settings, graph, ticker } };
 }
 
 function pushAll(host: HostTransport, state: LocalViewerHost) {
@@ -27,10 +61,7 @@ function pushAll(host: HostTransport, state: LocalViewerHost) {
             },
         });
     }
-    host.send({
-        command: 'setExpressions',
-        data: { expressions: state.expressions, settings: state.settings, graph: state.graph },
-    });
+    host.send(expressionsMessage(state));
     host.send({ command: 'setStatus', data: { status: state.status ?? null } });
 }
 
@@ -60,7 +91,7 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
         return created;
     });
 
-    const { apiKey, expressions, settings, graph, status } = state;
+    const { apiKey, expressions, settings, graph, ticker, status } = state;
     const canSetApiKey = Boolean(state.onRequestApiKey);
 
     useEffect(() => {
@@ -73,8 +104,8 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
     }, [channel, apiKey, canSetApiKey]);
 
     useEffect(() => {
-        channel.host.send({ command: 'setExpressions', data: { expressions, settings, graph } });
-    }, [channel, expressions, settings, graph]);
+        channel.host.send(expressionsMessage({ expressions, settings, graph, ticker }));
+    }, [channel, expressions, settings, graph, ticker]);
 
     useEffect(() => {
         channel.host.send({ command: 'setStatus', data: { status: status ?? null } });
