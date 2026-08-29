@@ -2,7 +2,7 @@ import * as http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import * as vscode from 'vscode';
-import { compileAxis } from '@axis-dsl/compiler';
+import { compileAxis, createImportResolver, loadImports } from '@axis-dsl/compiler';
 import { AXIS_FILE_EXTENSION } from '@axis-dsl/language/vscode';
 import {
     PREVIEW_PATHS,
@@ -11,6 +11,7 @@ import {
     type ViewerMessage,
 } from '@axis-dsl/protocol';
 import { resolveDesmosApiKey } from './config';
+import { importHost } from './imports';
 
 /**
  * How long a change waits before recompiling. Not a typing debounce - the
@@ -86,6 +87,11 @@ interface Preview {
     uri: vscode.Uri;
     clients: Set<http.ServerResponse>;
     subscriptions: vscode.Disposable[];
+    /**
+     * A watcher per file the script imports, keyed by URI. The set is rebuilt
+     * after every compile, since an edit is what changes which files those are.
+     */
+    imports: Map<string, vscode.Disposable>;
     timer?: ReturnType<typeof setTimeout>;
 }
 
@@ -353,32 +359,78 @@ export class PreviewServer implements vscode.Disposable {
             return existing;
         }
 
-        // The preview reloads on save, not on every keystroke — the same
-        // bargain a web dev server strikes, and the reason it is safe to let a
-        // half-typed line sit in the editor without the graph reacting to it.
-        // The watcher covers saves made outside VSCode; the document event
-        // covers the ones made in it, because a file watcher can lag behind
-        // the editor's own write by enough to feel broken.
+        const preview: Preview = {
+            uri,
+            clients: new Set(),
+            subscriptions: [],
+            imports: new Map(),
+        };
+        preview.subscriptions.push(this.watchFile(uri, preview));
+
+        this.previews.set(key, preview);
+        return preview;
+    }
+
+    /**
+     * Recompile `preview` whenever the file at `uri` changes.
+     *
+     * The preview reloads on save, not on every keystroke — the same bargain a
+     * web dev server strikes, and the reason it is safe to let a half-typed
+     * line sit in the editor without the graph reacting to it. The watcher
+     * covers saves made outside VSCode; the document event covers the ones made
+     * in it, because a file watcher can lag behind the editor's own write by
+     * enough to feel broken.
+     */
+    private watchFile(uri: vscode.Uri, preview: Preview): vscode.Disposable {
+        const key = uri.toString();
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(vscode.Uri.joinPath(uri, '..'), basename(uri)),
         );
 
-        const preview: Preview = {
-            uri,
-            clients: new Set(),
-            subscriptions: [
-                watcher,
-                watcher.onDidChange(() => this.scheduleCompile(preview)),
-                vscode.workspace.onDidSaveTextDocument(document => {
-                    if (document.uri.toString() === key) {
-                        this.scheduleCompile(preview);
-                    }
-                }),
-            ],
-        };
+        const subscriptions = [
+            watcher,
+            watcher.onDidChange(() => this.scheduleCompile(preview)),
+            // A file that was missing and is now there is a change too: it is
+            // how an import that failed to resolve starts resolving.
+            watcher.onDidCreate(() => this.scheduleCompile(preview)),
+            vscode.workspace.onDidSaveTextDocument(document => {
+                if (document.uri.toString() === key) {
+                    this.scheduleCompile(preview);
+                }
+            }),
+        ];
 
-        this.previews.set(key, preview);
-        return preview;
+        return new vscode.Disposable(() =>
+            subscriptions.forEach(subscription => subscription.dispose()),
+        );
+    }
+
+    /**
+     * Watch exactly the files `preview` currently imports.
+     *
+     * A script's imports are part of what it is, so saving one has to reload
+     * the graph just as saving the script does — and an import that is deleted
+     * from the script stops being watched, rather than waking the preview for
+     * the rest of the session.
+     */
+    private watchImports(preview: Preview, imports: string[]): void {
+        const wanted = new Set(imports);
+
+        for (const [key, subscription] of preview.imports) {
+            if (!wanted.has(key)) {
+                subscription.dispose();
+                preview.imports.delete(key);
+            }
+        }
+
+        for (const key of wanted) {
+            // The script itself is already watched; a file that imports it back
+            // does not need watching twice.
+            if (preview.imports.has(key) || key === preview.uri.toString()) {
+                continue;
+            }
+            preview.imports.set(key, this.watchFile(vscode.Uri.parse(key), preview));
+        }
     }
 
     private scheduleCompile(preview: Preview) {
@@ -397,7 +449,19 @@ export class PreviewServer implements vscode.Disposable {
             // shows is what is saved, so an unsaved buffer never leaks into it
             // by way of some other file's save waking this up.
             const bytes = await vscode.workspace.fs.readFile(uri);
-            const { expressions, settings } = compileAxis(new TextDecoder().decode(bytes));
+            const source = new TextDecoder().decode(bytes);
+
+            // Imports are read up front so that compilation itself stays
+            // synchronous, which is what lets the compiler run unchanged in a
+            // browser that has no filesystem to read.
+            const path = uri.toString();
+            const files = await loadImports({ path, source }, importHost);
+            const { expressions, settings, imports } = compileAxis(source, {
+                path,
+                resolveImport: createImportResolver(files, importHost.resolve),
+            });
+
+            this.watchImports(preview, imports);
             this.broadcast(preview, {
                 command: 'setExpressions',
                 data: { expressions, settings },
@@ -433,6 +497,7 @@ export class PreviewServer implements vscode.Disposable {
         this.previews.forEach(preview => {
             clearTimeout(preview.timer);
             preview.subscriptions.forEach(subscription => subscription.dispose());
+            preview.imports.forEach(subscription => subscription.dispose());
             preview.clients.forEach(client => client.end());
         });
         this.previews.clear();

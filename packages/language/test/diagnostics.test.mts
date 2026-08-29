@@ -1,6 +1,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateAxis, type AxisDiagnosticCode } from '../dist/index.js';
+import {
+    findImportStatements,
+    missingImportDiagnostic,
+    validateAxis,
+    type AxisDiagnosticCode,
+} from '../dist/index.js';
 
 const codes = (source: string): AxisDiagnosticCode[] =>
     validateAxis(source).map(diagnostic => diagnostic.code);
@@ -72,6 +77,60 @@ describe('block headers', () => {
 
     test('warns about a second config block', () => {
         assert.deepEqual(codes('config {\n}\nconfig {\n}'), ['duplicate-config']);
+    });
+});
+
+describe('imports', () => {
+    test('accepts an import, with or without a name', () => {
+        assert.deepEqual(codes('import "./a.axis"'), []);
+        assert.deepEqual(codes('import "./a.axis" as "A" # collapsed: true'), []);
+        assert.deepEqual(codes('folder "F" {\n    import "./a.axis"\n}'), []);
+    });
+
+    test('reports an import that is not a quoted path', () => {
+        assert.deepEqual(codes('import ./a.axis'), ['import-syntax']);
+        assert.deepEqual(codes('import "./a.axis" as A'), ['import-syntax']);
+    });
+
+    test('reports an import in a block that cannot hold one', () => {
+        assert.deepEqual(codes('table {\n    import "./a.axis"\n}'), ['import-placement']);
+    });
+
+    test('leaves a name that merely starts with the word alone', () => {
+        assert.deepEqual(codes('important = 1'), []);
+    });
+
+    test('locates the path an import names, for a host to go looking', () => {
+        const [found, ...rest] = findImportStatements('y = x\nimport "./lib/a.axis" as "A"');
+
+        assert.deepEqual(rest, []);
+        assert.equal(found.specifier, './lib/a.axis');
+        assert.equal(found.title, 'A');
+        // The path itself, quotes included - not the whole statement.
+        assert.deepEqual([found.line, found.startCharacter, found.endCharacter], [1, 7, 21]);
+    });
+
+    test('locates an import written inline inside a folder', () => {
+        const [found] = findImportStatements('folder "F" { import "./a.axis" }');
+        assert.equal(found.specifier, './a.axis');
+        assert.deepEqual([found.line, found.startCharacter, found.endCharacter], [0, 20, 30]);
+    });
+
+    test('locates nothing in a malformed import, which is reported as syntax', () => {
+        assert.deepEqual(findImportStatements('import ./a.axis'), []);
+    });
+
+    test('builds the diagnostic a host reports when the file is not there', () => {
+        const [found] = findImportStatements('import "./a.axis"');
+        const diagnostic = missingImportDiagnostic(found);
+
+        assert.equal(diagnostic.code, 'import-not-found');
+        assert.equal(diagnostic.severity, 'error');
+        assert.match(diagnostic.message, /Cannot find "\.\/a\.axis"/);
+        assert.deepEqual(
+            [diagnostic.line, diagnostic.startCharacter, diagnostic.endCharacter],
+            [found.line, found.startCharacter, found.endCharacter],
+        );
     });
 });
 

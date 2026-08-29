@@ -100,6 +100,12 @@ function getKeywordCompletions(): AxisCompletionItem[] {
             snippet: 'table {\n\t${1:x} = [${2:1, 2, 3}],\n\t${3:y} = [${4:1, 4, 9}]\n}',
         },
         {
+            label: 'import',
+            kind: 'keyword',
+            detail: 'Drop another script in, flattened into a folder',
+            snippet: 'import "${1:./file.axis}"',
+        },
+        {
             label: 'config',
             kind: 'keyword',
             detail: 'Configure calculator settings',

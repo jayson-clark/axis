@@ -19,6 +19,10 @@ Read in order, each file assumes only what came before it.
 | `13-interactivity.axis`         | `dragMode`, `onClick` actions, `clickable`                          |
 | `14-colors.axis`                | The palette, named colours, opacity                                 |
 | `15-config.axis`                | Every calculator setting worth knowing                              |
+| `16-imports.axis`               | `import "./file.axis"`, `as "Name"`, and how a file is flattened    |
+
+The files under `lib/` are what `16-imports.axis` imports. They are ordinary
+scripts — each one graphs on its own — that happen to be written to be reused.
 
 ## Showcases
 
