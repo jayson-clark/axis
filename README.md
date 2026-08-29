@@ -39,7 +39,7 @@ than fit comfortably behind a `#`.
 - **Macros** — `macro LERP(a, b, t) …` is substituted away before compiling
 - **Live preview** — the graph updates as you edit
 - **Editor support** — syntax highlighting, completions, formatting, diagnostics,
-  and ctrl-click to open the file an `import` or an `image` names
+  and paths that complete as you type them and open on a ctrl-click
 - **Embeddable** — the compiler, editor and viewer ship as npm packages
 
 ## Quick start
@@ -106,7 +106,8 @@ the importing script's settings winning wherever the two disagree. A file that
 imports itself, however indirectly, is an error rather than a hang.
 
 A preview watches everything the script imports, so saving any file the graph is
-built from reloads it, and ctrl-clicking a path opens the file it names.
+built from reloads it. The path completes as it is typed, a directory at a time,
+and ctrl-clicking it opens the file it names.
 
 ## Tickers
 
@@ -210,8 +211,9 @@ onto a graph.
 
 Png, jpg, gif, webp, svg, bmp, ico, apng and avif are read; anything else is an
 error rather than a file a browser is left to guess at. The editor treats a
-picture exactly as it does an import: it underlines one that is not there, opens
-the file on a ctrl-click, and reloads the preview when one is saved.
+picture exactly as it does an import: it completes the path, underlines one that
+is not there, opens the file on a ctrl-click, and reloads the preview when one
+is saved.
 
 ## Use it in your own app
 

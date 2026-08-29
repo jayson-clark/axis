@@ -21,6 +21,9 @@ export type {
 
 export { getAxisCompletions } from './completions';
 
+export { axisPathCompletions, axisPathContext } from './paths';
+export type { AxisDirectoryEntry, AxisPathContext, AxisPathKind } from './paths';
+
 export {
     AXIS_IMAGE_EXTENSIONS,
     findImageStatements,

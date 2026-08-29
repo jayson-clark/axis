@@ -101,6 +101,13 @@ for (const located of findImportStatements(source)) {
 }
 ```
 
+Completing one is the same split again, with the host in the middle:
+`axisPathContext` says whether the cursor is inside a path and which directory
+it is in, the host reads that directory, and `axisPathCompletions` says which of
+the entries the statement could actually name - a `.axis` for an import, a
+picture for an image, and every directory, since a path is typed a segment at a
+time.
+
 Both are found again for the links a reader clicks: `findAxisLinks` reports
 every path in a document with the kind of statement that wrote it, and the host
 turns that into an address the way that statement resolves one.

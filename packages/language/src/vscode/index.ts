@@ -7,5 +7,11 @@ export { AxisFormattingProvider, AxisRangeFormattingProvider } from './formattin
 export { registerAxisDiagnostics } from './diagnostics';
 export { AxisDocumentLinkProvider } from './links';
 export { registerAxisLanguage } from './register';
-export { fileExists, resolveImageUri, resolveImportUri } from './imports';
+export {
+    fileExists,
+    readDirectory,
+    resolveDirectoryUri,
+    resolveImageUri,
+    resolveImportUri,
+} from './imports';
 export { AXIS_LANGUAGE_ID, AXIS_FILE_EXTENSION, withAxisExtension } from '../index';

@@ -19,6 +19,10 @@ export function registerAxisLanguage(): vscode.Disposable[] {
             '.',
             '(',
             '#',
+            // The two a path is typed with: the quote that opens one, and the
+            // separator that starts each segment after the first.
+            '"',
+            '/',
         ),
         vscode.languages.registerDocumentLinkProvider(selector, new AxisDocumentLinkProvider()),
         vscode.languages.registerDocumentFormattingEditProvider(
