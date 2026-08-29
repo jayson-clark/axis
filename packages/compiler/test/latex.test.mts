@@ -48,10 +48,36 @@ describe('functions', () => {
         assert.equal(convertToLatex('mean(L)'), '\\operatorname{mean}\\left(L\\right)');
     });
 
-    test('has its own forms for sqrt, nthroot and abs', () => {
+    test('has its own forms for sqrt and nthroot', () => {
         assert.equal(convertToLatex('sqrt(x)'), '\\sqrt{x}');
         assert.equal(convertToLatex('nthroot(x, 3)'), '\\sqrt[3]{x}');
-        assert.equal(convertToLatex('abs(y)'), '|y|');
+    });
+
+    test('leaves abs a function of its own', () => {
+        assert.equal(convertToLatex('abs(x)'), '\\operatorname{abs}\\left(x\\right)');
+    });
+
+    test('closes a shaped form on its own parenthesis, not a nested one', () => {
+        assert.equal(convertToLatex('sqrt(sin(x))'), '\\sqrt{\\sin\\left(x\\right)}');
+        assert.equal(convertToLatex('nthroot(sqrt(x + 1), 3)'), '\\sqrt[3]{\\sqrt{x+1}}');
+    });
+
+    test('leaves a shaped form it cannot read alone', () => {
+        assert.equal(convertToLatex('nthroot(x)'), '\\operatorname{nthroot}\\left(x\\right)');
+    });
+});
+
+describe('absolute value', () => {
+    test('sizes a pair of bars', () => {
+        assert.equal(convertToLatex('y = |x|'), 'y=\\left|x\\right|');
+    });
+
+    test('pairs each set of bars in turn', () => {
+        assert.equal(convertToLatex('|x| + |y|'), '\\left|x\\right|+\\left|y\\right|');
+    });
+
+    test('sizes the bars around a tall expression', () => {
+        assert.equal(convertToLatex('|x / 2|'), '\\left|\\frac{x}{2}\\right|');
     });
 });
 
