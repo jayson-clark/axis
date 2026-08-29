@@ -6,6 +6,7 @@ import { insertMissingSeparators, metadataBlockLines, removeRedundantSeparators 
 import { bracketDelta, leadingClosers } from './brackets';
 import { splitTopLevel, splitTrailingMetadata } from './metadata';
 import { matchingBracket, OPENERS, scanCode } from './scan';
+import { MacroError, parseMacroDefinition } from './macros';
 import { parseTickerStatement } from './ticker';
 import { AxisFormattingOptions } from './types';
 
@@ -292,6 +293,15 @@ function formatLineContent(line: string): string {
         return ticker.handler ? `ticker ${formatLineContent(ticker.handler)}` : line;
     }
 
+    // A macro is a keyword, a name, a parameter list and then whatever it
+    // expands to - which is spaced as the statement it will become, since that
+    // is what it is read as everywhere it is used.
+    const macro = readMacro(line);
+    if (macro) {
+        const parameters = macro.parameters ? `(${macro.parameters.join(', ')})` : '';
+        return `macro ${macro.name}${parameters} ${formatMacroBody(macro.body)}`;
+    }
+
     // Trailing `# key: value` metadata formats differently from the expression
     // it annotates. Where one ends and the other begins is splitTrailingMetadata's
     // decision, the same one the compiler makes - so a `#` that opens no
@@ -312,6 +322,49 @@ function formatLineContent(line: string): string {
  * left as it was written, since what looks like an operator inside one may be
  * text - the `-` of a label, the `:` of a note.
  */
+/**
+ * A macro definition, or undefined when the line is not one - including when it
+ * is one that does not parse, which is most of them while it is being typed.
+ * Formatting leaves those exactly as they are for the diagnostics to explain.
+ */
+function readMacro(line: string) {
+    try {
+        return parseMacroDefinition(line);
+    } catch (error) {
+        if (error instanceof MacroError) {
+            return undefined;
+        }
+        throw error;
+    }
+}
+
+/**
+ * Space a macro's body as the statement it will become - or, where the body is
+ * a run of properties, as the run it will become.
+ *
+ * A body opening with a `#` is metadata and nothing else, which the expression
+ * rules would take apart: there is no statement in front of the `#` for them to
+ * space. The `#{ … }` spelling settles to the `# …` one on the way, since that
+ * is what the compiler folds it to before it reads the line anyway.
+ */
+function formatMacroBody(body: string): string {
+    if (!body.startsWith('#')) {
+        return formatLineContent(body);
+    }
+
+    // A body that opens a `#{ … }` block and does not close it is the first line
+    // of a definition the rest of the block finishes - which is how wrapping
+    // writes one too long for its line. There is nothing on this line to space.
+    if (bracketDelta(body) > 0) {
+        return body;
+    }
+
+    const rest = body.slice(1).trim();
+    const braced = rest.startsWith('{') && rest.endsWith('}');
+
+    return `# ${formatEntries(braced ? rest.slice(1, -1) : rest)}`;
+}
+
 function formatEntries(text: string): string {
     return text
         .replace(/\s*:\s*/g, ': ')

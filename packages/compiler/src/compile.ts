@@ -10,6 +10,8 @@
 //   - `ticker a -> a + 1` is the graph's ticker, which sits beside the list
 //   - `"Text"` on its own is a note
 //   - `import "other.axis"` drops another script in, flattened into a folder
+//   - `macro NAME(a, b) …` is substituted into every statement that uses it,
+//     before any of the above sees a line
 //   - a block written inline reads the same as one spread over lines, because
 //     @axis-dsl/language flattens it first
 
@@ -33,18 +35,23 @@ import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     AXIS_GRAPH_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
+    defineMacro,
     expandBlockEntries,
+    expandMacros,
+    findMacroDefinitions,
     foldMetadataBlocks,
     IMPORT_KEYWORD,
     importTitle,
     joinContinuedLines,
+    MacroDefinition,
     parseImportStatement,
+    parseMacroDefinition,
     parseTickerStatement,
     splitTopLevel,
     splitTrailingMetadata,
     unescapeString,
 } from '@axis-dsl/language';
-import { ResolveImport } from './imports';
+import { findImports, ResolveImport } from './imports';
 import { convertToLatex } from './latex';
 
 export interface CompilationResult {
@@ -144,6 +151,18 @@ function defined<T extends object>(source: T): T {
 }
 
 /**
+ * Settle a file's layout into one statement per line.
+ *
+ * The order matters and is the language's, not this file's: a `#{ … }` block is
+ * collapsed onto the statement it annotates, then a statement split across a
+ * bracket is folded back together, then a block written inline is spread back
+ * out.
+ */
+function flatten(source: string): string[] {
+    return expandBlockEntries(joinContinuedLines(foldMetadataBlocks(source)));
+}
+
+/**
  * What one file contributes, and where its expressions land.
  *
  * A file compiles the same way whether it is the script itself or something the
@@ -182,6 +201,32 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     // the entry script included, since a file can import itself.
     const chain: string[] = options.path === undefined ? [] : [options.path];
 
+    // Every macro reachable from the entry script, gathered before a statement
+    // is looked at. Macros are a preprocessor, not a scope: hoisting them means
+    // a `macro` line reads the same wherever it is written, and a file that
+    // exists to define them can be imported at the bottom of a script and still
+    // be in scope at the top.
+    const macros = new Map<string, MacroDefinition>();
+
+    /** Collect one file's macros, and those of everything it imports. */
+    function collectMacros(source: string, path: string, visited: Set<string>): void {
+        for (const definition of findMacroDefinitions(source)) {
+            defineMacro(macros, definition);
+        }
+
+        for (const specifier of findImports(source)) {
+            const resolved = options.resolveImport?.(specifier, path);
+
+            // An import that does not resolve, or that closes a cycle, is not
+            // this pass's business: `emitImport` reaches it in a moment and
+            // reports it against the statement that wrote it.
+            if (resolved && !visited.has(resolved.path)) {
+                visited.add(resolved.path);
+                collectMacros(resolved.source, resolved.path, visited);
+            }
+        }
+    }
+
     /**
      * Compile one file's statements into `expressions`.
      *
@@ -190,7 +235,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
      * leaving exactly one statement per line either way.
      */
     function emitFile(source: string, scope: FileScope): void {
-        const lines = expandBlockEntries(joinContinuedLines(foldMetadataBlocks(source)));
+        const lines = flatten(substituteMacros(flatten(source)));
 
         let currentFolderId = scope.folderId;
         let currentTable: { id: string; columns: TableColumn[] } | undefined;
@@ -385,6 +430,41 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     }
 
     /**
+     * Take the macro definitions out and substitute the rest.
+     *
+     * The result is run through {@link flatten} a second time, because an
+     * expansion is source like any other: a macro standing for a `#{ … }` block
+     * or for a `folder "A" { … }` has to be read as one, and those are layout
+     * the passes settle rather than anything the statement loop below knows
+     * about. Flattening is idempotent, so the lines that held no macro at all
+     * come out of the second pass exactly as they went in.
+     */
+    function substituteMacros(lines: string[]): string {
+        const statements: string[] = [];
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+
+            // A comment is text, and `parseMacroDefinition` would read a
+            // commented-out definition as a live one.
+            if (trimmed.startsWith('//')) {
+                statements.push(line);
+                continue;
+            }
+
+            // A definition was collected before any of this and emits nothing
+            // itself. Reading it again is what reports one that is malformed.
+            if (parseMacroDefinition(trimmed)) {
+                continue;
+            }
+
+            statements.push(expandMacros(line, macros));
+        }
+
+        return statements.join('\n');
+    }
+
+    /**
      * Drop an imported file in, flattened into a folder of its own.
      *
      * An import that is already inside a folder joins that folder instead of
@@ -443,7 +523,9 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
         chain.pop();
     }
 
-    emitFile(script, { path: options.path ?? '', flatten: false });
+    const entry = options.path ?? '';
+    collectMacros(script, entry, new Set([entry]));
+    emitFile(script, { path: entry, flatten: false });
     unwrapActionRuns(expressions);
 
     const ticker = rootTicker ?? importedTicker;
