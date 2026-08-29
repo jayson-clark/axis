@@ -25,6 +25,21 @@ export interface FunctionDefinition {
     latex?: string;
 }
 
+/**
+ * A bare word Desmos writes as `\operatorname{…}` without taking a call.
+ *
+ * `width` and `height` read the viewport; `for` joins a list comprehension to
+ * the variable it runs over. None of them is a function - there are no
+ * parentheses to write - and none is a constant, because a constant that opens
+ * a longer name carries the rest as a subscript, and `heightMap` is a variable
+ * somebody named rather than the viewport height subscripted by `Map`.
+ */
+export interface OperatorDefinition {
+    name: string;
+    detail: string;
+    category: 'viewport' | 'list';
+}
+
 /** A built-in constant: a Greek letter, a mathematical constant, a boolean. */
 export interface ConstantDefinition {
     name: string;
@@ -289,6 +304,12 @@ export const AXIS_MANIFEST = {
             snippet: 'discretedist(${1:values}, ${2:weights})',
             category: 'statistics',
         },
+        {
+            name: 'random',
+            detail: 'Random number in [0, 1); random(n) gives a list of n, random(list) shuffles it',
+            snippet: 'random(${1:})',
+            category: 'statistics',
+        },
 
         // List generation
         {
@@ -382,6 +403,16 @@ export const AXIS_MANIFEST = {
             category: 'combinatorics',
         },
     ] satisfies FunctionDefinition[],
+
+    operators: [
+        { name: 'width', detail: 'Viewport width, in graph units', category: 'viewport' },
+        { name: 'height', detail: 'Viewport height, in graph units', category: 'viewport' },
+        {
+            name: 'for',
+            detail: 'List comprehension: [i ^ 2 for i = [1, ..., 10]]',
+            category: 'list',
+        },
+    ] satisfies OperatorDefinition[],
 
     constants: [
         // Greek letters
@@ -1090,6 +1121,11 @@ export const AXIS_MANIFEST = {
 /** Every built-in function name, longest first so `arcsin` beats `arc`. */
 export const AXIS_FUNCTION_NAMES: readonly string[] = AXIS_MANIFEST.functions
     .map(fn => fn.name)
+    .sort((a, b) => b.length - a.length);
+
+/** Every bare operator name, longest first for the same reason. */
+export const AXIS_OPERATOR_NAMES: readonly string[] = AXIS_MANIFEST.operators
+    .map(operator => operator.name)
     .sort((a, b) => b.length - a.length);
 
 /** Every built-in constant name, longest first so `alpha` beats `a`. */

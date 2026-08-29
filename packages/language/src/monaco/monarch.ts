@@ -5,6 +5,7 @@ import {
     AXIS_FUNCTION_NAMES,
     AXIS_MANIFEST,
     AXIS_METADATA_PROPERTY_NAMES,
+    AXIS_OPERATOR_NAMES,
 } from '../index';
 
 /**
@@ -22,7 +23,7 @@ export function createAxisMonarchLanguage(): monaco.languages.IMonarchLanguage {
 
         keywords: [...AXIS_MANIFEST.keywords],
         functions: [...AXIS_FUNCTION_NAMES],
-        constants: [...AXIS_CONSTANT_NAMES],
+        constants: [...AXIS_CONSTANT_NAMES, ...AXIS_OPERATOR_NAMES],
         configProperties: [...AXIS_CONFIG_PROPERTY_NAMES],
         metadataProperties: [...AXIS_METADATA_PROPERTY_NAMES],
 

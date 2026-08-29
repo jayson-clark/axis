@@ -13,7 +13,7 @@ config {
 
 folder "Half planes" {
     y > 2x - 3 # color: #c74440, fillOpacity: 0.2,
-    y < - x + 4 # color: #2d70b3, fillOpacity: 0.2,
+    y < -x + 4 # color: #2d70b3, fillOpacity: 0.2,
     "Where both hold, the shading doubles up."
 }
 

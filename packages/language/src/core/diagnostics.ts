@@ -38,6 +38,7 @@ export type AxisDiagnosticCode =
     | 'mismatched-bracket'
     | 'missing-comma'
     | 'block-header'
+    | 'empty-folder-name'
     | 'import-syntax'
     | 'import-placement'
     | 'import-not-found'
@@ -412,6 +413,21 @@ function checkHeader(segment: BlockSegment, block: BlockFrame, report: Report): 
             );
             return;
         }
+        // Desmos has nothing to label a nameless folder with, and the compiler
+        // will not read one as a folder at all - `folder "" {` falls through
+        // and compiles as an expression, which is a graph nobody meant.
+        if (/^folder\s+""\s*\{$/.test(text)) {
+            report(
+                'error',
+                'empty-folder-name',
+                'A folder needs a name - Desmos has nothing to label an empty one with.',
+                line,
+                start,
+                end,
+            );
+            return;
+        }
+
         for (let frame = block.parent; frame; frame = frame.parent) {
             if (frame.kind === 'folder') {
                 report(

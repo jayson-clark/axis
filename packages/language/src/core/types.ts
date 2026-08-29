@@ -30,4 +30,9 @@ export interface AxisPosition {
 export interface AxisFormattingOptions {
     tabSize: number;
     insertSpaces: boolean;
+    /**
+     * Column the formatter breaks a long line at, counting its indentation.
+     * `0` never breaks a line; left out, the formatter picks its own default.
+     */
+    maxLineLength?: number;
 }
