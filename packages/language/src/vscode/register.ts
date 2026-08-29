@@ -3,6 +3,7 @@ import { AXIS_LANGUAGE_ID } from '../index';
 import { AxisCompletionProvider } from './completions';
 import { AxisFormattingProvider, AxisRangeFormattingProvider } from './formatting';
 import { registerAxisDiagnostics } from './diagnostics';
+import { AxisDocumentLinkProvider } from './links';
 
 /**
  * Register every Axis language provider. Returns the disposables so the caller
@@ -19,6 +20,7 @@ export function registerAxisLanguage(): vscode.Disposable[] {
             '(',
             '#',
         ),
+        vscode.languages.registerDocumentLinkProvider(selector, new AxisDocumentLinkProvider()),
         vscode.languages.registerDocumentFormattingEditProvider(
             selector,
             new AxisFormattingProvider(),

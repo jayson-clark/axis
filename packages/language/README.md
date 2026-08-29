@@ -101,6 +101,10 @@ for (const located of findImportStatements(source)) {
 }
 ```
 
+Both are found again for the links a reader clicks: `findAxisLinks` reports
+every path in a document with the kind of statement that wrote it, and the host
+turns that into an address the way that statement resolves one.
+
 `image "./beach.png"` is the same bargain — `findImageStatements` and
 `missingImageDiagnostic` — with one question first: `isImageUrl` says whether
 the statement names a file to go looking for at all, since an `https:` or
@@ -117,22 +121,22 @@ compiler all read from it, so a function is added in one place.
 
 ## API
 
-| Export                                                                                                         |                                                                                                    |
-| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `validateAxis(text)`                                                                                           | Syntax diagnostics, in document order                                                              |
-| `formatAxisCode(text, options)`                                                                                | Re-indent and normalise a whole document                                                           |
-| `formatAxisCodeWithIndent(...)` / `indentLevelOf(...)`                                                         | The same, for a fragment at a known depth (range formatting)                                       |
-| `getAxisCompletions(text, position)`                                                                           | Completions in context                                                                             |
-| `missingImportDiagnostic(located)` / `missingImageDiagnostic(located)`                                         | The diagnostic for an import or image whose file is not there                                      |
-| `findImportStatements` / `parseImportStatement` / `importTitle` / `withAxisExtension`                          | Reading `import` statements                                                                        |
-| `findImageStatements` / `parseImageStatement` / `isImageUrl` / `imageMediaType` / `AXIS_IMAGE_EXTENSIONS`      | Reading `image` statements, and what they name                                                     |
-| `parseMacroDefinition` / `findMacroDefinitions` / `defineMacro` / `expandMacros`                               | Reading and substituting `macro` definitions                                                       |
-| `splitTopLevel` / `splitTrailingMetadata` / `foldMetadataBlocks` / `joinContinuedLines` / `expandBlockEntries` | The layout services the compiler shares, in the order it runs them                                 |
-| `AXIS_MANIFEST` and the `AXIS_*_NAMES` sets                                                                    | Every name the language knows                                                                      |
-| `getFunctionLatex(name)` / `AXIS_LATEX_FOR_CONSTANT`                                                           | What the compiler emits for a name                                                                 |
-| `AXIS_LANGUAGE_ID` / `AXIS_FILE_EXTENSION` / `AXIS_LANGUAGE_CONFIGURATION`                                     | The identifiers a host registers                                                                   |
-| `createDebouncer(ms)`                                                                                          | The debouncer both editor bindings validate on                                                     |
-| `/monaco` → `registerAxisLanguage(monaco)`                                                                     | Plus `createAxisMonarchLanguage` and the individual `register*` calls                              |
-| `/vscode` → `registerAxisLanguage()`                                                                           | Plus the providers, `registerAxisDiagnostics`, `resolveImportUri`, `resolveImageUri`, `fileExists` |
+| Export                                                                                                         |                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `validateAxis(text)`                                                                                           | Syntax diagnostics, in document order                                                                                          |
+| `formatAxisCode(text, options)`                                                                                | Re-indent and normalise a whole document                                                                                       |
+| `formatAxisCodeWithIndent(...)` / `indentLevelOf(...)`                                                         | The same, for a fragment at a known depth (range formatting)                                                                   |
+| `getAxisCompletions(text, position)`                                                                           | Completions in context                                                                                                         |
+| `missingImportDiagnostic(located)` / `missingImageDiagnostic(located)`                                         | The diagnostic for an import or image whose file is not there                                                                  |
+| `findImportStatements` / `parseImportStatement` / `importTitle` / `withAxisExtension`                          | Reading `import` statements                                                                                                    |
+| `findImageStatements` / `parseImageStatement` / `isImageUrl` / `imageMediaType` / `AXIS_IMAGE_EXTENSIONS`      | Reading `image` statements, and what they name                                                                                 |
+| `parseMacroDefinition` / `findMacroDefinitions` / `defineMacro` / `expandMacros`                               | Reading and substituting `macro` definitions                                                                                   |
+| `splitTopLevel` / `splitTrailingMetadata` / `foldMetadataBlocks` / `joinContinuedLines` / `expandBlockEntries` | The layout services the compiler shares, in the order it runs them                                                             |
+| `AXIS_MANIFEST` and the `AXIS_*_NAMES` sets                                                                    | Every name the language knows                                                                                                  |
+| `getFunctionLatex(name)` / `AXIS_LATEX_FOR_CONSTANT`                                                           | What the compiler emits for a name                                                                                             |
+| `AXIS_LANGUAGE_ID` / `AXIS_FILE_EXTENSION` / `AXIS_LANGUAGE_CONFIGURATION`                                     | The identifiers a host registers                                                                                               |
+| `createDebouncer(ms)`                                                                                          | The debouncer both editor bindings validate on                                                                                 |
+| `/monaco` → `registerAxisLanguage(monaco)`                                                                     | Plus `createAxisMonarchLanguage` and the individual `register*` calls                                                          |
+| `/vscode` → `registerAxisLanguage()`                                                                           | Plus the providers, `registerAxisDiagnostics`, `AxisDocumentLinkProvider`, `resolveImportUri`, `resolveImageUri`, `fileExists` |
 
 MIT
