@@ -186,6 +186,94 @@ describe('the ticker', () => {
     });
 });
 
+describe('macros', () => {
+    test('substitutes an object-like macro and emits nothing for the definition', () => {
+        const expressions = compile('macro TAU 6.28\ny = sin(TAU * x)');
+        assert.equal(expressions.length, 1);
+        assert.equal((expressions[0] as Expression).latex, 'y=\\sin\\left(6.28\\cdot x\\right)');
+    });
+
+    test('substitutes a call with the arguments it was given', () => {
+        const expression = only<Expression>(
+            'macro LERP(a, b, t) a + (b - a) * t\ny = LERP(0, 10, x)',
+        );
+        assert.equal(expression.latex, 'y=0+\\left(10-0\\right)\\cdot x');
+    });
+
+    test('is in scope above its own definition, since definitions are hoisted', () => {
+        const expression = only<Expression>('y = TAU\nmacro TAU 6.28');
+        assert.equal(expression.latex, 'y=6.28');
+    });
+
+    test('expands into a statement of any kind, metadata included', () => {
+        const expression = only<Expression>('macro CURVE y = x^2 # color: red\nCURVE');
+        assert.equal(expression.latex, 'y=x^2');
+        assert.equal(expression.color, 'red');
+    });
+
+    test('expands into the ticker, which is read after substitution', () => {
+        const { ticker } = compileAxis('macro STEP(v) v -> v + 1\nticker STEP(a)');
+        assert.equal(ticker?.handlerLatex, 'a\\to a+1');
+    });
+
+    test('expands inside a folder and a table', () => {
+        const expressions = compile(
+            'macro ROW [1, 2, 3]\nfolder "A" {\n    table {\n        x = ROW\n    }\n}',
+        );
+        assert.equal((expressions[1] as Table).columns[0].values?.join(','), '1,2,3');
+    });
+
+    test('brackets an argument spliced against a coefficient', () => {
+        // `2n` with `n` given as `1` is two, not twenty-one.
+        assert.equal(only<Expression>('macro D(n) 2n\ny = D(1)').latex, 'y=2\\left(1\\right)');
+    });
+
+    test('expands into a run of metadata, however the run is spelt', () => {
+        // The `#` may be on the statement or in the body, and the body may be
+        // the `#{ … }` spelling of the same run: an expansion is source, and is
+        // read by the same passes that read what was written by hand.
+        for (const source of [
+            'macro STYLE color: blue\n(0, 0) # STYLE',
+            'macro STYLE {color: blue}\n(0, 0) #STYLE',
+            'macro STYLE #{color: blue}\n(0, 0) STYLE',
+            'macro STYLE # color: blue\n(0, 0) STYLE',
+        ]) {
+            assert.equal(only<Expression>(source).color, 'blue', source);
+        }
+    });
+
+    test('expands into a block, which is then read as one', () => {
+        const [folder, expression] = compile('macro BOX folder "A" { y = x }\nBOX') as [
+            Folder,
+            Expression,
+        ];
+        assert.equal(folder.title, 'A');
+        assert.equal(expression.folderId, folder.id);
+    });
+
+    test('expands into a table column', () => {
+        const table = only<Table>('macro ROW x = [1, 2]\ntable {\n    ROW\n}');
+        assert.deepEqual(table.columns[0].values, ['1', '2']);
+    });
+
+    test('leaves a macro name inside a note as the word it is', () => {
+        const note = only<Note>('macro TAU 6.28\n"TAU is a macro"');
+        assert.equal(note.text, 'TAU is a macro');
+    });
+
+    test('a variable called macro is still a variable', () => {
+        assert.equal(only<Expression>('macro = 3').latex, 'm_{acro}=3');
+    });
+
+    test('refuses a call the definition cannot take', () => {
+        assert.throws(() => compile('macro F(a) a\ny = F(1, 2)'), /takes 1 argument/);
+    });
+
+    test('refuses a definition it cannot read', () => {
+        assert.throws(() => compile('macro F'), /has no body/);
+    });
+});
+
 describe('a metadata block', () => {
     test('reads as the run it is the other spelling of', () => {
         const run = compileAxis('y = x # color: #c74440, lineWidth: 3, lineStyle: DASHED');
