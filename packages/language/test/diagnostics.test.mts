@@ -1,7 +1,11 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    findImageStatements,
     findImportStatements,
+    imageMediaType,
+    isImageUrl,
+    missingImageDiagnostic,
     missingImportDiagnostic,
     validateAxis,
     type AxisDiagnosticCode,
@@ -266,4 +270,53 @@ test('a clean document reports nothing', () => {
         ),
         [],
     );
+});
+
+describe('images', () => {
+    test('locates the file an image names, for a host to go looking', () => {
+        const [found, ...rest] = findImageStatements('y = x\nimage "./beach.png" # width: 4');
+
+        assert.deepEqual(rest, []);
+        assert.equal(found.url, './beach.png');
+        // The URL itself, quotes included - not the whole statement.
+        assert.deepEqual([found.line, found.startCharacter, found.endCharacter], [1, 6, 19]);
+    });
+
+    test('locates an image written inline inside a folder', () => {
+        const [found] = findImageStatements('folder "F" { image "./a.png" }');
+        assert.equal(found.url, './a.png');
+        assert.deepEqual([found.line, found.startCharacter, found.endCharacter], [0, 19, 28]);
+    });
+
+    test('locates nothing in a line that merely mentions the word', () => {
+        assert.deepEqual(findImageStatements('image = 5\n"an image of a beach"'), []);
+    });
+
+    test('tells a URL Desmos can load from a path a host has to read', () => {
+        assert.equal(isImageUrl('https://example.com/a.png'), true);
+        assert.equal(isImageUrl('data:image/png;base64,AQID'), true);
+        assert.equal(isImageUrl('//example.com/a.png'), true);
+        assert.equal(isImageUrl('./beach.png'), false);
+        assert.equal(isImageUrl('/assets/beach.png'), false);
+    });
+
+    test('knows what a file holds by its extension, and says nothing about the rest', () => {
+        assert.equal(imageMediaType('a/b/beach.PNG'), 'image/png');
+        assert.equal(imageMediaType('beach.jpg'), 'image/jpeg');
+        assert.equal(imageMediaType('beach.txt'), undefined);
+        assert.equal(imageMediaType('beach'), undefined);
+    });
+
+    test('builds the diagnostic a host reports when the file is not there', () => {
+        const [found] = findImageStatements('image "./beach.png"');
+        const diagnostic = missingImageDiagnostic(found);
+
+        assert.equal(diagnostic.code, 'image-not-found');
+        assert.equal(diagnostic.severity, 'error');
+        assert.match(diagnostic.message, /Cannot find image "\.\/beach\.png"/);
+        assert.deepEqual(
+            [diagnostic.line, diagnostic.startCharacter, diagnostic.endCharacter],
+            [found.line, found.startCharacter, found.endCharacter],
+        );
+    });
 });

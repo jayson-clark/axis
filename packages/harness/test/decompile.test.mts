@@ -100,6 +100,7 @@ describe('a graph read back off the calculator', { skip }, () => {
             await calculator().load(script.source, {
                 path: script.path,
                 resolveImport: script.resolveImport,
+                resolveImage: script.resolveImage,
             });
 
             const state = await calculator().getState();

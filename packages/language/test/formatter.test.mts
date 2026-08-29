@@ -94,6 +94,23 @@ describe('formatAxisCode', () => {
         assert.equal(format('import "./lib/a.axis" as "A"'), 'import "./lib/a.axis" as "A"');
     });
 
+    test('leaves the URL an image names alone', () => {
+        // The slashes are a path's, not division's, whether the picture is a
+        // file beside the script or an address.
+        assert.equal(
+            format('image "./images/wave.png" # width:4'),
+            'image "./images/wave.png" # width: 4',
+        );
+        assert.equal(
+            format('image "https://example.com/a.png"'),
+            'image "https://example.com/a.png"',
+        );
+    });
+
+    test('still spaces a variable that happens to be called image', () => {
+        assert.equal(format('image=2*x'), 'image = 2 * x');
+    });
+
     test('indents an import inside a folder', () => {
         assert.equal(
             format('folder "F" {\nimport "./a.axis"\n}'),
