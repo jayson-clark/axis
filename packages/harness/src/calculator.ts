@@ -23,6 +23,7 @@ import {
     DesmosNamespace,
     ExpressionAnalysis,
     ExpressionState,
+    GraphSettings,
     GraphState,
     MathBounds,
     Point,
@@ -204,10 +205,11 @@ export class AxisCalculator {
     /** Compile `source` and apply it. The compilation result is handed back. */
     async load(source: string, options: LoadOptions = {}): Promise<CompilationResult> {
         const compiled = compileAxis(source, options);
-        await this.setExpressions(compiled.expressions, {
-            ...compiled.settings,
-            ...options.settings,
-        });
+        await this.setExpressions(
+            compiled.expressions,
+            { ...compiled.settings, ...options.settings },
+            compiled.graph,
+        );
         return compiled;
     }
 
@@ -218,21 +220,32 @@ export class AxisCalculator {
     async setExpressions(
         expressions: DesmosExpression[],
         settings?: CalculatorOptions,
+        graph?: GraphSettings,
     ): Promise<void> {
         await this.page.evaluate(
-            ([list, options]) => {
+            ([list, options, graphSettings]) => {
                 const { calculator } = window.__axisHarness!;
                 // setState, not setExpressions: folder membership only travels
                 // as part of a whole graph state.
+                //
+                // The viewport defaults to whatever the calculator is already
+                // showing, since setState would otherwise reset the framing
+                // between two loads in the same page — a script that names its
+                // own bounds overrides that.
                 const bounds = calculator.graphpaperBounds.mathCoordinates;
                 calculator.setState({
                     version: 11,
+                    // See DesmosGraph.tsx: a point style is the author's, on a
+                    // movable point as much as a fixed one.
+                    doNotMigrateMovablePointStyle: true,
                     graph: {
+                        ...graphSettings,
                         viewport: {
                             xmin: bounds.left,
                             xmax: bounds.right,
                             ymin: bounds.bottom,
                             ymax: bounds.top,
+                            ...graphSettings?.viewport,
                         },
                     },
                     expressions: { list },
@@ -242,7 +255,7 @@ export class AxisCalculator {
                     calculator.updateSettings(options);
                 }
             },
-            [expressions as ExpressionState[], settings ?? null] as const,
+            [expressions as ExpressionState[], settings ?? null, graph ?? null] as const,
         );
         await this.settle();
     }

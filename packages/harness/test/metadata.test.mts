@@ -39,6 +39,14 @@ const PROPERTIES: Record<string, PropertyCase> = {
     lineOpacity: { source: 'y = x # lineOpacity: 0.3', expected: { lineOpacity: '0.3' } },
     pointStyle: { source: '(1, 2) # pointStyle: OPEN', expected: { pointStyle: 'OPEN' } },
     pointSize: { source: '(1, 2) # pointSize: 20', expected: { pointSize: '20' } },
+    // Only a *draggable* point keeps this. Desmos drops it from a point whose
+    // coordinates are literals, since such a point can never be moved — which
+    // is why the case defines the coordinates as free variables first.
+    movablePointSize: {
+        source: 'a = 1\nb = 2\n(a, b) # movablePointSize: 20',
+        expected: { movablePointSize: '20' },
+        at: 2,
+    },
     pointOpacity: { source: '(1, 2) # pointOpacity: 0.4', expected: { pointOpacity: '0.4' } },
     fillOpacity: { source: 'y < x # fillOpacity: 0.7', expected: { fillOpacity: '0.7' } },
     hidden: { source: 'y = x # hidden: true', expected: { hidden: true } },
@@ -129,6 +137,32 @@ describe('expression metadata', { skip }, () => {
             assert.deepEqual(withoutPlayDirection(actual), expected);
         });
     }
+
+    test('a draggable point is drawn the way the script asked, not Desmos’ way', async () => {
+        // Desmos draws a point it decides is movable with a style and a size of
+        // its own: the author's style goes into a stash, and `pointSize` is
+        // ignored in favour of `movablePointSize`. So a big square point
+        // silently arrives as a small round one the moment its coordinates turn
+        // out to be draggable — which is what makes this worth pinning.
+        //
+        // Neither is anything a script should have to know. Axis applies every
+        // graph with `doNotMigrateMovablePointStyle` for the style, and
+        // compiles `pointSize` into both sizes; the script below says neither.
+        await calculator().load('a = 1\nb = 2\n(a, b) # pointStyle: SQUARE, pointSize: 30');
+        const list = (await calculator().getState()).expressions?.list ?? [];
+        const point = list.find(entry => (entry as Expression).latex?.includes('a,b')) as Record<
+            string,
+            unknown
+        >;
+
+        assert.ok(point, 'the point is not in the graph at all');
+        // The style comes back under the stashed key: that is simply where a
+        // movable point's style lives, and undoing that is an importer's job.
+        assert.equal(point.__stashed_V12PointStyle ?? point.pointStyle, 'SQUARE');
+        // Desmos drops this from a point it does not consider movable, so it
+        // surviving is also the assertion that the point still is one.
+        assert.equal(point.movablePointSize, '30');
+    });
 });
 
 /**

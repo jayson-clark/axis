@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CalculatorOptions, DesmosExpression } from '@axis-dsl/desmos';
+import type { CalculatorOptions, DesmosExpression, GraphSettings } from '@axis-dsl/desmos';
 import { createLocalChannel, type HostTransport, type ViewerTransport } from '@axis-dsl/protocol';
 
 export interface LocalViewerHost {
     apiKey: string | null;
     expressions: DesmosExpression[];
     settings?: CalculatorOptions;
+    /** The viewport and `squareAxes`, applied through the calculator's state. */
+    graph?: GraphSettings;
     /** Shown in the tab strip. */
     status?: string | null;
     /**
@@ -27,7 +29,7 @@ function pushAll(host: HostTransport, state: LocalViewerHost) {
     }
     host.send({
         command: 'setExpressions',
-        data: { expressions: state.expressions, settings: state.settings },
+        data: { expressions: state.expressions, settings: state.settings, graph: state.graph },
     });
     host.send({ command: 'setStatus', data: { status: state.status ?? null } });
 }
@@ -58,7 +60,7 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
         return created;
     });
 
-    const { apiKey, expressions, settings, status } = state;
+    const { apiKey, expressions, settings, graph, status } = state;
     const canSetApiKey = Boolean(state.onRequestApiKey);
 
     useEffect(() => {
@@ -71,8 +73,8 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
     }, [channel, apiKey, canSetApiKey]);
 
     useEffect(() => {
-        channel.host.send({ command: 'setExpressions', data: { expressions, settings } });
-    }, [channel, expressions, settings]);
+        channel.host.send({ command: 'setExpressions', data: { expressions, settings, graph } });
+    }, [channel, expressions, settings, graph]);
 
     useEffect(() => {
         channel.host.send({ command: 'setStatus', data: { status: status ?? null } });

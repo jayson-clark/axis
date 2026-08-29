@@ -12,7 +12,7 @@ npm install @axis-dsl/compiler
 ```ts
 import { compileAxis } from '@axis-dsl/compiler';
 
-const { expressions, settings } = compileAxis(`
+const { expressions, settings, graph } = compileAxis(`
 config { showGrid: true }
 
 "Basic functions"
@@ -26,6 +26,12 @@ g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
 `CalculatorOptions` — both typed by
 [`@axis-dsl/desmos`](https://www.npmjs.com/package/@axis-dsl/desmos).
 
+`graph` is the rest of the `config` block: the viewport (`xmin`, `xmax`, `ymin`,
+`ymax`) and `squareAxes`. They are separate because Desmos applies them
+separately — it keeps the viewport in a graph's **state**, not in its
+calculator's options, so `updateSettings({ xmin: 0 })` is not an error, it is
+silence. Anything that renders a compilation has to apply both halves.
+
 ## Applying the result
 
 Apply the expressions with `setState`, not `setExpressions`:
@@ -33,7 +39,8 @@ Apply the expressions with `setState`, not `setExpressions`:
 ```ts
 calculator.setState({
     version: 11,
-    graph: { viewport: { xmin: -10, xmax: 10, ymin: -10, ymax: 10 } },
+    // The script's own viewport, over whatever framing you default to.
+    graph: { viewport: { xmin: -10, xmax: 10, ymin: -10, ymax: 10 }, ...graph },
     expressions: { list: expressions },
 });
 
@@ -95,9 +102,12 @@ The other direction: a graph back into the script that builds it.
 ```ts
 import { decompileAxis } from '@axis-dsl/compiler';
 
+const state = calculator.getState();
+
 const source = decompileAxis({
-  expressions: calculator.getState().expressions.list,
+  expressions: state.expressions.list,
   settings: calculator.settings,
+  graph: state.graph,
 });
 ```
 

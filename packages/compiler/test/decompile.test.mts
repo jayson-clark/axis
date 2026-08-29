@@ -37,6 +37,7 @@ function roundTrip(source: string, options: CompileOptions = {}): string {
         `decompiled source compiled to a different graph:\n${decompiled}`,
     );
     assert.deepEqual(again.settings, graph.settings);
+    assert.deepEqual(again.graph, graph.graph);
 
     return decompiled;
 }
@@ -254,6 +255,37 @@ describe('config', () => {
 
     test('has no block to write for a script with no config', () => {
         assert.equal(roundTrip('y = x'), 'y = x\n');
+    });
+
+    test('writes the viewport back as the four edges it was written as', () => {
+        // The compiler nests these into a viewport rectangle, because that is
+        // the shape Desmos' state holds; the script says four flat keys, and
+        // the round trip is what holds the two spellings to each other.
+        assert.equal(
+            roundTrip(
+                'config {\nxmin: 0,\nxmax: 1,\nymin: 0,\nymax: 1,\nsquareAxes: false\n}\ny = x',
+            ),
+            'config {\n    xmin: 0,\n    xmax: 1,\n    ymin: 0,\n    ymax: 1,\n    squareAxes: false\n}\n\ny = x\n',
+        );
+    });
+
+    test('writes a viewport alongside the settings that share its block', () => {
+        assert.equal(
+            roundTrip('config {\nshowGrid: false,\nxmin: -1,\nxmax: 1\n}\ny = x'),
+            'config {\n    showGrid: false,\n    xmin: -1,\n    xmax: 1\n}\n\ny = x\n',
+        );
+    });
+
+    test('reads a graph state\u2019s own nested viewport', () => {
+        // What a state off desmos.com hands over, which is the shape the
+        // compiler produces too - so it goes in unchanged.
+        assert.equal(
+            decompileAxis({
+                expressions: [],
+                graph: { viewport: { xmin: 0, xmax: 1, ymin: 0, ymax: 1 } },
+            }),
+            'config {\n    xmin: 0,\n    xmax: 1,\n    ymin: 0,\n    ymax: 1\n}\n',
+        );
     });
 });
 

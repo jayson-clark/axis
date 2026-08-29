@@ -95,6 +95,8 @@ export interface TableColumn {
     lineWidth?: number | string;
     lineOpacity?: number | string;
     pointSize?: number | string;
+    /** How large the point is drawn while it is draggable. */
+    movablePointSize?: number | string;
     pointOpacity?: number | string;
     lines?: boolean;
     points?: boolean;
@@ -128,6 +130,12 @@ export interface Expression {
     lineOpacity?: number | string;
     pointStyle?: PointStyle | string;
     pointSize?: number | string;
+    /**
+     * How large the point is drawn while it is draggable. Desmos sizes a
+     * movable point from this rather than from `pointSize`, so a graph that
+     * sets one and not the other changes size the moment it becomes draggable.
+     */
+    movablePointSize?: number | string;
     pointOpacity?: number | string;
     fillOpacity?: number | string;
     points?: boolean;

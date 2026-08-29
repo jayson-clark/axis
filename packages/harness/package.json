@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/harness",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Runs Axis source against a real headless Desmos calculator, so tests and agents can read the state, expressions and expression analysis a graph actually produces",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

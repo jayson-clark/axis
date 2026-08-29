@@ -25,6 +25,16 @@ config {
     xAxisArrowMode: POSITIVE,
     yAxisArrowMode: POSITIVE,
 
+    // The viewport - the rectangle of graph the calculator opens on. Desmos
+    // keeps these in the graph's state rather than in its calculator options,
+    // so they are the one part of a config block that setState carries and
+    // updateSettings does not.
+    xmin: -1,
+    xmax: 6,
+    ymin: -5,
+    ymax: 25,
+    squareAxes: false,
+
     // Coordinate system
     polarMode: false,
 

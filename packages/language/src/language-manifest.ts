@@ -531,6 +531,13 @@ export const AXIS_MANIFEST = {
             alwaysString: true,
         },
         {
+            name: 'movablePointSize',
+            detail: 'Point diameter in pixels while the point is draggable [default: matches pointSize]',
+            snippet: 'movablePointSize: ${1:9}',
+            valueType: 'number',
+            alwaysString: true,
+        },
+        {
             name: 'pointOpacity',
             detail: 'Point opacity 0-1 [default: 0.9]',
             snippet: 'pointOpacity: ${1:0.9}',
@@ -696,6 +703,36 @@ export const AXIS_MANIFEST = {
             detail: 'Lock viewport from panning/zooming [default: false]',
             snippet: 'lockViewport: ${1|true,false|}',
             valueType: 'boolean',
+        },
+        {
+            name: 'xmin',
+            detail: 'Left edge of the viewport [default: -10]',
+            snippet: 'xmin: ${1:-10}',
+            valueType: 'number',
+        },
+        {
+            name: 'xmax',
+            detail: 'Right edge of the viewport [default: 10]',
+            snippet: 'xmax: ${1:10}',
+            valueType: 'number',
+        },
+        {
+            name: 'ymin',
+            detail: 'Bottom edge of the viewport [default: fits the aspect ratio]',
+            snippet: 'ymin: ${1:-10}',
+            valueType: 'number',
+        },
+        {
+            name: 'ymax',
+            detail: 'Top edge of the viewport [default: fits the aspect ratio]',
+            snippet: 'ymax: ${1:10}',
+            valueType: 'number',
+        },
+        {
+            name: 'squareAxes',
+            detail: 'Keep one x unit the same length as one y unit [default: true]',
+            valueType: 'boolean',
+            snippet: 'squareAxes: ${1|true,false|}',
         },
         {
             name: 'expressionsCollapsed',
@@ -1170,6 +1207,21 @@ export const AXIS_METADATA_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.met
 export const AXIS_CONFIG_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.configProperties.map(
     property => property.name,
 );
+
+/**
+ * The `config { … }` keys that describe the *graph* rather than the calculator
+ * around it, and so cannot be applied with `updateSettings`.
+ *
+ * Desmos keeps the viewport in the graph state, not in the calculator options:
+ * `updateSettings({ xmin: 0 })` is silently ignored, and the bounds only move
+ * through `setState` or `setMathBounds`. The compiler separates them out for
+ * that reason, and every host that applies a compilation has to apply them the
+ * other way — so the list lives here rather than in each of them.
+ */
+export const AXIS_VIEWPORT_PROPERTY_NAMES = ['xmin', 'xmax', 'ymin', 'ymax'] as const;
+
+/** Graph-state config keys that are not part of the viewport rectangle. */
+export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes'] as const;
 
 /** Metadata keys kept as strings even when they look like numbers. */
 export const AXIS_ALWAYS_STRING_PROPERTIES: ReadonlySet<string> = new Set(
