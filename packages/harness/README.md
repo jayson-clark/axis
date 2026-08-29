@@ -63,7 +63,7 @@ closes it again.
 
 |                                                     |                                                              |
 | --------------------------------------------------- | ------------------------------------------------------------ |
-| `load(source, options?)`                            | compile Axis source and apply it, imports and all            |
+| `load(source, options?)`                            | compile Axis source and apply it, imports and images and all |
 | `setExpressions(list, settings?, graph?)`           | apply expressions the compiler already produced              |
 | `inspectExpressions()`                              | the expression list with each one's Desmos analysis attached |
 | `getErrors()`                                       | just the expressions Desmos rejected, with its message       |
@@ -115,7 +115,7 @@ $ npx axis-inspect examples/scripts/01-basics.axis
 ```
 
 ```sh
-axis-inspect <file.axis>              # a file, imports resolved from disk
+axis-inspect <file.axis>              # a file, imports and images resolved from disk
 axis-inspect -e 'y = x^2'             # source inline
 axis-inspect - < graph.axis           # source on stdin
   --json                              # the whole inspection, machine-readable
@@ -136,7 +136,7 @@ has to accept it, rather than against the compiler's own idea of itself:
 | `metadata` | every one of the 24 `# key: value` properties, read back off the applied graph               |
 | `config`   | every one of the 86 `config { … }` properties, off `calculator.settings` and the graph state |
 | `language` | every function and constant in the manifest is one Desmos knows, plus the operators          |
-| `graph`    | folders, tables, notes, imports, and all 20 example scripts                                  |
+| `graph`    | folders, tables, notes, imports, images, and all 22 example scripts                          |
 | `harness`  | the harness itself                                                                           |
 
 Each of the first three is driven from `@axis-dsl/language`'s manifest and fails

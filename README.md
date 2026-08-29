@@ -189,14 +189,28 @@ else is — and every measurement is an expression, so an image can be centred o
 a point the graph works out and sized by a slider.
 
 ```
-image "https://example.com/beach.jpg" # name: "Reference", center: (0, 1), width: 10, height: 6.7
-image "data:image/png;base64,iVBOR…"  # center: (x, y), angle: -pi / 200, opacity: 0.5, foreground: true
+image "./photos/beach.jpg"            # name: "Reference", center: (0, 1), width: 10, height: 6.7
+image "https://example.com/beach.jpg" # center: (x, y), angle: -pi / 200, opacity: 0.5, foreground: true
+image "data:image/png;base64,iVBOR…"  # width: 4, height: 4
 ```
 
 `name` is the caption the expression list shows, `foreground` draws the image
 over the graph rather than under it, and `hidden`, `secret`, `dragMode` and
-`onClick` mean what they do everywhere else. The URL may be a `data:` URI, which
-is how Desmos itself stores an image somebody dropped onto a graph.
+`onClick` mean what they do everywhere else.
+
+The three spellings above are the three things an image may name. A **file** is
+named the way an import names one — relative to the script, or from the
+workspace root with a leading `/` — and is read at compile time and inlined as a
+`data:` URI. A path is only a path on the machine the script was written on, and
+a graph has to carry its pictures with it, so the file travels with it. A
+**URL** is left alone for Desmos to fetch, and a **`data:` URI** is passed
+straight through, which is how Desmos itself stores an image somebody dropped
+onto a graph.
+
+Png, jpg, gif, webp, svg, bmp, ico, apng and avif are read; anything else is an
+error rather than a file a browser is left to guess at. The editor underlines a
+picture that is not there, exactly as it does a missing import, and the preview
+reloads when one is saved.
 
 ## Use it in your own app
 
@@ -235,7 +249,8 @@ const { expressions, settings, imports } = compileAxis(source, {
 ```
 
 `imports` comes back naming every file that was read, which is what to watch if
-the graph is live.
+the graph is live. An `image "./beach.png"` is read the same way, by
+`loadImages` and a `resolveImage`, and comes back as `images`.
 
 To edit Axis, hand your own Monaco instance to `registerAxisLanguage`. It adds
 highlighting, completions, formatting and diagnostics, plus the `axis-dark` and
