@@ -24,11 +24,11 @@ y = a * (x - b) ^ 2 + c # color: #c74440, lineWidth: 3
 (b, c) # color: #c74440, pointSize: 15, label: "vertex", showLabel: true, labelOrientation: above
 
 folder "Animation" {
-    "playing: true starts the slider moving on load.",
-    t = 0 # sliderBounds: {min: 0, max: 6.28, step: 0.02}, playing: true,
-    "A point riding the wave.",
-    (t, sin(t)) # color: #2d70b3, pointSize: 18,
-    y = sin(x) # color: #2d70b3, lineOpacity: 0.4,
-    "A trailing chord back to the origin.",
+    "playing: true starts the slider moving on load."
+    t = 0 # sliderBounds: {min: 0, max: 6.28, step: 0.02}, playing: true
+    "A point riding the wave."
+    (t, sin(t)) # color: #2d70b3, pointSize: 18
+    y = sin(x) # color: #2d70b3, lineOpacity: 0.4
+    "A trailing chord back to the origin."
     Q = [(0, 0), (t, sin(t))] # color: #fa7e19, points: false, lineStyle: DASHED
 }

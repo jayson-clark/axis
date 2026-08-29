@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/desmos",
-    "version": "1.1.0",
+    "version": "1.5.0",
     "description": "The Desmos calculator API: its TypeScript surface, its constants, and the script URL every host loads",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

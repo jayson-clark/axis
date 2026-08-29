@@ -4,7 +4,9 @@ import {
     Calculator,
     CalculatorOptions,
     DesmosExpression,
+    GraphSettings,
     GraphState,
+    TickerState,
 } from '@axis-dsl/desmos';
 import { useDesmos } from './useDesmos.js';
 
@@ -27,6 +29,16 @@ export interface DesmosGraphProps {
     apiKey: string | null | undefined;
     expressions: DesmosExpression[];
     settings?: CalculatorOptions;
+    /**
+     * The viewport and `squareAxes`. Separate from `settings` because Desmos
+     * keeps them in the graph state: `updateSettings` would ignore them.
+     */
+    graph?: GraphSettings;
+    /**
+     * The graph's ticker. Separate for the same reason: Desmos keeps it beside
+     * the expression list rather than in it.
+     */
+    ticker?: TickerState;
     /** Rendered instead of the graph while the Desmos script is loading. */
     loadingFallback?: ReactNode;
     /** Rendered instead of the graph when the script or key fails. */
@@ -35,17 +47,42 @@ export interface DesmosGraphProps {
     style?: CSSProperties;
 }
 
+/**
+ * The framing a graph gets when its script does not ask for one. Desmos would
+ * otherwise keep whatever the calculator was last showing, so a graph that says
+ * nothing about its viewport opens where every other one does.
+ */
 const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
 
 /**
  * setState (rather than setExpressions) is what carries folder membership, so
  * expressions are always applied as a whole graph state.
+ *
+ * The viewport rides along in the same state: setting it here rather than with
+ * a later `setMathBounds` means the graph is never drawn at the wrong framing
+ * first. A script that names only some edges gets the defaults for the rest —
+ * `xmin: 0` alone is a half-written rectangle, and Desmos would ignore it.
  */
-function graphState(expressions: DesmosExpression[]): GraphState {
+function graphState(
+    expressions: DesmosExpression[],
+    graph: GraphSettings | undefined,
+    ticker: TickerState | undefined,
+): GraphState {
     return {
         version: 11,
-        graph: { viewport: DEFAULT_VIEWPORT },
-        expressions: { list: expressions },
+        // `# pointStyle: SQUARE` means that style, on a draggable point as much
+        // as a fixed one. Without this, Desmos substitutes its own style for
+        // any point it decides is movable and stashes the author's away — so a
+        // square point silently becomes a round one the moment its coordinates
+        // turn out to be draggable.
+        doNotMigrateMovablePointStyle: true,
+        graph: {
+            ...graph,
+            viewport: { ...DEFAULT_VIEWPORT, ...graph?.viewport },
+        },
+        // The ticker rides beside the list rather than in it, and a graph
+        // without one says so by carrying no ticker at all.
+        expressions: { list: expressions, ...(ticker && { ticker }) },
     };
 }
 
@@ -76,6 +113,8 @@ export function DesmosGraph({
     apiKey,
     expressions,
     settings,
+    graph,
+    ticker,
     loadingFallback,
     renderError,
     className,
@@ -121,7 +160,7 @@ export function DesmosGraph({
             return;
         }
 
-        const state = graphState(expressions);
+        const state = graphState(expressions, graph, ticker);
 
         // Every compile hands us fresh object identities, so compare contents:
         // re-applying an identical state would churn the calculator for nothing.
@@ -167,7 +206,7 @@ export function DesmosGraph({
         // MathQuill focuses itself a tick after the list is rebuilt.
         const frame = requestAnimationFrame(restore);
         return () => cancelAnimationFrame(frame);
-    }, [status, expressions, settings]);
+    }, [status, expressions, settings, graph, ticker]);
 
     if (status === 'error' && error) {
         return <>{renderError ? renderError(error) : <div style={{ padding: 20 }}>{error}</div>}</>;

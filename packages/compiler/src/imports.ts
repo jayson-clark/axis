@@ -15,6 +15,7 @@
 
 import {
     expandBlockEntries,
+    foldMetadataBlocks,
     joinContinuedLines,
     parseImportStatement,
     splitTrailingMetadata,
@@ -49,7 +50,7 @@ export type ResolveImport = (specifier: string, from: string) => ResolvedImport 
 export function findImports(source: string): string[] {
     const specifiers: string[] = [];
 
-    for (const line of expandBlockEntries(joinContinuedLines(source))) {
+    for (const line of expandBlockEntries(joinContinuedLines(foldMetadataBlocks(source)))) {
         const statement = parseImportStatement(splitTrailingMetadata(line.trim()).code);
         if (statement) {
             specifiers.push(statement.specifier);

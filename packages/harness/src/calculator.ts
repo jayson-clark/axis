@@ -23,6 +23,8 @@ import {
     DesmosNamespace,
     ExpressionAnalysis,
     ExpressionState,
+    GraphSettings,
+    TickerState,
     GraphState,
     MathBounds,
     Point,
@@ -204,10 +206,12 @@ export class AxisCalculator {
     /** Compile `source` and apply it. The compilation result is handed back. */
     async load(source: string, options: LoadOptions = {}): Promise<CompilationResult> {
         const compiled = compileAxis(source, options);
-        await this.setExpressions(compiled.expressions, {
-            ...compiled.settings,
-            ...options.settings,
-        });
+        await this.setExpressions(
+            compiled.expressions,
+            { ...compiled.settings, ...options.settings },
+            compiled.graph,
+            compiled.ticker,
+        );
         return compiled;
     }
 
@@ -218,31 +222,51 @@ export class AxisCalculator {
     async setExpressions(
         expressions: DesmosExpression[],
         settings?: CalculatorOptions,
+        graph?: GraphSettings,
+        ticker?: TickerState,
     ): Promise<void> {
         await this.page.evaluate(
-            ([list, options]) => {
+            ([list, options, graphSettings, tickerState]) => {
                 const { calculator } = window.__axisHarness!;
                 // setState, not setExpressions: folder membership only travels
                 // as part of a whole graph state.
+                //
+                // The viewport defaults to whatever the calculator is already
+                // showing, since setState would otherwise reset the framing
+                // between two loads in the same page — a script that names its
+                // own bounds overrides that.
                 const bounds = calculator.graphpaperBounds.mathCoordinates;
                 calculator.setState({
                     version: 11,
+                    // See DesmosGraph.tsx: a point style is the author's, on a
+                    // movable point as much as a fixed one.
+                    doNotMigrateMovablePointStyle: true,
                     graph: {
+                        ...graphSettings,
                         viewport: {
                             xmin: bounds.left,
                             xmax: bounds.right,
                             ymin: bounds.bottom,
                             ymax: bounds.top,
+                            ...graphSettings?.viewport,
                         },
                     },
-                    expressions: { list },
+                    // The ticker sits beside the list, not in it, and is left
+                    // off entirely rather than set to nothing: Desmos reads a
+                    // ticker with no handler as no ticker at all.
+                    expressions: { list, ...(tickerState && { ticker: tickerState }) },
                 });
                 // updateSettings has to follow setState, which resets them.
                 if (options) {
                     calculator.updateSettings(options);
                 }
             },
-            [expressions as ExpressionState[], settings ?? null] as const,
+            [
+                expressions as ExpressionState[],
+                settings ?? null,
+                graph ?? null,
+                ticker ?? null,
+            ] as const,
         );
         await this.settle();
     }
@@ -402,7 +426,22 @@ export class AxisCalculator {
             return false;
         }
 
+        // A click Desmos acts on changes the graph, but not on the frame the
+        // mouse went down: dispatching the action takes a turn or two. Settling
+        // straight away would read a graph that has been quiet the whole time
+        // and call it finished, so the wait is for the change *first* - bounded,
+        // since a click on something with no action never makes one.
+        const before = await this.page.evaluate(() => window.__axisHarness!.lastChange);
         await this.page.mouse.click(at.x, at.y);
+        await this.page.evaluate(
+            async ([since, limit]) => {
+                const deadline = Date.now() + limit;
+                while (Date.now() < deadline && window.__axisHarness!.lastChange === since) {
+                    await new Promise(resolve => setTimeout(resolve, 25));
+                }
+            },
+            [before, this.options.maxSettleMs] as const,
+        );
         await this.settle();
         return true;
     }

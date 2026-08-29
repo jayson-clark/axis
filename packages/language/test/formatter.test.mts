@@ -25,12 +25,21 @@ describe('formatAxisCode', () => {
         assert.equal(format('p = (1,2) # onClick: a->a+1'), 'p = (1, 2) # onClick: a->a+1');
     });
 
+    test('spaces a ticker\u2019s action without gluing it to the keyword', () => {
+        // `ticker a` is a keyword and a name, not two names multiplied - so the
+        // expression rules apply to the action and stop short of the keyword.
+        assert.equal(
+            format('ticker a->a+1 #minStep:50,playing:true'),
+            'ticker a -> a + 1 # minStep: 50, playing: true',
+        );
+    });
+
     test('indents block bodies', () => {
         assert.equal(format('folder "A" {\ny=x\n}'), 'folder "A" {\n    y = x\n}');
     });
 
     test('de-indents on the closing brace', () => {
-        assert.equal(format('table {\nx=[1],\ny=[2]\n}'), 'table {\n    x = [1],\n    y = [2]\n}');
+        assert.equal(format('table {\nx=[1],\ny=[2]\n}'), 'table {\n    x = [1]\n    y = [2]\n}');
     });
 
     test('keeps a unary minus attached to what it negates', () => {
@@ -58,10 +67,17 @@ describe('formatAxisCode', () => {
         assert.equal(format('y = x   \n\nz = 1'), 'y = x\n\nz = 1');
     });
 
-    test('inserts the commas a block was written without', () => {
+    test('settles a block on one spelling of its separators', () => {
+        // The newline between two entries separates them, so the comma at the
+        // end of a line is taken out and the one a script went without is only
+        // put back where two entries share a line.
+        const separated = 'table {\n    x = [1]\n    y = [2]\n}';
+
+        assert.equal(format('table {\nx = [1]\ny = [2]\n}'), separated);
+        assert.equal(format('table {\nx = [1],\ny = [2]\n}'), separated);
         assert.equal(
-            format('table {\nx = [1]\ny = [2]\n}'),
-            'table {\n    x = [1],\n    y = [2]\n}',
+            format('folder "F" { table { x = [1] } y = x }'),
+            'folder "F" { table { x = [1] }, y = x }',
         );
     });
 
@@ -115,7 +131,7 @@ describe('wrapping a long line', () => {
     test('breaks a block written on one line', () => {
         assert.equal(
             wrap('folder "Curves" { y = sin(x), y = cos(x), y = tan(x) }'),
-            'folder "Curves" {\n    y = sin(x),\n    y = cos(x),\n    y = tan(x)\n}',
+            'folder "Curves" {\n    y = sin(x)\n    y = cos(x)\n    y = tan(x)\n}',
         );
     });
 
@@ -127,14 +143,26 @@ describe('wrapping a long line', () => {
         );
     });
 
-    test('keeps trailing metadata whole on the closing line', () => {
-        // The compiler only reads metadata that reaches it on one line, so a
-        // wrapped property list would quietly become an expression of its own.
+    test('moves a property run too long for the line into a block', () => {
+        assert.equal(
+            wrap('y = x # color: #c74440, lineWidth: 3, lineStyle: DASHED'),
+            'y = x #{\n    color: #c74440\n    lineWidth: 3\n    lineStyle: DASHED\n}',
+        );
+    });
+
+    test('breaks the statement as well when it is long in its own right', () => {
         assert.equal(
             wrap('Q = [(0, 0), (4, 0), (8, 3), (12, 1), (16, 7)] # color: red, lineWidth: 3'),
-            'Q = [\n    (0, 0),\n    (4, 0),\n    (8, 3),\n    (12, 1),\n    (16, 7)\n]' +
-                ' # color: red, lineWidth: 3',
+            'Q = [\n    (0, 0),\n    (4, 0),\n    (8, 3),\n    (12, 1),\n    (16, 7)\n] #{' +
+                '\n    color: red\n    lineWidth: 3\n}',
         );
+    });
+
+    test('leaves a single property on the line it annotates', () => {
+        // There is nothing to separate it from, so a block of its own would
+        // cost two lines and settle nothing.
+        const long = 'y = x # label: "a label that runs on past the column this wraps at"';
+        assert.equal(wrap(long), long);
     });
 
     test('breaks the bracket that runs past the width, not an earlier one', () => {
@@ -145,16 +173,13 @@ describe('wrapping a long line', () => {
     });
 
     test('leaves a line long when nothing on it can be broken', () => {
-        // A note, a comment and a property run all stay on their line whatever
-        // the width: breaking the brackets around them would not shorten it.
+        // A note and a comment stay on their line whatever the width: breaking
+        // the brackets around them would not shorten it.
         const note = '"A note that runs on well past the column this wraps at"';
         assert.equal(wrap(note), note);
 
         const comment = '// a comment that runs on well past the column this wraps at';
         assert.equal(wrap(comment), comment);
-
-        const metadata = 'y = x # color: #c74440, lineWidth: 3, lineStyle: DASHED';
-        assert.equal(wrap(metadata), metadata);
     });
 
     test('leaves a small bracket alone on a line made long by a label', () => {

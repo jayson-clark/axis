@@ -25,6 +25,16 @@ y = x ^ 2 # color: #c74440
 // Several properties are separated by commas.
 y = x ^ 3 # color: #2d70b3, lineWidth: 4, lineOpacity: 0.6
 
+// Where there are more of them than sit comfortably behind a #, a #{ } block
+// gives them a line each - and inside it the newline is the separator.
+y = x ^ 4 #{
+    color: #388c46
+    lineWidth: 4
+    lineStyle: DASHED
+    label: "quartic"
+    showLabel: true
+}
+
 // A statement may span lines while a bracket is open.
 P = [
     (-2, 4),

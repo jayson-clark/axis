@@ -15,7 +15,8 @@ export interface FunctionDefinition {
     name: string;
     detail: string;
     snippet?: string;
-    category: 'trig' | 'math' | 'list' | 'color' | 'statistics' | 'combinatorics' | 'geometry';
+    category:
+        'trig' | 'math' | 'list' | 'color' | 'statistics' | 'combinatorics' | 'geometry' | 'audio';
     /**
      * LaTeX command Desmos expects for this function. Only names that are real
      * LaTeX commands set this; everything else falls back to
@@ -29,15 +30,16 @@ export interface FunctionDefinition {
  * A bare word Desmos writes as `\operatorname{…}` without taking a call.
  *
  * `width` and `height` read the viewport; `for` joins a list comprehension to
- * the variable it runs over. None of them is a function - there are no
- * parentheses to write - and none is a constant, because a constant that opens
- * a longer name carries the rest as a subscript, and `heightMap` is a variable
- * somebody named rather than the viewport height subscripted by `Map`.
+ * the variable it runs over; `with` names a value for the expression in front
+ * of it. None of them is a function - there are no parentheses to write - and
+ * none is a constant, because a constant that opens a longer name carries the
+ * rest as a subscript, and `heightMap` is a variable somebody named rather than
+ * the viewport height subscripted by `Map`.
  */
 export interface OperatorDefinition {
     name: string;
     detail: string;
-    category: 'viewport' | 'list';
+    category: 'viewport' | 'list' | 'scope';
 }
 
 /** A built-in constant: a Greek letter, a mathematical constant, a boolean. */
@@ -248,6 +250,12 @@ export const AXIS_MANIFEST = {
             category: 'statistics',
         },
         {
+            name: 'count',
+            detail: 'Number of elements in a list; also written `list.count`',
+            snippet: 'count(${1:list})',
+            category: 'statistics',
+        },
+        {
             name: 'mean',
             detail: 'Mean of list',
             snippet: 'mean(${1:list})',
@@ -402,6 +410,15 @@ export const AXIS_MANIFEST = {
             snippet: 'factorial(${1:n})',
             category: 'combinatorics',
         },
+
+        // Audio — plays rather than draws, and is gated by the `tone` config
+        // property and by the calculator being unmuted
+        {
+            name: 'tone',
+            detail: 'Play a tone at a frequency in hertz, at a volume of 0-1',
+            snippet: 'tone(${1:frequency}, ${2:volume})',
+            category: 'audio',
+        },
     ] satisfies FunctionDefinition[],
 
     operators: [
@@ -410,6 +427,16 @@ export const AXIS_MANIFEST = {
         {
             name: 'for',
             detail: 'List comprehension: [i ^ 2 for i = [1, ..., 10]]',
+            category: 'list',
+        },
+        {
+            name: 'with',
+            detail: 'Local definition: f(x) = x n with n = length(a)',
+            category: 'scope',
+        },
+        {
+            name: 'index',
+            detail: "The element's 1-based position, inside a list filter or a clickable action",
             category: 'list',
         },
     ] satisfies OperatorDefinition[],
@@ -468,6 +495,19 @@ export const AXIS_MANIFEST = {
             valueType: 'string',
         },
         {
+            name: 'colorLatex',
+            detail: 'Color from an expression, e.g. rgb(255, 0, 0) or a list of colors',
+            snippet: 'colorLatex: ${1:C}',
+            valueType: 'string',
+            alwaysString: true,
+        },
+        {
+            name: 'suppressTextOutline',
+            detail: 'Drop the outline drawn behind a label [default: false]',
+            snippet: 'suppressTextOutline: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+        {
             name: 'lineStyle',
             detail: 'Line style [default: solid]',
             snippet: 'lineStyle: ${1|SOLID,DASHED,DOTTED|}',
@@ -497,6 +537,13 @@ export const AXIS_MANIFEST = {
             name: 'pointSize',
             detail: 'Point diameter in pixels [default: 9]',
             snippet: 'pointSize: ${1:9}',
+            valueType: 'number',
+            alwaysString: true,
+        },
+        {
+            name: 'movablePointSize',
+            detail: 'Point diameter in pixels while the point is draggable [default: matches pointSize]',
+            snippet: 'movablePointSize: ${1:9}',
             valueType: 'number',
             alwaysString: true,
         },
@@ -571,6 +618,12 @@ export const AXIS_MANIFEST = {
             valueType: 'enum',
         },
         {
+            name: 'pointOutline',
+            detail: 'Ring each point in the background colour [default: false]',
+            snippet: 'pointOutline: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+        {
             name: 'dragMode',
             detail: 'Drag mode [default: auto]',
             snippet: 'dragMode: ${1|AUTO,X,Y,XY,none|}',
@@ -602,9 +655,93 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'sliderBounds',
-            detail: 'Slider range for a defined value, e.g. `sliderBounds: {min: 0, max: 10, step: 0.1}`',
+            detail: "Slider range for a defined value, e.g. `sliderBounds: {min: 0, max: 10, step: 0.1}`. Both ends are limits unless `hardMin: false` or `hardMax: false` says otherwise, and either end may be left out to keep Desmos' own",
             snippet: 'sliderBounds: {min: ${1:0}, max: ${2:10}}',
             valueType: 'string',
+        },
+        {
+            name: 'loopMode',
+            detail: 'What an animating slider does at the end of its range [default: LOOP_FORWARD_REVERSE]',
+            snippet:
+                'loopMode: ${1|LOOP_FORWARD_REVERSE,LOOP_FORWARD,PLAY_ONCE,PLAY_INDEFINITELY|}',
+            valueType: 'enum',
+        },
+        {
+            name: 'playDirection',
+            detail: 'Which way an animating slider runs: 1 forwards, -1 backwards [default: 1]',
+            snippet: 'playDirection: ${1|1,-1|}',
+            valueType: 'number',
+        },
+        {
+            name: 'animationPeriod',
+            detail: 'How long one sweep of an animating slider takes, in milliseconds [default: 8000]',
+            snippet: 'animationPeriod: ${1:8000}',
+            valueType: 'number',
+        },
+        {
+            name: 'domain',
+            detail: 'The range a parametric or polar curve is drawn over, e.g. `domain: {min: 0, max: 2pi}`',
+            snippet: 'domain: {min: ${1:0}, max: ${2:2pi}}',
+            valueType: 'string',
+        },
+        {
+            name: 'parametricDomain',
+            detail: 'The older copy of `domain` Desmos writes beside it, for a graph whose two disagree',
+            snippet: 'parametricDomain: {min: ${1:0}, max: ${2:2pi}}',
+            valueType: 'string',
+        },
+        {
+            name: 'polarDomain',
+            detail: 'The range a polar curve is drawn over in polar mode, e.g. `polarDomain: {min: 0, max: 2pi}`',
+            snippet: 'polarDomain: {min: ${1:0}, max: ${2:2pi}}',
+            valueType: 'string',
+        },
+        {
+            name: 'name',
+            detail: 'The caption an image carries in the expression list',
+            snippet: 'name: "${1:}"',
+            valueType: 'string',
+        },
+        {
+            name: 'center',
+            detail: 'The point an image is centred on, e.g. `center: (0, 0)`',
+            snippet: 'center: (${1:0}, ${2:0})',
+            valueType: 'string',
+            alwaysString: true,
+        },
+        {
+            name: 'width',
+            detail: 'How wide an image is drawn, in graph units',
+            snippet: 'width: ${1:10}',
+            valueType: 'number',
+            alwaysString: true,
+        },
+        {
+            name: 'height',
+            detail: 'How tall an image is drawn, in graph units',
+            snippet: 'height: ${1:10}',
+            valueType: 'number',
+            alwaysString: true,
+        },
+        {
+            name: 'angle',
+            detail: 'How far an image is rotated, anticlockwise, in radians',
+            snippet: 'angle: ${1:0}',
+            valueType: 'number',
+            alwaysString: true,
+        },
+        {
+            name: 'opacity',
+            detail: 'Image opacity 0-1 [default: 1]',
+            snippet: 'opacity: ${1:1}',
+            valueType: 'number',
+            alwaysString: true,
+        },
+        {
+            name: 'foreground',
+            detail: 'Draw an image over the graph rather than under it [default: false]',
+            snippet: 'foreground: ${1|true,false|}',
+            valueType: 'boolean',
         },
         {
             name: 'collapsed',
@@ -614,8 +751,38 @@ export const AXIS_MANIFEST = {
         },
     ] satisfies PropertyDefinition[],
 
-    /** The block keywords, plus the one statement keyword. */
-    keywords: ['folder', 'table', 'config', 'import'] satisfies string[],
+    /** The block keywords, plus the statement keywords. */
+    keywords: ['folder', 'table', 'config', 'import', 'ticker', 'image'] satisfies string[],
+
+    /**
+     * The `# key: value` properties a `ticker` statement takes.
+     *
+     * Their own list rather than entries of {@link AXIS_MANIFEST.metadata},
+     * because a ticker is not an expression and none of them means anything on
+     * one: `minStep` on `y = x` would be as wrong as `lineWidth` on a ticker.
+     * `playing` is spelled the same in both places and means the same thing in
+     * each - start moving as soon as the graph opens.
+     */
+    tickerProperties: [
+        {
+            name: 'minStep',
+            detail: 'Shortest gap between ticks, in milliseconds, 0 for every frame [default: 0]',
+            snippet: 'minStep: ${1:50}',
+            valueType: 'number',
+        },
+        {
+            name: 'playing',
+            detail: 'Start the ticker running when the graph opens [default: false]',
+            snippet: 'playing: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+        {
+            name: 'open',
+            detail: 'Show the ticker expanded in the expression list [default: false]',
+            snippet: 'open: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+    ] satisfies PropertyDefinition[],
 
     /** Entries of the `config` block, which become the calculator's settings. */
     configProperties: [
@@ -666,6 +833,42 @@ export const AXIS_MANIFEST = {
             detail: 'Lock viewport from panning/zooming [default: false]',
             snippet: 'lockViewport: ${1|true,false|}',
             valueType: 'boolean',
+        },
+        {
+            name: 'xmin',
+            detail: 'Left edge of the viewport [default: -10]',
+            snippet: 'xmin: ${1:-10}',
+            valueType: 'number',
+        },
+        {
+            name: 'xmax',
+            detail: 'Right edge of the viewport [default: 10]',
+            snippet: 'xmax: ${1:10}',
+            valueType: 'number',
+        },
+        {
+            name: 'ymin',
+            detail: 'Bottom edge of the viewport [default: fits the aspect ratio]',
+            snippet: 'ymin: ${1:-10}',
+            valueType: 'number',
+        },
+        {
+            name: 'ymax',
+            detail: 'Top edge of the viewport [default: fits the aspect ratio]',
+            snippet: 'ymax: ${1:10}',
+            valueType: 'number',
+        },
+        {
+            name: 'squareAxes',
+            detail: 'Keep one x unit the same length as one y unit [default: true]',
+            valueType: 'boolean',
+            snippet: 'squareAxes: ${1|true,false|}',
+        },
+        {
+            name: 'userLockedViewport',
+            detail: "Lock the viewport the way the graph's own settings menu does, so nobody can pan or zoom [default: false]",
+            valueType: 'boolean',
+            snippet: 'userLockedViewport: ${1|true,false|}',
         },
         {
             name: 'expressionsCollapsed',
@@ -1140,6 +1343,25 @@ export const AXIS_METADATA_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.met
 export const AXIS_CONFIG_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.configProperties.map(
     property => property.name,
 );
+
+export const AXIS_TICKER_PROPERTY_NAMES: readonly string[] = AXIS_MANIFEST.tickerProperties.map(
+    property => property.name,
+);
+
+/**
+ * The `config { … }` keys that describe the *graph* rather than the calculator
+ * around it, and so cannot be applied with `updateSettings`.
+ *
+ * Desmos keeps the viewport in the graph state, not in the calculator options:
+ * `updateSettings({ xmin: 0 })` is silently ignored, and the bounds only move
+ * through `setState` or `setMathBounds`. The compiler separates them out for
+ * that reason, and every host that applies a compilation has to apply them the
+ * other way — so the list lives here rather than in each of them.
+ */
+export const AXIS_VIEWPORT_PROPERTY_NAMES = ['xmin', 'xmax', 'ymin', 'ymax'] as const;
+
+/** Graph-state config keys that are not part of the viewport rectangle. */
+export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes', 'userLockedViewport'] as const;
 
 /** Metadata keys kept as strings even when they look like numbers. */
 export const AXIS_ALWAYS_STRING_PROPERTIES: ReadonlySet<string> = new Set(

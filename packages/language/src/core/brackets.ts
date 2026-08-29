@@ -8,19 +8,24 @@ import { closersFor, OPENERS, scanCode } from './scan';
 /**
  * Brackets a statement can be split across lines with.
  *
- * A brace opens a `folder`/`table`/`config`/piecewise block when it follows a
- * block keyword or is the last thing on its line, so those lines continue with
- * `(` and `[` alone; a brace opened mid-line is an ordinary piecewise or
- * constraint group and joins like any other bracket.
+ * A brace opens a block only when it follows a block keyword - `folder`,
+ * `table`, `config` - so those lines continue with `(` and `[` alone. Every
+ * other brace belongs to an expression: a piecewise or a constraint group,
+ * which joins like any other bracket.
+ *
+ * Where it sits on the line says nothing about which it is. The formatter
+ * breaks a long piecewise at its branches, leaving its brace at the end of a
+ * line exactly as a folder's sits, so reading a trailing brace as a block would
+ * take those branches for statements of their own.
  */
 const CONTINUATION_BRACKETS = '([';
 
 /** A block keyword and its brace, as `folder "A" { y = x` opens one. */
-const BLOCK_OPENER = /^(?:folder\s+"[^"]*"|table|config)\s*\{/;
+const BLOCK_OPENER = /^(?:folder\s+"(?:[^"\\]|\\[^])*"|table|config)\s*\{/;
 
 /** Continuation brackets for `line`, braces included unless it opens a block. */
 function continuationBracketsFor(code: string): string {
-    return code.endsWith('{') || BLOCK_OPENER.test(code) ? CONTINUATION_BRACKETS : OPENERS;
+    return BLOCK_OPENER.test(code) ? CONTINUATION_BRACKETS : OPENERS;
 }
 
 /**

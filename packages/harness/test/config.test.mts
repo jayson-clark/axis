@@ -54,6 +54,17 @@ const NOT_REFLECTED = new Set([
 ]);
 
 /**
+ * The keys Desmos keeps in the graph state rather than in the calculator's
+ * options. `calculator.settings` has nothing to say about them, so they are
+ * read off `getState().graph` instead, in `the viewport` below.
+ *
+ * They also cannot be tested one at a time the way everything else here is: the
+ * four edges are one rectangle, and Desmos squares up whichever pair the script
+ * left out. `squareAxes` is the switch that decides whether it does.
+ */
+const GRAPH_STATE = new Set(['xmin', 'xmax', 'ymin', 'ymax', 'squareAxes', 'userLockedViewport']);
+
+/**
  * Options Desmos only reads when the calculator is constructed. `updateSettings`
  * takes them silently and changes nothing, so they are tested by building a
  * calculator around them instead.
@@ -80,11 +91,16 @@ describe('the config block', { skip }, () => {
     const calculator = useCalculator();
 
     const reflected = AXIS_CONFIG_PROPERTY_NAMES.filter(
-        name => !NOT_REFLECTED.has(name) && !CONSTRUCTION_ONLY.has(name),
+        name => !NOT_REFLECTED.has(name) && !CONSTRUCTION_ONLY.has(name) && !GRAPH_STATE.has(name),
     );
 
     test('every property in the manifest is accounted for', () => {
-        const known = new Set([...reflected, ...NOT_REFLECTED, ...CONSTRUCTION_ONLY]);
+        const known = new Set([
+            ...reflected,
+            ...NOT_REFLECTED,
+            ...CONSTRUCTION_ONLY,
+            ...GRAPH_STATE,
+        ]);
         const missing = AXIS_CONFIG_PROPERTY_NAMES.filter(name => !known.has(name));
 
         assert.deepEqual(missing, []);
@@ -125,6 +141,43 @@ describe('the config block', { skip }, () => {
 
         assert.equal(applied.logScales, false);
         assert.equal(applied.xAxisScale, 'linear');
+    });
+});
+
+describe('the viewport', { skip }, () => {
+    const calculator = useCalculator();
+
+    test('the four edges reach the graph state', async () => {
+        // squareAxes off, because Desmos honours the rectangle as written only
+        // when it is not also keeping the units square: with it on, a viewport
+        // that is not already square comes back stretched on one axis.
+        await calculator().load(
+            'config {\n' +
+                '    xmin: 0,\n' +
+                '    xmax: 1,\n' +
+                '    ymin: 0,\n' +
+                '    ymax: 1,\n' +
+                '    squareAxes: false\n' +
+                '}\n' +
+                'y = x',
+        );
+        const state = await calculator().getState();
+
+        assert.deepEqual(state.graph?.viewport, { xmin: 0, xmax: 1, ymin: 0, ymax: 1 });
+        assert.equal(state.graph?.squareAxes, false);
+    });
+
+    test('they are not calculator options', async () => {
+        // The reason they are separated from `settings` at all: handing these
+        // to updateSettings is not an error, it is silence.
+        const compiled = compileAxis('config {\n    xmin: 0,\n    squareAxes: false\n}\ny = x');
+
+        assert.equal(compiled.settings, undefined);
+        assert.deepEqual(compiled.graph, { squareAxes: false, viewport: { xmin: 0 } });
+    });
+
+    test('nothing logged to the console', () => {
+        assert.deepEqual(calculator().consoleErrors(), []);
     });
 });
 

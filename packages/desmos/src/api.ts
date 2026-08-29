@@ -10,6 +10,7 @@ import {
 } from './calculator';
 import {
     ExpressionState,
+    TickerState,
     LineStyle,
     PointStyle,
     DragMode,
@@ -55,17 +56,44 @@ export interface ExpressionAnalysis {
     evaluation?: { type: 'Number'; value: number } | { type: 'ListOfNumber'; value: number[] };
 }
 
+/**
+ * The viewport rectangle, the way a graph state spells it.
+ *
+ * Not {@link MathBounds}: `setMathBounds` takes `left`/`right`/`bottom`/`top`,
+ * while the state — and so anything read off `getState()` or written into
+ * `setState` — says `xmin`/`xmax`/`ymin`/`ymax` for the same rectangle.
+ */
+export interface Viewport {
+    xmin?: number;
+    xmax?: number;
+    ymin?: number;
+    ymax?: number;
+}
+
+/**
+ * The settings that live in a graph's state rather than in its calculator's
+ * options — the ones `updateSettings` has no say over.
+ *
+ * `updateSettings({ xmin: 0 })` is not an error; it is silently nothing, since
+ * the viewport belongs to the graph. A host that wants these applied has to put
+ * them in a `setState`, or call `setMathBounds`.
+ */
+export interface GraphSettings {
+    viewport?: Viewport;
+    /** One x unit drawn the same length as one y unit. Desmos defaults to true. */
+    squareAxes?: boolean;
+    /**
+     * The viewport lock the graph's own settings menu sets, which pins the
+     * framing for anybody who opens it. Not `lockViewport`: that is a
+     * calculator option the embedder chooses, and it is not part of the state.
+     */
+    userLockedViewport?: boolean;
+}
+
 export interface GraphState {
     version: number;
-    graph?: {
-        viewport?: Partial<MathBounds> & {
-            xmin?: number;
-            xmax?: number;
-            ymin?: number;
-            ymax?: number;
-        };
-    };
-    expressions?: { list?: ExpressionState[]; ticker?: unknown };
+    graph?: GraphSettings & { [key: string]: unknown };
+    expressions?: { list?: ExpressionState[]; ticker?: TickerState };
     randomSeed?: string;
     [key: string]: unknown;
 }

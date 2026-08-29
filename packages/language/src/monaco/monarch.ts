@@ -6,6 +6,7 @@ import {
     AXIS_MANIFEST,
     AXIS_METADATA_PROPERTY_NAMES,
     AXIS_OPERATOR_NAMES,
+    AXIS_TICKER_PROPERTY_NAMES,
 } from '../index';
 
 /**
@@ -25,7 +26,12 @@ export function createAxisMonarchLanguage(): monaco.languages.IMonarchLanguage {
         functions: [...AXIS_FUNCTION_NAMES],
         constants: [...AXIS_CONSTANT_NAMES, ...AXIS_OPERATOR_NAMES],
         configProperties: [...AXIS_CONFIG_PROPERTY_NAMES],
-        metadataProperties: [...AXIS_METADATA_PROPERTY_NAMES],
+        // Both namespaces in one list: highlighting is per line and does not
+        // parse, so `minStep` is a property wherever it is written, and only the
+        // diagnostics say which statements may carry which.
+        metadataProperties: [
+            ...new Set([...AXIS_METADATA_PROPERTY_NAMES, ...AXIS_TICKER_PROPERTY_NAMES]),
+        ],
 
         operators: ['=', '->', '+', '-', '*', '/', '^', '<', '>', '<=', '>=', '==', '!='],
 

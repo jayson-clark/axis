@@ -106,6 +106,43 @@ describe('absolute value', () => {
     test('sizes the bars around a tall expression', () => {
         assert.equal(convertToLatex('|x / 2|'), '\\left|\\frac{x}{2}\\right|');
     });
+
+    test('opens on a bar that has no value in front of it, so bars nest', () => {
+        assert.equal(
+            convertToLatex('|x / (|a - b|)|'),
+            '\\left|\\frac{x}{\\left|a-b\\right|}\\right|',
+        );
+    });
+
+    test('opens on a bar with nothing open to close, however it is preceded', () => {
+        assert.equal(convertToLatex('2|x|'), '2\\left|x\\right|');
+        assert.equal(convertToLatex('|x||y|'), '\\left|x\\right|\\left|y\\right|');
+    });
+});
+
+describe('action runs', () => {
+    test('drops the brackets that hold a run of actions together', () => {
+        // Bracketed, Desmos reads the run as a point and runs one coordinate of
+        // it; the brackets are Axis syntax, not part of what it means.
+        assert.equal(convertToLatex('A = (a -> 1, b -> 2)'), 'A=a\\to1,b\\to2');
+    });
+
+    test('drops them for a function, and for a run with nothing in front of it', () => {
+        assert.equal(convertToLatex('f(x) = (a -> x, b -> 2)'), 'f\\left(x\\right)=a\\to x,b\\to2');
+        assert.equal(convertToLatex('(a -> 1, b -> 2)'), 'a\\to1,b\\to2');
+    });
+
+    test('keeps the brackets around a point, which is what they are for', () => {
+        assert.equal(convertToLatex('P = (1, 2)'), 'P=\\left(1,2\\right)');
+        assert.equal(convertToLatex('A = (a -> 1)'), 'A=\\left(a\\to1\\right)');
+    });
+
+    test('leaves a bracketed run that is only part of the value', () => {
+        assert.equal(
+            convertToLatex('A = f((a -> 1, b -> 2))'),
+            'A=f\\left(\\left(a\\to1,b\\to2\\right)\\right)',
+        );
+    });
 });
 
 describe('names', () => {
@@ -155,17 +192,46 @@ describe('the bare operators', () => {
     test('joins a list comprehension with for', () => {
         assert.equal(
             convertToLatex('L = [i for i = [1, ..., 10]]'),
-            'L=[i\\operatorname{for}i=[1,...,10]]',
+            'L=\\left[i\\operatorname{for}i=\\left[1,...,10\\right]\\right]',
         );
         assert.equal(
             convertToLatex('S = [i ^ 2 for i = [1, ..., 10]]'),
-            'S=[i^2\\operatorname{for}i=[1,...,10]]',
+            'S=\\left[i^2\\operatorname{for}i=\\left[1,...,10\\right]\\right]',
         );
     });
 
     test('writes random as the call it is, not a variable', () => {
         assert.equal(convertToLatex('a = random()'), 'a=\\operatorname{random}\\left(\\right)');
         assert.equal(convertToLatex('R = random(5)'), 'R=\\operatorname{random}\\left(5\\right)');
+    });
+});
+
+describe('scripts', () => {
+    test('groups a bracketed exponent with braces', () => {
+        // `x^\\left(n\\right)` draws the brackets on the page; the brackets in
+        // `x^(n)` say which characters the exponent takes, which is a group.
+        assert.equal(convertToLatex('x^(n)'), 'x^{n}');
+        assert.equal(convertToLatex('x^(n + 1)'), 'x^{n+1}');
+    });
+
+    test('groups a subscript the same way, which is what a sum needs', () => {
+        assert.equal(convertToLatex('\\sum_(n = 0)^(z - 1)x'), '\\sum_{n=0}^{z-1}x');
+    });
+
+    test('groups a script written with the spaces the formatter adds', () => {
+        assert.equal(convertToLatex('x ^ (n + 1)'), 'x^{n+1}');
+    });
+
+    test('leaves a single-character script alone', () => {
+        assert.equal(convertToLatex('x^2'), 'x^2');
+    });
+
+    test('groups a script inside a script', () => {
+        assert.equal(convertToLatex('x^((a + b)^(2))'), 'x^{\\left(a+b\\right)^{2}}');
+    });
+
+    test('leaves brackets that are not a script alone', () => {
+        assert.equal(convertToLatex('f(n)'), 'f\\left(n\\right)');
     });
 });
 

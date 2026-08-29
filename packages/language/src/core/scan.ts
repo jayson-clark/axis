@@ -33,8 +33,19 @@ export function closersFor(openers: string): string {
  *          only want to skip past the text either way.
  */
 export function endOfString(input: string, start: number): number {
-    const close = input.indexOf(input[start], start + 1);
-    return close === -1 ? -1 : close + 1;
+    const quote = input[start];
+
+    for (let i = start + 1; i < input.length; i++) {
+        // A backslash spends the character after it, whatever it is, so the
+        // quote in `"a \" b"` closes nothing.
+        if (input[i] === '\\') {
+            i++;
+        } else if (input[i] === quote) {
+            return i + 1;
+        }
+    }
+
+    return -1;
 }
 
 /** {@link endOfString}, treating an unclosed quote as running to end of input. */

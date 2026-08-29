@@ -64,7 +64,7 @@ closes it again.
 |                                                     |                                                              |
 | --------------------------------------------------- | ------------------------------------------------------------ |
 | `load(source, options?)`                            | compile Axis source and apply it, imports and all            |
-| `setExpressions(list, settings?)`                   | apply expressions the compiler already produced              |
+| `setExpressions(list, settings?, graph?)`           | apply expressions the compiler already produced              |
 | `inspectExpressions()`                              | the expression list with each one's Desmos analysis attached |
 | `getErrors()`                                       | just the expressions Desmos rejected, with its message       |
 | `getAnalysis()`                                     | raw `calculator.expressionAnalysis`, keyed by id             |
@@ -131,13 +131,13 @@ axis-inspect - < graph.axis           # source on stdin
 `packages/harness/test` is the Axis language checked against the calculator that
 has to accept it, rather than against the compiler's own idea of itself:
 
-| Suite      | What it pins                                                                        |
-| ---------- | ----------------------------------------------------------------------------------- |
-| `metadata` | every one of the 24 `# key: value` properties, read back off the applied graph      |
-| `config`   | every one of the 81 `config { … }` properties, read back off `calculator.settings`  |
-| `language` | every function and constant in the manifest is one Desmos knows, plus the operators |
-| `graph`    | folders, tables, notes, imports, and all 20 example scripts                         |
-| `harness`  | the harness itself                                                                  |
+| Suite      | What it pins                                                                                 |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| `metadata` | every one of the 24 `# key: value` properties, read back off the applied graph               |
+| `config`   | every one of the 86 `config { … }` properties, off `calculator.settings` and the graph state |
+| `language` | every function and constant in the manifest is one Desmos knows, plus the operators          |
+| `graph`    | folders, tables, notes, imports, and all 20 example scripts                                  |
+| `harness`  | the harness itself                                                                           |
 
 Each of the first three is driven from `@axis-dsl/language`'s manifest and fails
 if a name is added there without a test, so the coverage cannot quietly rot.

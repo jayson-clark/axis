@@ -12,7 +12,7 @@ npm install @axis-dsl/compiler
 ```ts
 import { compileAxis } from '@axis-dsl/compiler';
 
-const { expressions, settings } = compileAxis(`
+const { expressions, settings, graph } = compileAxis(`
 config { showGrid: true }
 
 "Basic functions"
@@ -26,6 +26,12 @@ g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
 `CalculatorOptions` — both typed by
 [`@axis-dsl/desmos`](https://www.npmjs.com/package/@axis-dsl/desmos).
 
+`graph` is the rest of the `config` block: the viewport (`xmin`, `xmax`, `ymin`,
+`ymax`) and `squareAxes`. They are separate because Desmos applies them
+separately — it keeps the viewport in a graph's **state**, not in its
+calculator's options, so `updateSettings({ xmin: 0 })` is not an error, it is
+silence. Anything that renders a compilation has to apply both halves.
+
 ## Applying the result
 
 Apply the expressions with `setState`, not `setExpressions`:
@@ -33,7 +39,8 @@ Apply the expressions with `setState`, not `setExpressions`:
 ```ts
 calculator.setState({
     version: 11,
-    graph: { viewport: { xmin: -10, xmax: 10, ymin: -10, ymax: 10 } },
+    // The script's own viewport, over whatever framing you default to.
+    graph: { viewport: { xmin: -10, xmax: 10, ymin: -10, ymax: 10 }, ...graph },
     expressions: { list: expressions },
 });
 
@@ -95,9 +102,12 @@ The other direction: a graph back into the script that builds it.
 ```ts
 import { decompileAxis } from '@axis-dsl/compiler';
 
+const state = calculator.getState();
+
 const source = decompileAxis({
-  expressions: calculator.getState().expressions.list,
+  expressions: state.expressions.list,
   settings: calculator.settings,
+  graph: state.graph,
 });
 ```
 
@@ -128,6 +138,14 @@ Three things a graph cannot tell you, and one it cannot hold:
 - **LaTeX Axis has no spelling for** — an `\operatorname` it does not know, a
   command it has never heard of — is passed through as written, which leaves one
   recognisable thing to fix by hand rather than a mangled expression.
+
+What survives is what the graph _means_, not always the characters it was
+written with. Desmos keeps whatever spacing an author typed — `\ ` between two
+arguments — and Axis has no way to say that, so a decompiled graph closes those
+up. A bare run of points comes back as the list it is, and a fraction written
+beside a name comes back with the name in its numerator, which is the same
+number. The check that matters is that a real calculator reads the two graphs
+the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
 
 `convertFromLatex` is the expression-level half of it, and the inverse of
 `convertToLatex`.

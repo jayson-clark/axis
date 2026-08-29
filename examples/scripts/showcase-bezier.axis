@@ -6,19 +6,19 @@
 // and the curve they trace. Drag any point; slide s to walk the construction.
 
 config {
-    showGrid: false,
-    xAxisNumbers: false,
+    showGrid: false
+    xAxisNumbers: false
     yAxisNumbers: false
 }
 
 "Cubic Bezier"
 
 folder "Control points - drag these" {
-    A = (-6, -3) # color: #000000, pointSize: 16, dragMode: XY, label: "A", showLabel: true,
-    B = (-4, 5) # color: #000000, pointSize: 16, dragMode: XY, label: "B", showLabel: true,
-    C = (4, -5) # color: #000000, pointSize: 16, dragMode: XY, label: "C", showLabel: true,
-    D = (6, 3) # color: #000000, pointSize: 16, dragMode: XY, label: "D", showLabel: true,
-    "The control polygon.",
+    A = (-6, -3) # color: #000000, pointSize: 16, dragMode: XY, label: "A", showLabel: true
+    B = (-4, 5) # color: #000000, pointSize: 16, dragMode: XY, label: "B", showLabel: true
+    C = (4, -5) # color: #000000, pointSize: 16, dragMode: XY, label: "C", showLabel: true
+    D = (6, 3) # color: #000000, pointSize: 16, dragMode: XY, label: "D", showLabel: true
+    "The control polygon."
     hull = [A, B, C, D] # color: #000000, points: false, lineStyle: DASHED, lineOpacity: 0.35
 }
 
@@ -28,16 +28,16 @@ curve(t) = (1 - t) ^ 3 * A + 3(1 - t) ^ 2 * t * B + 3(1 - t) * t ^ 2 * C + t ^ 3
 curve(t) # color: #6042a6, lineWidth: 4
 
 folder "de Casteljau at s" {
-    s = 0.35 # sliderBounds: {min: 0, max: 1, step: 0.002}, playing: true,
-    "First round of midpoints.",
-    E = A + s * (B - A) # color: #c74440, pointSize: 12,
-    F = B + s * (C - B) # color: #c74440, pointSize: 12,
-    G = C + s * (D - C) # color: #c74440, pointSize: 12,
-    L1 = [E, F, G] # color: #c74440, points: false, lineOpacity: 0.6,
-    "Second round.",
-    H = E + s * (F - E) # color: #2d70b3, pointSize: 12,
-    I = F + s * (G - F) # color: #2d70b3, pointSize: 12,
-    L2 = [H, I] # color: #2d70b3, points: false, lineOpacity: 0.6,
-    "And the point on the curve.",
+    s = 0.35 # sliderBounds: {min: 0, max: 1, step: 0.002}, playing: true
+    "First round of midpoints."
+    E = A + s * (B - A) # color: #c74440, pointSize: 12
+    F = B + s * (C - B) # color: #c74440, pointSize: 12
+    G = C + s * (D - C) # color: #c74440, pointSize: 12
+    L1 = [E, F, G] # color: #c74440, points: false, lineOpacity: 0.6
+    "Second round."
+    H = E + s * (F - E) # color: #2d70b3, pointSize: 12
+    I = F + s * (G - F) # color: #2d70b3, pointSize: 12
+    L2 = [H, I] # color: #2d70b3, points: false, lineOpacity: 0.6
+    "And the point on the curve."
     J = H + s * (I - H) # color: #6042a6, pointSize: 20
 }

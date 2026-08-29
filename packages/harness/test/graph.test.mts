@@ -14,6 +14,63 @@ import { compileAxis } from '@axis-dsl/compiler';
 import { readAxisFile } from '../dist/index.js';
 import { example, exampleDirectory, skip, useCalculator } from './support.mts';
 
+describe('separators', { skip }, () => {
+    const calculator = useCalculator();
+
+    test('a block written without its commas builds the same graph', async () => {
+        await calculator().load(
+            'folder "Curves" {\ny = x\ny = 2x\n}\ntable {\nx = [1, 2]\ny = [3, 4]\n}',
+        );
+        const list = (await calculator().getState()).expressions?.list ?? [];
+        const [folder, first, second, table] = list as [Folder, Expression, Expression, Table];
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal(first.folderId, folder.id);
+        assert.equal(second.folderId, folder.id);
+        assert.equal(table.type, 'table');
+        assert.equal(table.columns?.length, 2);
+    });
+});
+
+describe('a metadata block', { skip }, () => {
+    const calculator = useCalculator();
+
+    test('reaches the graph the way a trailing run does', async () => {
+        await calculator().load(
+            'y = sin(x) #{\n    color: #c74440\n    lineStyle: DASHED\n    label: "a wave"\n}',
+        );
+        const [expression] = (await calculator().getState()).expressions?.list ?? [];
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((expression as Expression).color, '#c74440');
+        assert.equal((expression as Expression).lineStyle, 'DASHED');
+        assert.equal((expression as Expression).label, 'a wave');
+    });
+
+    test('builds a slider Desmos accepts, bounds and all', async () => {
+        // A slider is the property most easily dropped on the floor by
+        // setState, and the one most worth writing over several lines.
+        await calculator().load(
+            'a = 1 #{\n    sliderBounds: {min: 0, max: 5, step: 0.5}\n    playing: false\n}\ny = a * x',
+        );
+        const [slider] = (await calculator().getState()).expressions?.list ?? [];
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((slider as Expression).slider?.min, '0');
+        assert.equal((slider as Expression).slider?.max, '5');
+        assert.equal((await calculator().evaluate('a')).numericValue, 1);
+    });
+
+    test('starts a folder collapsed from inside its brace', async () => {
+        await calculator().load('folder "Working" { #{\n    collapsed: true\n}\n    y = x\n}');
+        const [folder] = (await calculator().getState()).expressions?.list ?? [];
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((folder as Folder).title, 'Working');
+        assert.equal((folder as Folder).collapsed, true);
+    });
+});
+
 describe('folders', { skip }, () => {
     const calculator = useCalculator();
 
