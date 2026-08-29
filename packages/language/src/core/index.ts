@@ -21,10 +21,19 @@ export type {
 
 export { getAxisCompletions } from './completions';
 
+export {
+    findImportStatements,
+    importTitle,
+    IMPORT_KEYWORD,
+    parseImportStatement,
+    withAxisExtension,
+} from './imports';
+export type { ImportStatement, LocatedImport } from './imports';
+
 export { createDebouncer } from './debounce';
 export type { Debouncer } from './debounce';
 
-export { validateAxis } from './diagnostics';
+export { missingImportDiagnostic, validateAxis } from './diagnostics';
 export type { AxisDiagnostic, AxisDiagnosticCode, AxisDiagnosticSeverity } from './diagnostics';
 
 export { formatAxisCode, formatAxisCodeWithIndent, indentLevelOf } from './formatter';
