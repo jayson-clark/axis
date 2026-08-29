@@ -752,7 +752,15 @@ export const AXIS_MANIFEST = {
     ] satisfies PropertyDefinition[],
 
     /** The block keywords, plus the statement keywords. */
-    keywords: ['folder', 'table', 'config', 'import', 'ticker', 'image'] satisfies string[],
+    keywords: [
+        'folder',
+        'table',
+        'config',
+        'import',
+        'ticker',
+        'image',
+        'macro',
+    ] satisfies string[],
 
     /**
      * The `# key: value` properties a `ticker` statement takes.

@@ -19,6 +19,9 @@
             "include": "#ticker"
         },
         {
+            "include": "#macro"
+        },
+        {
             "include": "#image"
         },
         {
@@ -90,6 +93,24 @@
                 {
                     "name": "keyword.control.ticker.axis",
                     "match": "^\\s*(ticker)\\b"
+                }
+            ]
+        },
+        "macro": {
+            "patterns": [
+                {
+                    "match": "^\\s*(macro)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(\\()?",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.control.macro.axis"
+                        },
+                        "2": {
+                            "name": "entity.name.function.macro.axis"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.parameters.begin.axis"
+                        }
+                    }
                 }
             ]
         },
