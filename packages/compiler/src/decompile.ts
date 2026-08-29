@@ -31,8 +31,11 @@ import { CalculatorOptions, DesmosExpression, Expression, TableColumn } from '@a
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     AXIS_CONFIG_PROPERTY_NAMES,
+    bracketDelta,
+    escapeString,
     formatAxisCode,
     splitTopLevel,
+    splitTopLevelParts,
 } from '@axis-dsl/language';
 import { convertFromLatex } from './unlatex';
 
@@ -50,6 +53,7 @@ export interface DecompileOptions {
 /** The metadata a plain expression carries, in the order it is written out. */
 const EXPRESSION_PROPERTIES = [
     'color',
+    'colorLatex',
     'lineStyle',
     'lineWidth',
     'lineOpacity',
@@ -67,6 +71,7 @@ const EXPRESSION_PROPERTIES = [
     'showLabel',
     'labelSize',
     'labelOrientation',
+    'suppressTextOutline',
     'description',
 ] as const;
 
@@ -149,7 +154,7 @@ export function decompileAxis(input: DecompileInput, options: DecompileOptions =
 function decompileStatement(expression: DesmosExpression, indent: string): string[] {
     switch (expression.type) {
         case 'text':
-            return [quote(noteText(expression.text ?? ''))];
+            return [quote(expression.text ?? '')];
 
         case 'table':
             return block(
@@ -166,10 +171,84 @@ function decompileStatement(expression: DesmosExpression, indent: string): strin
             return [];
 
         default: {
-            const code = formatExpression(convertFromLatex(expression.latex ?? ''));
+            // A graph saved long enough ago writes a note as a bare `text` with
+            // no type at all, and Desmos still reads it as one - so the type is
+            // not what says a note is a note, the text is.
+            const untyped = expression as { text?: string };
+            if (typeof untyped.text === 'string') {
+                return [quote(untyped.text)];
+            }
+
+            const code = formatExpression(groupCommaRun(convertFromLatex(expression.latex ?? '')));
             return code ? [`${code}${trailing(expressionProperties(expression))}`] : [];
         }
     }
+}
+
+/**
+ * A run of things separated by a top-level comma, in the brackets that hold it
+ * together: `(1, 2), (3, 4)` → `[(1, 2), (3, 4)]`.
+ *
+ * Desmos lets two kinds of run be written bare, and means something different
+ * by each:
+ *
+ *   - **Points** are a list. `length` of one is its number of points, indexing
+ *     one gives a point back, and it matches the bracketed list element for
+ *     element. Brackets are how Axis writes a list.
+ *   - **Actions** are a multi-action, and emphatically not a list - Desmos
+ *     answers `\left[a\to1,b\to2\right]` with "Cannot store an action in a
+ *     list". Parentheses are what holds one: `\left(a\to1,b\to2\right)` runs
+ *     exactly as the bare run does.
+ *
+ * Axis has no bare spelling for either, because a comma at the top level is
+ * what separates one statement from the next. Left alone the run would
+ * decompile to a line apiece, which recompiles to an expression apiece - a
+ * different graph, and silently so.
+ */
+function groupCommaRun(code: string): string {
+    const parts = splitTopLevel(code, ',');
+
+    if (parts.length <= 1) {
+        return code;
+    }
+
+    // Only the value is the run; the name in front of it is not part of one.
+    const defined = definitionEnd(code);
+    const [open, close] = parts.some(isAction) ? ['(', ')'] : ['[', ']'];
+
+    return `${code.slice(0, defined)}${open}${code.slice(defined).trim()}${close}`;
+}
+
+/**
+ * Whether `code` performs an action, which a list may not hold.
+ *
+ * Anywhere in the part, not only at its top level: a piecewise that chooses
+ * between two actions - `{p = 0: a -> 1, a -> 0}` - is an action itself, and
+ * putting one in a list is the same error as putting a bare arrow there.
+ */
+function isAction(code: string): boolean {
+    return code.includes('->');
+}
+
+/**
+ * Where a definition's value starts - just past its `=` - or 0 when the
+ * statement defines nothing and is a value throughout.
+ *
+ * `<=`, `>=` and `->` all carry an `=` or point like one without defining
+ * anything, so the character either side of a candidate has to be looked at.
+ */
+function definitionEnd(code: string): number {
+    for (const part of splitTopLevelParts(code, '=')) {
+        const at = part.start + part.text.length;
+        if (at >= code.length) {
+            break;
+        }
+        if (!/[<>!=]/.test(code[at - 1] ?? '') && code[at + 1] !== '=') {
+            return at + 1;
+        }
+    }
+
+    return 0;
 }
 
 /** A table column: its header, the values under it, and how it is drawn. */
@@ -290,6 +369,11 @@ type ValueKind = 'text' | 'code' | 'coerced';
  * read as a number, a boolean, or two entries takes them, as does any text with
  * a space in it. A bare word, a hex colour or an enum is left as written, which
  * is how the examples read.
+ *
+ * A bracket the value leaves open takes them too, and has to: metadata inside a
+ * block ends at the `}` that closes the block around it, so a label of `}`
+ * written bare would close the folder it sits in and hand the rest of it to
+ * whatever came next. Quoted, it is text like any other.
  */
 function value(setting: string | number | boolean, kind: ValueKind = 'text'): string {
     if (typeof setting !== 'string') {
@@ -301,6 +385,7 @@ function value(setting: string | number | boolean, kind: ValueKind = 'text'): st
         text.trim() !== text ||
         text === '' ||
         /["']/.test(text) ||
+        bracketDelta(text) !== 0 ||
         splitTopLevel(text, ',').length > 1 ||
         (kind === 'text' &&
             (/\s/.test(text) || text === 'true' || text === 'false' || isNumeric(text)));
@@ -314,12 +399,23 @@ function isNumeric(text: string): boolean {
 
 /** A double-quoted string, with the quotes Axis cannot escape turned aside. */
 function quote(text: string): string {
-    return `"${text.replace(/"/g, "'")}"`;
+    return `"${escapeString(text)}"`;
 }
 
-/** A note is a single quoted line, so its own line breaks close up to spaces. */
-function noteText(text: string): string {
-    return text.replace(/\s*\n\s*/g, ' ');
+/**
+ * Indent every line of `text`, which may be several.
+ *
+ * A statement long enough to be wrapped arrives here as one entry holding the
+ * newlines the formatter put in it, so indenting the string rather than each of
+ * its lines would push the first line in and leave the rest - and the closing
+ * bracket - standing at the margin. Blank lines are left empty rather than
+ * padded out with trailing spaces.
+ */
+function indentLines(text: string, indent: string): string {
+    return text
+        .split('\n')
+        .map(line => (line ? `${indent}${line}` : line))
+        .join('\n');
 }
 
 /** ` # a: 1, b: 2`, or nothing at all when there is no metadata to write. */
@@ -343,7 +439,7 @@ function block(
     const lines = [`${header}${trailing(metadata)}`];
 
     entries.forEach((entry, position) => {
-        const body = entry.map(line => `${indent}${line}`);
+        const body = entry.map(line => indentLines(line, indent));
         if (position < entries.length - 1) {
             body[body.length - 1] += ',';
         }

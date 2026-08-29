@@ -30,6 +30,10 @@ interface PropertyCase {
 
 const PROPERTIES: Record<string, PropertyCase> = {
     color: { source: 'y = x # color: #ff0000', expected: { color: '#ff0000' } },
+    colorLatex: {
+        source: 'C = rgb(255, 0, 0)\ny = x # colorLatex: C',
+        expected: { colorLatex: 'C' },
+    },
     lineStyle: { source: 'y = x # lineStyle: DASHED', expected: { lineStyle: 'DASHED' } },
     lineWidth: { source: 'y = x # lineWidth: 5', expected: { lineWidth: '5' } },
     lineOpacity: { source: 'y = x # lineOpacity: 0.3', expected: { lineOpacity: '0.3' } },
@@ -46,6 +50,10 @@ const PROPERTIES: Record<string, PropertyCase> = {
     showLabel: {
         source: '(1, 2) # label: "P", showLabel: true',
         expected: { label: 'P', showLabel: true },
+    },
+    suppressTextOutline: {
+        source: '(1, 2) # label: "P", showLabel: true, suppressTextOutline: true',
+        expected: { suppressTextOutline: true },
     },
     labelSize: {
         source: '(1, 2) # label: "P", labelSize: 2',

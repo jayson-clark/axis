@@ -180,6 +180,39 @@ describe('the graph the decompiled source builds', { skip }, () => {
         );
     });
 
+    test('reads a bare run of points as the very same list', async () => {
+        // The decompiler writes such a run as `[(1, 2), (3, 4)]`, which is only
+        // right because Desmos means nothing else by it. That is a fact about
+        // Desmos rather than about the compiler, so it is pinned here: if the
+        // two forms ever stop agreeing, the decompiler is wrong to merge them.
+        await calculator().setExpressions([
+            { type: 'expression', id: '1', latex: 'A=\\left(1,2\\right),\\left(3,4\\right)' },
+            {
+                type: 'expression',
+                id: '2',
+                latex: 'B=\\left[\\left(1,2\\right),\\left(3,4\\right)\\right]',
+            },
+        ]);
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal(
+            (await calculator().evaluateLatex('\\operatorname{length}\\left(A\\right)'))
+                .numericValue,
+            2,
+        );
+        // Element for element, both coordinates, so nothing hides in the sum.
+        for (const coordinate of ['x', 'y']) {
+            assert.equal(
+                (
+                    await calculator().evaluateLatex(
+                        `\\operatorname{total}\\left(A.${coordinate}-B.${coordinate}\\right)`,
+                    )
+                ).numericValue,
+                0,
+            );
+        }
+    });
+
     test('is a graph Desmos still shades', async () => {
         // An inequality Desmos will not shade is the sort of thing that only
         // shows up here: it compiles either way.

@@ -18,7 +18,7 @@
 import { CLOSER_FOR, CLOSERS, endOfStringOrLine, matchingBracket, OPENERS } from './scan';
 
 /** `folder "Name"`, `table` or `config`, as written immediately before a `{`. */
-const BLOCK_HEADER = /^(?:folder\s+"[^"]*"|table|config)$/;
+const BLOCK_HEADER = /^(?:folder\s+"(?:[^"\\]|\\[^])*"|table|config)$/;
 
 /** The block keywords, for spotting a header that is missing its brace. */
 export const BLOCK_KEYWORDS = /^(folder|table|config)\b(?!\s*=)/;

@@ -38,6 +38,23 @@ describe('joinContinuedLines', () => {
         assert.deepEqual(joinContinuedLines('table {\ny = x\n}'), ['table {', 'y = x', '}']);
     });
 
+    test('folds a piecewise whose brace ends the line', () => {
+        // The formatter breaks a long piecewise this way, so it has to read
+        // back as one statement - a trailing brace is not by itself a block.
+        assert.deepEqual(joinContinuedLines('y = {\n  x < 0: -x,\n  x >= 0: x\n}\nz = 1'), [
+            'y = { x < 0: -x, x >= 0: x }',
+            'z = 1',
+        ]);
+    });
+
+    test('still does not join a folder brace that ends the line', () => {
+        assert.deepEqual(joinContinuedLines('folder "F" {\ny = x\n}'), [
+            'folder "F" {',
+            'y = x',
+            '}',
+        ]);
+    });
+
     test('re-attaches metadata written on any line the statement spans', () => {
         assert.deepEqual(joinContinuedLines('P = [\n(0,0) # color: red\n]'), [
             'P = [ (0,0) ] # color: red',

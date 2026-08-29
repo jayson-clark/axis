@@ -199,3 +199,74 @@ describe('round trip', () => {
         });
     }
 });
+
+describe('bars and fractions', () => {
+    test('reads a bar holding another bar as abs, which nests', () => {
+        // Axis pairs bars in the order they appear, so `|x/|a-b||` cannot say
+        // which bar opened what - Desmos is handed `\\right|` where an opener
+        // belongs, and rejects the whole expression.
+        assert.equal(
+            convertFromLatex('\\left|\\frac{x}{\\left|a-b\\right|}\\right|'),
+            'abs(x/(|a-b|))',
+        );
+    });
+
+    test('leaves a bar that holds no other bar as bars', () => {
+        assert.equal(convertFromLatex('\\left|a-b\\right|'), '|a-b|');
+    });
+
+    test('brackets a denominator an accessor would otherwise take', () => {
+        // `(a+b)/2.x` divides by `2.x`; the accessor belongs to the fraction.
+        assert.equal(convertFromLatex('\\frac{a+b}{2}.x'), '(a+b)/(2).x');
+    });
+});
+
+describe('scripts', () => {
+    test('reads a summation with its bounds', () => {
+        assert.equal(convertFromLatex('\\sum_{n=0}^{z-1}x'), '\\sum_(n=0)^(z-1)x');
+    });
+
+    test('does not bracket an exponent that is bracketed already', () => {
+        // Both would give `x^((n-1))`, and Desmos draws the inner pair.
+        assert.equal(convertFromLatex('x^{\\left(n-1\\right)}'), 'x^(n-1)');
+    });
+
+    test('brackets an exponent that is more than one group', () => {
+        assert.equal(convertFromLatex('x^{\\left(a\\right)+\\left(b\\right)}'), 'x^((a)+(b))');
+    });
+
+    test('separates letters that latex writes as a product', () => {
+        // `yn` is `y` times `n` in latex; the same two letters closed up in
+        // Axis are the single name `y_{n}`, which is a different graph.
+        assert.equal(convertFromLatex('yn'), 'y n');
+        assert.equal(convertFromLatex('abc'), 'a b c');
+        assert.equal(convertFromLatex('a_{bc}'), 'abc');
+    });
+
+    test('leaves a subscript that spells a name as the name', () => {
+        assert.equal(convertFromLatex('a_{full}'), 'afull');
+    });
+});
+
+describe('a function and what it takes', () => {
+    test('keeps a function apart from an argument opening with a digit', () => {
+        // `cos2pi t` closed up is the single name `cos2pi`, which compiles to
+        // `c_{os2pi}` - a different graph than the one read from.
+        assert.equal(convertFromLatex('\\cos2\\pi t'), 'cos 2pi t');
+        assert.equal(convertFromLatex('\\sin2\\pi t'), 'sin 2pi t');
+    });
+
+    test("reads Desmos' explicit spaces as plain ones", () => {
+        // Left as they were, the backslash reaches the compiler and comes back
+        // escaped as `\\`, which is not a space and not valid latex.
+        assert.equal(convertFromLatex('\\left(a,\\ b\\right)'), '(a, b)');
+
+        // `\\space` is the other one Desmos writes, and like any control word
+        // it ends at the first character that is not a letter.
+        assert.equal(convertFromLatex('x<1:\\space1'), 'x<1: 1');
+    });
+
+    test('leaves a bracketed argument alone', () => {
+        assert.equal(convertFromLatex('\\cos\\left(2\\pi t\\right)'), 'cos(2pi t)');
+    });
+});

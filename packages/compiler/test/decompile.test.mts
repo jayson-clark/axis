@@ -237,25 +237,147 @@ describe('quoting', () => {
 });
 
 describe('what a script says and a graph cannot', () => {
-    test('turns a note’s own line breaks into spaces, since a note is one line', () => {
+    test('escapes a note’s own line breaks, since a statement is one line', () => {
         const decompiled = decompileAxis({
             expressions: [{ type: 'text', id: 'n', text: 'first\nsecond' }],
         });
 
-        assert.equal(decompiled, '"first second"\n');
+        assert.equal(decompiled, '"first\\nsecond"\n');
         assert.equal(
             (compileAxis(decompiled).expressions[0] as { text?: string }).text,
-            'first second',
+            'first\nsecond',
         );
     });
 
-    test('turns the quotes a note cannot escape into single ones', () => {
+    test('reads a bare run of points as the list it is', () => {
+        // Desmos lets a point list be written as a comma-separated run and
+        // means nothing else by it. A comma at the top level is what separates
+        // one Axis statement from the next, so left alone the run would come
+        // back as a point per expression - a different graph.
+        const decompiled = decompileAxis({
+            expressions: [
+                {
+                    type: 'expression',
+                    id: '1',
+                    latex: 'A=\\left(1,2\\right),\\left(3,4\\right)',
+                },
+            ],
+        });
+
+        assert.equal(decompiled, 'A = [(1, 2), (3, 4)]\n');
+        assert.equal(compileAxis(decompiled).expressions.length, 1);
+    });
+
+    test('groups a run of actions in brackets a list may not use', () => {
+        // Desmos answers `\left[a\to1,b\to2\right]` with "Cannot store an
+        // action in a list"; parentheses hold a multi-action and run as the
+        // bare comma run does.
+        const decompiled = decompileAxis({
+            expressions: [{ type: 'expression', id: '1', latex: 'C=a\\to1,b\\to2' }],
+        });
+
+        assert.equal(decompiled, 'C = (a -> 1, b -> 2)\n');
+        assert.equal(compileAxis(decompiled).expressions.length, 1);
+    });
+
+    test('groups a run of actions hidden inside a piecewise', () => {
+        // The arrows are branches rather than the top level, and the piecewise
+        // holding them is still an action.
+        const latex = 'C=\\left\\{p=0:a\\to1,a\\to0\\right\\},b\\to2';
+        const decompiled = decompileAxis({
+            expressions: [{ type: 'expression', id: '1', latex }],
+        });
+
+        assert.match(decompiled, /^C = \(/);
+        assert.equal(compileAxis(decompiled).expressions.length, 1);
+    });
+
+    test('reads an unnamed run of points the same way', () => {
+        const decompiled = decompileAxis({
+            expressions: [
+                { type: 'expression', id: '1', latex: '\\left(1,2\\right),\\left(3,4\\right)' },
+            ],
+        });
+
+        assert.equal(decompiled, '[(1, 2), (3, 4)]\n');
+        assert.equal(compileAxis(decompiled).expressions.length, 1);
+    });
+
+    test('leaves the commas that are already inside something alone', () => {
+        // Parameters, a piecewise's branches and a bracketed list all hold
+        // their commas below the top level, and none of them is a point run.
+        for (const source of [
+            'f(x, y) = x + y',
+            'p(x) = {x < 0: -x, x}',
+            'A = [(1, 2), (3, 4)]',
+            'y <= 1',
+            'a -> a + 1',
+        ]) {
+            assert.equal(roundTrip(source), `${source}\n`);
+        }
+    });
+
+    test('escapes the quotes inside a note rather than changing them', () => {
         const decompiled = decompileAxis({
             expressions: [{ type: 'text', id: 'n', text: 'a "quoted" word' }],
         });
 
-        assert.equal(decompiled, `"a 'quoted' word"\n`);
-        assert.deepEqual(compileAxis(decompiled).expressions.length, 1);
+        assert.equal(decompiled, '"a \\"quoted\\" word"\n');
+        assert.equal(
+            (compileAxis(decompiled).expressions[0] as { text?: string }).text,
+            'a "quoted" word',
+        );
+    });
+
+    test('keeps a folder title that runs to several lines', () => {
+        const decompiled = decompileAxis({
+            expressions: [{ type: 'folder', id: 'f', title: 'LIBRARY\n\nby someone' }],
+        });
+
+        assert.equal(decompiled, 'folder "LIBRARY\\n\\nby someone" {\n}\n');
+        assert.equal(
+            (compileAxis(decompiled).expressions[0] as { title?: string }).title,
+            'LIBRARY\n\nby someone',
+        );
+    });
+
+    test('reads a note that was saved without a type as a note', () => {
+        // A graph saved long enough ago writes one as a bare `text`, and a real
+        // calculator still renders it; read as an expression it has no latex at
+        // all and falls off the end of the script.
+        const decompiled = decompileAxis({ expressions: [{ id: '1', text: 'older note' }] });
+
+        assert.equal(decompiled, '"older note"\n');
+        assert.equal(compileAxis(decompiled).expressions[0].type, 'text');
+    });
+
+    test('quotes a property value that leaves a bracket open', () => {
+        // Metadata inside a block ends at the `}` closing the block around it,
+        // so a label of `}` written bare would close the folder it sits in.
+        const decompiled = decompileAxis({
+            expressions: [
+                { type: 'folder', id: 'f', title: 'F' },
+                { type: 'expression', id: '1', latex: 'y=1', folderId: 'f', label: '}' },
+                { type: 'text', id: 'n', text: 'after', folderId: 'f' },
+            ],
+        });
+
+        assert.match(decompiled, /label: "\}"/);
+        const out = compileAxis(decompiled).expressions;
+        assert.equal(out.filter(e => e.type === 'text').length, 1, 'the note was swallowed');
+        assert.equal((out[1] as { label?: string }).label, '}');
+    });
+
+    test('leaves an escape nobody defined alone, so a note can name LaTeX', () => {
+        const text = 'use \\frac for a fraction';
+        const decompiled = decompileAxis({ expressions: [{ type: 'text', id: 'n', text }] });
+
+        assert.equal((compileAxis(decompiled).expressions[0] as { text?: string }).text, text);
+        // And the same note written by hand, with the backslash left bare.
+        assert.equal(
+            (compileAxis('"use \\frac for a fraction"').expressions[0] as { text?: string }).text,
+            text,
+        );
     });
 
     test('leaves a note that mentions a # a note', () => {
@@ -308,6 +430,58 @@ const SCRIPTS = [
     'D = (0, 0) # dragMode: XY, description: "Drag me"',
     'config { degreeMode: true, backgroundColor: "#ffffff" }\ny = sin(x)',
 ];
+
+describe('statements long enough to wrap', () => {
+    /**
+     * Long enough that the formatter breaks it at its branches, and with a
+     * coefficient in front of the brace: `y = {` is read as the statement it is
+     * either way, so it is the brace that arrives mid-expression - and lands at
+     * the end of its line once wrapped - that the reader used to lose.
+     */
+    const piecewise =
+        'y = 2.5 + 1.01{0 <= t < 1: flag(8t), 1 <= t < 2: flag(8) - h mod(t, 1),' +
+        ' 2 <= t < 3: -h + flag(8 - 8mod(t, 1)), h(-1 + mod(t, 1))}';
+
+    test('reads a wrapped piecewise back as one statement', () => {
+        const decompiled = roundTrip(piecewise);
+
+        // The test is only worth anything if it is long enough to have been
+        // broken across lines in the first place.
+        assert.ok(decompiled.trimEnd().includes('\n'), 'expected it to wrap');
+
+        // A brace that ends a line used to be taken for a block opener, so the
+        // branches came back as statements of their own.
+        assert.equal(compileAxis(decompiled).expressions.length, 1);
+    });
+
+    test('indents a wrapped statement to the block holding it', () => {
+        const decompiled = roundTrip(`folder "F" {\n${piecewise}\n}`);
+
+        // Every line of the statement, not just the one the entry starts on.
+        for (const line of decompiled.split('\n').slice(1, -2)) {
+            assert.match(line, /^ {4}\S|^ {8}\S/, `not indented into the folder: ${line}`);
+        }
+    });
+});
+
+describe('sums, scripts and with', () => {
+    test('reads a summation back with its bounds intact', () => {
+        assert.equal(roundTrip('S = \\sum_(n = 0)^(N)n ^ (2)'), 'S = \\sum_(n = 0) ^ (N)n ^ (2)\n');
+    });
+
+    test('keeps a with clause, rather than reading it as a variable', () => {
+        // Written closed up, `with` is the variable `w_{ith}` multiplying
+        // whatever stands next to it - a different graph that Desmos accepts.
+        assert.equal(roundTrip('f(y) = y n with n = 3'), 'f(y) = y n with n = 3\n');
+    });
+
+    test('round trips the shape a real graph writes all three in', () => {
+        roundTrip(
+            'B(x, y) = \\sum_(n = 0)^(z - 1)nCr(z - 1, n)(1 - x) ^ (z - n - 1)' +
+                'x ^ (n) * y[n + 1] with z = length(y)',
+        );
+    });
+});
 
 describe('round trip', () => {
     for (const script of SCRIPTS) {

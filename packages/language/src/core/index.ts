@@ -39,6 +39,7 @@ export type { AxisDiagnostic, AxisDiagnosticCode, AxisDiagnosticSeverity } from 
 export { formatAxisCode, formatAxisCodeWithIndent, indentLevelOf } from './formatter';
 
 export { splitTopLevel, splitTopLevelParts, splitTrailingMetadata } from './metadata';
+export { escapeString, unescapeString } from './strings';
 export type { SplitLine, TopLevelPart } from './metadata';
 
 // The layout services the compiler leans on to read a script the same way an
