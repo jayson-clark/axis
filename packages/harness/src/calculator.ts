@@ -426,7 +426,22 @@ export class AxisCalculator {
             return false;
         }
 
+        // A click Desmos acts on changes the graph, but not on the frame the
+        // mouse went down: dispatching the action takes a turn or two. Settling
+        // straight away would read a graph that has been quiet the whole time
+        // and call it finished, so the wait is for the change *first* - bounded,
+        // since a click on something with no action never makes one.
+        const before = await this.page.evaluate(() => window.__axisHarness!.lastChange);
         await this.page.mouse.click(at.x, at.y);
+        await this.page.evaluate(
+            async ([since, limit]) => {
+                const deadline = Date.now() + limit;
+                while (Date.now() < deadline && window.__axisHarness!.lastChange === since) {
+                    await new Promise(resolve => setTimeout(resolve, 25));
+                }
+            },
+            [before, this.options.maxSettleMs] as const,
+        );
         await this.settle();
         return true;
     }

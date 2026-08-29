@@ -82,6 +82,12 @@ export interface GraphSettings {
     viewport?: Viewport;
     /** One x unit drawn the same length as one y unit. Desmos defaults to true. */
     squareAxes?: boolean;
+    /**
+     * The viewport lock the graph's own settings menu sets, which pins the
+     * framing for anybody who opens it. Not `lockViewport`: that is a
+     * calculator option the embedder chooses, and it is not part of the state.
+     */
+    userLockedViewport?: boolean;
 }
 
 export interface GraphState {

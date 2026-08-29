@@ -93,6 +93,10 @@ const CALLS: Record<string, string> = {
     nCr: 'nCr(5, 2)',
     nPr: 'nPr(5, 2)',
     factorial: 'factorial(5)',
+
+    // audio — a frequency in hertz and a volume of 0 to 1. Nothing is heard in
+    // a headless browser, but Desmos still says whether it knows the name.
+    tone: 'tone(440, 0.5)',
 };
 
 /**

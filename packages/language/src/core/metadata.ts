@@ -18,6 +18,10 @@ export interface SplitLine {
  * A `#` that is not followed by `key: value` (or a bare `hidden`/`secret` flag)
  * is left alone: `y = x # ff0000` reads as a hex colour or a stray comment
  * rather than as metadata.
+ *
+ * A line that is metadata and nothing else is the blank row Desmos lets a graph
+ * keep for spacing - an expression with a colour and no expression in it - so
+ * the `#` may open the line as well as trail one.
  */
 export function splitTrailingMetadata(line: string): SplitLine {
     let hash = -1;
@@ -26,7 +30,7 @@ export function splitTrailingMetadata(line: string): SplitLine {
     // one - so the scan skips over quoted runs rather than taking the first
     // `#` on the line.
     scanCode(line, (char, index) => {
-        if (char === '#' && index > 0 && /\s/.test(line[index - 1])) {
+        if (char === '#' && (index === 0 || /\s/.test(line[index - 1]))) {
             hash = index;
             return true;
         }

@@ -115,6 +115,22 @@ switches `actions` on for you: Desmos decides that setting by looking at the
 expression list alone, so a graph whose only action is its ticker would otherwise
 never tick.
 
+## Images
+
+An image is a statement carrying the picture itself, styled the way everything
+else is — and every measurement is an expression, so an image can be centred on
+a point the graph works out and sized by a slider.
+
+```
+image "https://example.com/beach.jpg" # name: "Reference", center: (0, 1), width: 10, height: 6.7
+image "data:image/png;base64,iVBOR…"  # center: (x, y), angle: -pi / 200, opacity: 0.5, foreground: true
+```
+
+`name` is the caption the expression list shows, `foreground` draws the image
+over the graph rather than under it, and `hidden`, `secret`, `dragMode` and
+`onClick` mean what they do everywhere else. The URL may be a `data:` URI, which
+is how Desmos itself stores an image somebody dropped onto a graph.
+
 ## Use it in your own app
 
 ```sh

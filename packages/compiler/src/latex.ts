@@ -115,6 +115,12 @@ export function convertToLatex(expr: string): string {
     latex = latex.replace(/>=/g, '\\ge');
     latex = latex.replace(/\(/g, '\\left(');
     latex = latex.replace(/\)/g, '\\right)');
+    // A list and an index are both sized brackets, which is how Desmos writes
+    // them itself - so a graph read off desmos.com and written back keeps the
+    // brackets it arrived with. Ahead of step 4, whose `\sqrt[n]{…}` takes the
+    // bare pair that LaTeX requires there.
+    latex = latex.replace(/\[/g, '\\left[');
+    latex = latex.replace(/\]/g, '\\right]');
     latex = sizeBars(latex);
 
     // 4. The functions with a shape of their own rather than a command.
@@ -154,9 +160,10 @@ export function convertToLatex(expr: string): string {
  * brackets are how an author (and the decompiler) says the run is one thing.
  * They come off here, once the statement is whole again.
  *
- * Only the brackets around the entire value, and only when a part of the run
- * acts: `(1, 2)` is a point wherever it appears, and so is anything with a name
- * in front of it.
+ * Only the brackets around the entire value, and only when the run is one the
+ * brackets were put there for: a run that acts, or one whose commas belong to a
+ * `with` or a `for`. `(1, 2)` is a point wherever it appears, and so is
+ * anything with a name in front of it.
  */
 function unwrapActionRun(latex: string): string {
     const start = valueStart(latex);
@@ -172,11 +179,25 @@ function unwrapActionRun(latex: string): string {
     }
 
     const parts = splitArguments(group.body);
-    if (parts.length < 2 || !parts.some(part => part.includes('\\to'))) {
+    const acts = parts.some(part => part.includes('\\to'));
+    if (parts.length < 2 || (!acts && !bindsCommas(parts[0]))) {
         return latex;
     }
 
     return latex.slice(0, start) + group.body;
+}
+
+/**
+ * Whether the commas after `part` are its own rather than a list's.
+ *
+ * `with` and `for` take a comma-separated run of bindings that reaches to the
+ * end of the expression, so `A with a = 1, b = 2` is one value and not three.
+ * Axis cannot write that run bare inside a folder, where a comma is what ends a
+ * statement, so the decompiler brackets it and this is where the brackets come
+ * back off.
+ */
+function bindsCommas(part: string): boolean {
+    return /\\operatorname\{(?:with|for)\}/.test(part);
 }
 
 /**
@@ -422,7 +443,12 @@ function subscriptNames(input: string): string {
     }
 
     return latex.replace(
-        /(?<![a-zA-Z_])([a-zA-Z])([a-zA-Z0-9]+)\b/g,
+        // A digit only starts a fresh name when it is a number rather than part
+        // of the name in front of it: `2rand` is twice `rand`, but the `ra` of
+        // `hillL2ra` is the middle of one name and must not be subscripted
+        // again. The second lookbehind is what tells those apart - digits
+        // reached over a letter belong to a name already under way.
+        /(?<![a-zA-Z_])(?<![a-zA-Z][0-9]+)([a-zA-Z])([a-zA-Z0-9]+)\b/g,
         (match, first: string, rest: string, offset: number, text: string) => {
             if (BUILT_IN_NAMES.has(match)) {
                 return match;
@@ -543,7 +569,7 @@ function convertDivisionToFrac(expr: string): string {
 }
 
 /** The characters a name or a number is made of. */
-const TERM_CHARACTER = /[a-zA-Z0-9.]/;
+const TERM_CHARACTER = /[a-zA-Z0-9._]/;
 
 /** The term `text` ends with, and where it starts. */
 function termBefore(text: string): { start: number; text: string } | undefined {
@@ -613,14 +639,18 @@ function termAfter(expr: string, from: number): { text: string; end: number } | 
  */
 function nameStart(text: string, open: number): number {
     let start = open;
-    while (start > 0 && /[a-zA-Z0-9]/.test(text[start - 1])) {
+    while (start > 0 && /[a-zA-Z0-9_]/.test(text[start - 1])) {
         start -= 1;
     }
     while (start < open && !/[a-zA-Z]/.test(text[start])) {
         start += 1;
     }
 
-    return start;
+    // A name Desmos writes as a command - `\pm`, standing in for a variable a
+    // graph really does call that - is the backslash and the letters together.
+    // Splitting them leaves the backslash outside the fraction, where it is not
+    // a command at all.
+    return start > 0 && text[start - 1] === '\\' ? start - 1 : start;
 }
 
 /** Where the name or number ending at `end` starts, command backslash included. */

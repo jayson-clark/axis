@@ -78,11 +78,113 @@ describe('statements', () => {
     });
 });
 
+describe('the properties Desmos holds as latex', () => {
+    test('reads a width, an opacity and a colour back as the expressions they are', () => {
+        // None of them need be a number: an opacity can be a list, a width can
+        // be worked out from the viewport. Written back as raw latex they would
+        // be compiled a second time and come out mangled.
+        assert.equal(
+            roundTrip('P = (0, 0) # fillOpacity: [1, 0.8], colorLatex: rgb(1, 2, 3)'),
+            'P = (0, 0) # colorLatex: rgb(1, 2, 3), fillOpacity: [1, 0.8]\n',
+        );
+    });
+
+    test('keeps a slider bound that is an expression rather than a number', () => {
+        assert.equal(
+            roundTrip('s = 0 # sliderBounds: {min: {w >= 10: -w + 10, 0}, max: w - 10}'),
+            's = 0 # sliderBounds: {min: {w >= 10: -w + 10, 0}, max: w - 10}\n',
+        );
+    });
+
+    test('leaves out the end of a slider the graph never named', () => {
+        // Desmos says "the usual floor" by carrying no floor at all, so writing
+        // one back would pin a slider whose author only raised its ceiling.
+        const source = roundTrip(
+            't = 0 # sliderBounds: {max: 236, hardMin: false, hardMax: false}',
+        );
+        assert.equal(source, 't = 0 # sliderBounds: {max: 236, hardMin: false, hardMax: false}\n');
+        assert.deepEqual((recompile(source)[0] as Expression).slider, { max: '236' });
+    });
+
+    test('carries the animation a slider runs with', () => {
+        assert.equal(
+            roundTrip('a = 0 # playing: true, loopMode: LOOP_FORWARD, animationPeriod: 8000'),
+            'a = 0 # playing: true, loopMode: LOOP_FORWARD, animationPeriod: 8000\n',
+        );
+        assert.equal(
+            roundTrip('b = 1 # sliderBounds: {min: 10, max: 28}, playDirection: -1'),
+            'b = 1 # sliderBounds: {min: 10, max: 28}, playDirection: -1\n',
+        );
+    });
+});
+
+describe('the range a curve is drawn over', () => {
+    test('writes one domain and sets both keys Desmos keeps', () => {
+        assert.equal(
+            roundTrip('(cos(t), sin(t)) # domain: {min: 0, max: 2pi}'),
+            '(cos(t), sin(t)) # domain: {min: 0, max: 2pi}\n',
+        );
+        const [curve] = recompile('(cos(t), sin(t)) # domain: {min: 0, max: 2pi}') as Expression[];
+        assert.deepEqual(curve.domain, { min: '0', max: '2\\pi' });
+        assert.deepEqual(curve.parametricDomain, { min: '0', max: '2\\pi' });
+    });
+
+    test('writes the older copy out only when the two disagree', () => {
+        // Desmos writes an unset lower bound as `0` under one key and as the
+        // empty string under the other, so a graph off desmos.com really does
+        // carry two that differ.
+        const decompiled = decompileAxis({
+            expressions: [
+                {
+                    type: 'expression',
+                    id: '1',
+                    latex: '\\left(\\cos t,\\sin t\\right)',
+                    domain: { min: '0', max: '2\\pi' },
+                    parametricDomain: { min: '', max: '2\\pi' },
+                },
+            ],
+        });
+
+        assert.match(decompiled, /parametricDomain: \{min: "", max: 2pi\}/);
+        const [curve] = compileAxis(decompiled).expressions as Expression[];
+        assert.deepEqual(curve.parametricDomain, { min: '', max: '2\\pi' });
+    });
+});
+
+describe('images', () => {
+    test('writes the URL as the statement and the placement behind it', () => {
+        assert.equal(
+            roundTrip('image "a.png" # name: "Reference", center: (1, 2), width: 4, height: 3'),
+            'image "a.png" # name: Reference, center: (1, 2), width: 4, height: 3\n',
+        );
+    });
+
+    test('reads a placement Desmos holds as an expression', () => {
+        assert.equal(
+            roundTrip('image "a.png" # center: (x0, y0), angle: -pi / 200, foreground: true'),
+            'image "a.png" # center: (x0, y0), angle: -pi / 200, foreground: true\n',
+        );
+    });
+});
+
+describe('the blank row', () => {
+    test('writes an expression with a colour and nothing else as its metadata', () => {
+        assert.equal(
+            roundTrip('y = x\n# color: #c74440\nz = 1'),
+            'y = x\n# color: #c74440\nz = 1\n',
+        );
+    });
+
+    test('still has nothing to write for a row with no properties either', () => {
+        assert.equal(decompileAxis({ expressions: [{ type: 'expression', id: '1' }] }), '');
+    });
+});
+
 describe('runs held together by a comma', () => {
-    test('brackets a run of actions, which the compiler unbrackets again', () => {
+    test('brackets a run of actions inside a folder, which the compiler unbrackets', () => {
         // A comma inside a folder separates one statement from the next, so the
-        // run has to be written in brackets; Desmos wants it bare, and reads a
-        // bracketed one as a point instead.
+        // run has to be written in brackets there; Desmos wants it bare, and
+        // reads a bracketed one as a point instead.
         assert.equal(
             roundTrip('folder "F" {\n    reset = (a -> 0, b -> 0)\n}'),
             'folder "F" {\n    reset = (a -> 0, b -> 0)\n}\n',
@@ -91,23 +193,62 @@ describe('runs held together by a comma', () => {
         assert.equal((reset as Expression).latex, 'r_{eset}=a\\to0,b\\to0');
     });
 
-    test('reads a bare run of actions back into the brackets it needs', () => {
+    test('reads a folder’s bare run of actions back into the brackets it needs', () => {
         assert.equal(
             decompileAxis({
-                expressions: [{ type: 'expression', id: '1', latex: 'r_{eset}=a\\to0,b\\to0' }],
+                expressions: [
+                    { type: 'folder', id: 'f', title: 'F' },
+                    {
+                        type: 'expression',
+                        id: '1',
+                        folderId: 'f',
+                        latex: 'r_{eset}=a\\to0,b\\to0',
+                    },
+                ],
             }),
-            'reset = (a -> 0, b -> 0)\n',
+            'folder "F" {\n    reset = (a -> 0, b -> 0)\n}\n',
         );
     });
 
-    test('reads a bare run of points back as the list it is', () => {
+    test('brackets a folder’s run of actions hidden inside a piecewise', () => {
+        // The arrows are branches rather than the top level, and the piecewise
+        // holding them is still an action - so the run takes parentheses, not
+        // the brackets a list is written with.
+        const latex = 'C=\\left\\{p=0:a\\to1,a\\to0\\right\\},b\\to2';
+        const decompiled = decompileAxis({
+            expressions: [
+                { type: 'folder', id: 'f', title: 'F' },
+                { type: 'expression', id: '1', folderId: 'f', latex },
+            ],
+        });
+
+        assert.match(decompiled, /\n {4}C = \(/);
+        assert.equal(compileAxis(decompiled).expressions.length, 2);
+    });
+
+    test('leaves a run at the top level exactly as Desmos holds it', () => {
+        // Nothing separates statements there but the newline, so the run needs
+        // no brackets - and a run of names that happen to be actions could not
+        // be bracketed correctly anyway, since only the arrow gives one away.
+        assert.equal(
+            decompileAxis({
+                expressions: [
+                    { type: 'expression', id: '1', latex: 'A_{1},A_{2}' },
+                    { type: 'expression', id: '2', latex: 'r_{eset}=a\\to0,b\\to0' },
+                ],
+            }),
+            'A1, A2\nreset = a -> 0, b -> 0\n',
+        );
+    });
+
+    test('reads a bare run of points back as the run it is', () => {
         assert.equal(
             decompileAxis({
                 expressions: [
                     { type: 'expression', id: '1', latex: '\\left(1,2\\right),\\left(3,4\\right)' },
                 ],
             }),
-            '[(1, 2), (3, 4)]\n',
+            '(1, 2), (3, 4)\n',
         );
     });
 });
@@ -372,11 +513,10 @@ describe('what a script says and a graph cannot', () => {
         );
     });
 
-    test('reads a bare run of points as the list it is', () => {
+    test('reads a bare run of points as the one expression it is', () => {
         // Desmos lets a point list be written as a comma-separated run and
-        // means nothing else by it. A comma at the top level is what separates
-        // one Axis statement from the next, so left alone the run would come
-        // back as a point per expression - a different graph.
+        // means nothing else by it. Nothing separates statements at the top
+        // level but the newline, so the run stays exactly as it was written.
         const decompiled = decompileAxis({
             expressions: [
                 {
@@ -387,32 +527,38 @@ describe('what a script says and a graph cannot', () => {
             ],
         });
 
-        assert.equal(decompiled, 'A = [(1, 2), (3, 4)]\n');
+        assert.equal(decompiled, 'A = (1, 2), (3, 4)\n');
         assert.equal(compileAxis(decompiled).expressions.length, 1);
+        assert.equal(
+            (compileAxis(decompiled).expressions[0] as Expression).latex,
+            'A=\\left(1,2\\right),\\left(3,4\\right)',
+        );
     });
 
-    test('groups a run of actions in brackets a list may not use', () => {
-        // Desmos answers `\left[a\to1,b\to2\right]` with "Cannot store an
-        // action in a list"; parentheses hold a multi-action and run as the
-        // bare comma run does.
+    test('leaves a run of actions bare, which is how Desmos runs one', () => {
+        // Bracketing it would change what it means: Desmos answers
+        // `\left[a\to1,b\to2\right]` with "Cannot store an action in a list".
         const decompiled = decompileAxis({
             expressions: [{ type: 'expression', id: '1', latex: 'C=a\\to1,b\\to2' }],
         });
 
-        assert.equal(decompiled, 'C = (a -> 1, b -> 2)\n');
+        assert.equal(decompiled, 'C = a -> 1, b -> 2\n');
         assert.equal(compileAxis(decompiled).expressions.length, 1);
+        assert.equal(
+            (compileAxis(decompiled).expressions[0] as Expression).latex,
+            'C=a\\to1,b\\to2',
+        );
     });
 
-    test('groups a run of actions hidden inside a piecewise', () => {
-        // The arrows are branches rather than the top level, and the piecewise
-        // holding them is still an action.
-        const latex = 'C=\\left\\{p=0:a\\to1,a\\to0\\right\\},b\\to2';
+    test('leaves a run of names that only the graph knows are actions', () => {
+        // `A1, A2` is the multi-action that runs both, and nothing in the latex
+        // says so - which is exactly why the run is not bracketed on a guess.
         const decompiled = decompileAxis({
-            expressions: [{ type: 'expression', id: '1', latex }],
+            expressions: [{ type: 'expression', id: '1', latex: 'A_{1},A_{2}' }],
         });
 
-        assert.match(decompiled, /^C = \(/);
-        assert.equal(compileAxis(decompiled).expressions.length, 1);
+        assert.equal(decompiled, 'A1, A2\n');
+        assert.equal((compileAxis(decompiled).expressions[0] as Expression).latex, 'A_{1},A_{2}');
     });
 
     test('reads an unnamed run of points the same way', () => {
@@ -422,7 +568,7 @@ describe('what a script says and a graph cannot', () => {
             ],
         });
 
-        assert.equal(decompiled, '[(1, 2), (3, 4)]\n');
+        assert.equal(decompiled, '(1, 2), (3, 4)\n');
         assert.equal(compileAxis(decompiled).expressions.length, 1);
     });
 

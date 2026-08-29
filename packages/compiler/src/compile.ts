@@ -17,8 +17,10 @@ import {
     CalculatorOptions,
     ClickableInfo,
     DesmosExpression,
+    DomainBounds,
     Expression,
     Folder,
+    GraphImage,
     GraphSettings,
     Note,
     SliderBounds,
@@ -94,7 +96,7 @@ export interface CompileOptions {
 }
 
 /** A value as it is written after a `key:`, before any property claims it. */
-type MetadataValue = string | number | boolean | SliderBounds;
+type MetadataValue = string | number | boolean | SliderBounds | BraceGroup;
 
 /**
  * Values parsed out of a `# key: value` run, keyed by property name.
@@ -104,6 +106,9 @@ type MetadataValue = string | number | boolean | SliderBounds;
  * here rather than a setting it silently ignores.
  */
 type Metadata = Record<string, MetadataValue | undefined>;
+
+/** A `{key: value, …}` property value, before it is read as what it sets. */
+type BraceGroup = Record<string, string | number | boolean>;
 
 const asString = (value: MetadataValue | undefined): string | undefined =>
     typeof value === 'string' ? value : undefined;
@@ -116,6 +121,26 @@ const asBoolean = (value: MetadataValue | undefined): boolean | undefined =>
 
 const asSliderBounds = (value: MetadataValue | undefined): SliderBounds | undefined =>
     typeof value === 'object' ? value : undefined;
+
+/**
+ * Drop the keys a property was not written for, leaving the rest as they are.
+ *
+ * A property Desmos was not told about is a property it decides for itself, and
+ * the way to not tell it is to leave the key off - `{ dragMode: undefined }` is
+ * not the same thing. Desmos reads the key as present and stops treating the
+ * expression as draggable at all, so a point that dragged in the graph it was
+ * read from arrives frozen. The properties are built as one object apiece for
+ * readability, so the thinning happens here on the way out.
+ */
+function defined<T extends object>(source: T): T {
+    for (const key of Object.keys(source) as (keyof T)[]) {
+        if (source[key] === undefined) {
+            delete source[key];
+        }
+    }
+
+    return source;
+}
 
 /**
  * What one file contributes, and where its expressions land.
@@ -202,9 +227,12 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                     type: 'folder',
                     id: currentFolderId,
                     title: unescapeString(folderMatch[1]),
-                    collapsed: metadata.collapsed === true,
-                    hidden: metadata.hidden === true,
-                    secret: metadata.secret === true,
+                    // Desmos says "not collapsed" by leaving the key off rather
+                    // than by storing `false`, so a folder the script says
+                    // nothing about carries nothing.
+                    ...(metadata.collapsed === true && { collapsed: true }),
+                    ...(metadata.hidden === true && { hidden: true }),
+                    ...(metadata.secret === true && { secret: true }),
                 } satisfies Folder);
                 continue;
             }
@@ -235,12 +263,14 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                     (scope.flatten ? importedConfigs : rootConfigs).push(currentConfig);
                     currentConfig = undefined;
                 } else if (currentTable) {
-                    expressions.push({
-                        type: 'table',
-                        id: currentTable.id,
-                        columns: currentTable.columns,
-                        folderId: currentFolderId,
-                    } satisfies Table);
+                    expressions.push(
+                        defined({
+                            type: 'table',
+                            id: currentTable.id,
+                            columns: currentTable.columns,
+                            folderId: currentFolderId,
+                        } satisfies Table),
+                    );
                     currentTable = undefined;
                 } else if (droppedFolder) {
                     droppedFolder = false;
@@ -303,14 +333,31 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 continue;
             }
 
+            // Images, whose one unquotable part - the URL - is the statement,
+            // and everything else the metadata behind it
+            const imageMatch = /^image\s+"((?:[^"\\]|\\[^])*)"$/.exec(line);
+            if (imageMatch) {
+                expressions.push(
+                    buildImage(
+                        nextId('image'),
+                        unescapeString(imageMatch[1]),
+                        currentFolderId,
+                        metadata,
+                    ),
+                );
+                continue;
+            }
+
             // Notes
             if (line.startsWith('"') && line.endsWith('"')) {
-                expressions.push({
-                    type: 'text',
-                    id: nextId('note'),
-                    text: unescapeString(line.slice(1, -1)),
-                    folderId: currentFolderId,
-                } satisfies Note);
+                expressions.push(
+                    defined({
+                        type: 'text',
+                        id: nextId('note'),
+                        text: unescapeString(line.slice(1, -1)),
+                        folderId: currentFolderId,
+                    } satisfies Note),
+                );
                 continue;
             }
 
@@ -384,9 +431,9 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 // An import is a folder the reader did not write, holding a
                 // file they are not reading. It starts shut unless the import
                 // says `collapsed: false`.
-                collapsed: metadata.collapsed !== false,
-                hidden: metadata.hidden === true,
-                secret: metadata.secret === true,
+                ...(metadata.collapsed !== false && { collapsed: true }),
+                ...(metadata.hidden === true && { hidden: true }),
+                ...(metadata.secret === true && { secret: true }),
             } satisfies Folder);
         }
 
@@ -396,12 +443,57 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     }
 
     emitFile(script, { path: options.path ?? '', flatten: false });
+    unwrapActionRuns(expressions);
 
     const ticker = rootTicker ?? importedTicker;
     const layers = [...importedConfigs, ...rootConfigs];
     const { settings, graph } = splitConfig(Object.assign({}, ...layers), ticker !== undefined);
 
     return { expressions, settings, graph, ticker, imports };
+}
+
+/**
+ * `R = \left(A,B\right)` → `R = A,B`, for a run of actions named rather than
+ * written out.
+ *
+ * Desmos reads a bare comma-separated run of actions as a multi-action and the
+ * same run in brackets as a *point*, which runs the last coordinate and drops
+ * the rest without saying so. {@link convertToLatex} takes the brackets off a
+ * run that acts visibly - one holding a `->` - but a run of names cannot be
+ * read that way from the line it is written on: what makes `RandBeach` an
+ * action is its own definition, somewhere else in the script.
+ *
+ * So it happens here instead, once the whole list is known, and the brackets
+ * an author (or the decompiler) put round the run to keep it one statement
+ * come off exactly as they do for the written-out form.
+ */
+function unwrapActionRuns(expressions: DesmosExpression[]): void {
+    const actions = new Set<string>();
+
+    for (const expression of expressions) {
+        const latex = (expression as Expression).latex;
+        const name = latex?.includes('\\to')
+            ? /^([a-zA-Z](?:_\{[a-zA-Z0-9]+\})?)=/.exec(latex)?.[1]
+            : undefined;
+        if (name) {
+            actions.add(name);
+        }
+    }
+
+    for (const expression of expressions) {
+        const candidate = expression as Expression;
+        const run = /^((?:[a-zA-Z](?:_\{[a-zA-Z0-9]+\})?)?=?)\\left\((.*)\\right\)$/.exec(
+            candidate.latex ?? '',
+        );
+        if (!run) {
+            continue;
+        }
+
+        const parts = splitTopLevel(run[2], ',');
+        if (parts.length > 1 && parts.every(part => actions.has(part.trim()))) {
+            candidate.latex = `${run[1]}${run[2]}`;
+        }
+    }
 }
 
 /**
@@ -502,21 +594,21 @@ function buildColumn(line: string, metadata: Metadata): Omit<TableColumn, 'id'> 
         return undefined;
     }
 
-    return {
+    return defined({
         ...column,
         color: asString(metadata.color),
         hidden: asBoolean(metadata.hidden),
         lineStyle: asString(metadata.lineStyle),
         pointStyle: asString(metadata.pointStyle),
-        lineWidth: asNumberOrString(metadata.lineWidth),
-        lineOpacity: asNumberOrString(metadata.lineOpacity),
-        pointSize: asNumberOrString(metadata.pointSize),
-        movablePointSize: asNumberOrString(metadata.movablePointSize ?? metadata.pointSize),
-        pointOpacity: asNumberOrString(metadata.pointOpacity),
+        lineWidth: asLatex(metadata.lineWidth),
+        lineOpacity: asLatex(metadata.lineOpacity),
+        pointSize: asLatex(metadata.pointSize),
+        movablePointSize: asLatex(metadata.movablePointSize ?? metadata.pointSize),
+        pointOpacity: asLatex(metadata.pointOpacity),
         lines: asBoolean(metadata.lines),
         points: asBoolean(metadata.points),
         dragMode: asString(metadata.dragMode),
-    };
+    });
 }
 
 /**
@@ -531,26 +623,28 @@ function buildExpression(
     folderId: string | undefined,
     metadata: Metadata,
 ): Expression {
-    const expression: Expression = {
+    const expression: Expression = defined({
         type: 'expression',
         id,
-        latex,
+        // A row with nothing in it is the blank Desmos lets a graph keep for
+        // spacing, and it carries no `latex` at all rather than an empty one.
+        latex: latex || undefined,
         folderId,
         color: asString(metadata.color),
-        colorLatex: asString(metadata.colorLatex),
+        colorLatex: asLatex(metadata.colorLatex),
         lineStyle: asString(metadata.lineStyle),
-        lineWidth: asNumberOrString(metadata.lineWidth),
-        lineOpacity: asNumberOrString(metadata.lineOpacity),
+        lineWidth: asLatex(metadata.lineWidth),
+        lineOpacity: asLatex(metadata.lineOpacity),
         pointStyle: asString(metadata.pointStyle),
-        pointSize: asNumberOrString(metadata.pointSize),
+        pointSize: asLatex(metadata.pointSize),
         // Desmos sizes a movable point from its own property and ignores
         // `pointSize` entirely, so a script that set only that would watch its
         // point resize the moment the point turned out to be draggable.
         // `pointSize` means the size; `movablePointSize` overrides it for the
         // draggable case, for a script that really does want the two to differ.
-        movablePointSize: asNumberOrString(metadata.movablePointSize ?? metadata.pointSize),
-        pointOpacity: asNumberOrString(metadata.pointOpacity),
-        fillOpacity: asNumberOrString(metadata.fillOpacity),
+        movablePointSize: asLatex(metadata.movablePointSize ?? metadata.pointSize),
+        pointOpacity: asLatex(metadata.pointOpacity),
+        fillOpacity: asLatex(metadata.fillOpacity),
         points: asBoolean(metadata.points),
         lines: asBoolean(metadata.lines),
         fill: asBoolean(metadata.fill),
@@ -560,11 +654,13 @@ function buildExpression(
         dragMode: asString(metadata.dragMode),
         label: asString(metadata.label),
         showLabel: asBoolean(metadata.showLabel),
-        labelSize: asString(metadata.labelSize),
+        labelSize: asLatex(metadata.labelSize),
         labelOrientation: asString(metadata.labelOrientation),
         suppressTextOutline: asBoolean(metadata.suppressTextOutline),
+        pointOutline: asBoolean(metadata.pointOutline),
         description: asString(metadata.description),
-    };
+        ...buildDomains(metadata),
+    });
 
     const clickable = buildClickableInfo(metadata);
     if (clickable) {
@@ -572,6 +668,52 @@ function buildExpression(
     }
 
     return expression;
+}
+
+/**
+ * Build an image from its URL plus its `# key: value` metadata.
+ *
+ * Everything but the URL and the caption is latex, because every one of them
+ * may be an expression rather than a number: an image can be centred on a point
+ * the graph computes and sized by a slider. So they go through the same
+ * conversion an expression does, and `width: 10 * 4.05` reaches Desmos as the
+ * product it is rather than as a string it will not read.
+ */
+function buildImage(
+    id: string,
+    url: string,
+    folderId: string | undefined,
+    metadata: Metadata,
+): GraphImage {
+    const image: GraphImage = defined({
+        type: 'image',
+        id,
+        folderId,
+        image_url: url,
+        name: asString(metadata.name),
+        width: asLatex(metadata.width),
+        height: asLatex(metadata.height),
+        center: asLatex(metadata.center),
+        angle: asLatex(metadata.angle),
+        opacity: asLatex(metadata.opacity),
+        foreground: asBoolean(metadata.foreground),
+        hidden: asBoolean(metadata.hidden),
+        secret: asBoolean(metadata.secret),
+        dragMode: asString(metadata.dragMode),
+    });
+
+    const clickable = buildClickableInfo(metadata);
+    if (clickable) {
+        image.clickableInfo = clickable;
+    }
+
+    return image;
+}
+
+/** A property Desmos holds as latex, converted as an expression would be. */
+function asLatex(value: MetadataValue | undefined): string | undefined {
+    const text = asNumberOrString(value);
+    return text === undefined ? undefined : convertToLatex(String(text));
 }
 
 /**
@@ -614,25 +756,82 @@ function buildTicker(handler: string, metadata: Metadata): TickerState | undefin
 function buildSlider(metadata: Metadata): SliderState | undefined {
     const bounds = asSliderBounds(metadata.sliderBounds);
     const playing = asBoolean(metadata.playing);
+    const loopMode = asString(metadata.loopMode);
+    const playDirection = asNumberOrString(metadata.playDirection);
+    const animationPeriod = asNumberOrString(metadata.animationPeriod);
 
-    if (!bounds && playing === undefined) {
+    const animation = {
+        ...(playing !== undefined && { isPlaying: playing }),
+        ...(loopMode !== undefined && { loopMode: loopMode as SliderState['loopMode'] }),
+        ...(playDirection !== undefined && {
+            playDirection: Number(playDirection) as SliderState['playDirection'],
+        }),
+        ...(animationPeriod !== undefined && { animationPeriod: Number(animationPeriod) }),
+    };
+
+    if (!bounds && !Object.keys(animation).length) {
         return undefined;
     }
 
     return {
         ...(bounds && {
-            min: String(bounds.min),
-            max: String(bounds.max),
+            // A bound Desmos does not carry is its own default, which is not
+            // the same as no bound - so an end the script leaves out is left
+            // out here too, rather than pinned to a number nobody chose.
+            //
+            // Each end is latex, and need not be a literal: a slider's range
+            // can be computed from the rest of the graph, so the ends are
+            // converted exactly as an expression is.
+            ...(bounds.min !== undefined && { min: convertToLatex(String(bounds.min)) }),
+            ...(bounds.max !== undefined && { max: convertToLatex(String(bounds.max)) }),
             // A bound is a limit unless the script says otherwise: `min`/`max`
             // written out read as the range the slider has, not as where it
             // happens to start. Desmos says a soft bound by leaving the flag
             // off entirely, so `false` is written as nothing at all.
             ...(bounds.hardMin !== false && { hardMin: true }),
             ...(bounds.hardMax !== false && { hardMax: true }),
-            ...(bounds.step !== undefined && { step: String(bounds.step) }),
+            ...(bounds.step !== undefined && { step: convertToLatex(String(bounds.step)) }),
         }),
-        ...(playing !== undefined && { isPlaying: playing }),
+        ...animation,
     };
+}
+
+/**
+ * `# domain: {min: 0, max: 2pi}` into the bounds a parametric curve is drawn
+ * over.
+ *
+ * Desmos keeps the same bounds twice - under `domain`, which it reads, and
+ * under `parametricDomain`, the older key it still writes beside it - so one
+ * property in the script sets both. A graph whose two copies disagree (Desmos
+ * writes the default as an empty string in one and as `0` in the other) says so
+ * by setting the second explicitly.
+ */
+function buildDomains(metadata: Metadata): Partial<Expression> {
+    const domain = asDomainBounds(metadata.domain);
+    const parametric = asDomainBounds(metadata.parametricDomain) ?? domain;
+    const polar = asDomainBounds(metadata.polarDomain);
+
+    return {
+        ...(domain && { domain }),
+        ...(parametric && { parametricDomain: parametric }),
+        ...(polar && { polarDomain: polar }),
+    };
+}
+
+/** `{min: 0, max: 2pi}` as the latex pair Desmos holds it as. */
+function asDomainBounds(value: MetadataValue | undefined): DomainBounds | undefined {
+    if (typeof value !== 'object' || value === null) {
+        return undefined;
+    }
+
+    const { min, max } = value as { min?: string | number; max?: string | number };
+    if (min === undefined && max === undefined) {
+        return undefined;
+    }
+
+    // Both ends are always written: Desmos stores the pair, and an end it has
+    // no value for it stores as the empty string rather than as a missing key.
+    return { min: convertToLatex(String(min ?? '')), max: convertToLatex(String(max ?? '')) };
 }
 
 /**
@@ -651,8 +850,11 @@ function buildClickableInfo(metadata: Metadata): ClickableInfo | undefined {
         return undefined;
     }
 
+    // Desmos writes a switched-off clickable by leaving `enabled` off rather
+    // than by storing `false`, which is the form a graph read back off
+    // desmos.com arrives in.
     return {
-        enabled: enabled ?? true,
+        ...(enabled !== false && { enabled: true }),
         latex: action ? convertToLatex(action) : '',
     };
 }
@@ -685,6 +887,7 @@ function parseMetadata(text: string): Metadata {
         if (value === 'true') metadata[key] = true;
         else if (value === 'false') metadata[key] = false;
         else if (key === 'sliderBounds') metadata[key] = parseSliderBounds(value);
+        else if (DOMAIN_PROPERTIES.has(key)) metadata[key] = parseBraceGroup(value);
         else if (AXIS_ALWAYS_STRING_PROPERTIES.has(key)) metadata[key] = unquote(value);
         else metadata[key] = parseValue(value);
     }
@@ -692,20 +895,45 @@ function parseMetadata(text: string): Metadata {
     return metadata;
 }
 
+/** `# sliderBounds: {min: 0, max: 10, step: 0.1}` into the object Desmos wants. */
+function parseSliderBounds(value: string): SliderBounds | undefined {
+    const bounds = parseBraceGroup(value);
+    if (!bounds) {
+        return undefined;
+    }
+
+    // An end the script leaves out is the one Desmos assumes, which it says by
+    // carrying no bound at all - so a half-written pair is honoured rather than
+    // dropped, and a slider that only raises its ceiling keeps the usual floor.
+    return bounds.min === undefined && bounds.max === undefined
+        ? undefined
+        : {
+              ...(bounds.min !== undefined && { min: bounds.min as string | number }),
+              ...(bounds.max !== undefined && { max: bounds.max as string | number }),
+              ...(bounds.step !== undefined && { step: bounds.step as string | number }),
+              ...(typeof bounds.hardMin === 'boolean' && { hardMin: bounds.hardMin }),
+              ...(typeof bounds.hardMax === 'boolean' && { hardMax: bounds.hardMax }),
+          };
+}
+
+/** The properties written as a `{key: value, …}` group rather than as a value. */
+const DOMAIN_PROPERTIES = new Set(['domain', 'parametricDomain', 'polarDomain']);
+
 /**
- * `# sliderBounds: {min: 0, max: 10, step: 0.1}` into the object Desmos wants.
+ * `{min: 0, max: 10, step: 0.1}` into the entries it holds, or nothing when the
+ * value is not a group at all.
  *
  * Written as a brace group so it reads like the rest of the language, but it is
- * a property value rather than a piecewise: Desmos takes `min`, `max` and an
- * optional `step`, and ignores the setting outright if it arrives as a string.
+ * a property value rather than a piecewise: the keys inside are property names,
+ * and Desmos ignores the setting outright if it arrives as a string.
  */
-function parseSliderBounds(value: string): SliderBounds | undefined {
+function parseBraceGroup(value: string): BraceGroup | undefined {
     const body = /^\{(.*)\}$/.exec(value.trim())?.[1];
     if (body === undefined) {
         return undefined;
     }
 
-    const bounds: Record<string, string | number | boolean> = {};
+    const entries: BraceGroup = {};
     for (const part of splitTopLevel(body, ',')) {
         const colon = part.indexOf(':');
         if (colon === -1) {
@@ -714,23 +942,14 @@ function parseSliderBounds(value: string): SliderBounds | undefined {
         const key = part.slice(0, colon).trim();
         const entry = part.slice(colon + 1).trim();
         if (key && entry) {
-            bounds[key] =
+            entries[key] =
                 entry === 'true' || entry === 'false'
                     ? entry === 'true'
                     : numberOrString(unquote(entry));
         }
     }
 
-    // Desmos needs both ends; a half-written bound is left off entirely.
-    return bounds.min !== undefined && bounds.max !== undefined
-        ? {
-              min: bounds.min as string | number,
-              max: bounds.max as string | number,
-              ...(bounds.step !== undefined && { step: bounds.step as string | number }),
-              ...(typeof bounds.hardMin === 'boolean' && { hardMin: bounds.hardMin }),
-              ...(typeof bounds.hardMax === 'boolean' && { hardMax: bounds.hardMax }),
-          }
-        : undefined;
+    return entries;
 }
 
 /**
@@ -753,6 +972,15 @@ function numberOrString(value: string): number | string {
     return value.trim() !== '' && !Number.isNaN(asNumber) ? asNumber : value;
 }
 
+/**
+ * A quoted value as the text it holds; anything unquoted as it stands.
+ *
+ * An escape only means something inside quotes, which is where the quoting
+ * rule put it. A bare value is whatever it says: latex reaches here with its
+ * backslashes intact, and `\right]` is a delimiter rather than a carriage
+ * return followed by `ight]`.
+ */
 function unquote(value: string): string {
-    return unescapeString(value.replace(/^["']|["']$/g, ''));
+    const quoted = /^"([^]*)"$|^'([^]*)'$/.exec(value);
+    return quoted ? unescapeString(quoted[1] ?? quoted[2]) : value;
 }
