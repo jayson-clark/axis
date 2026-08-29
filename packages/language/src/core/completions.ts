@@ -4,6 +4,7 @@
 
 import { AXIS_MANIFEST } from '../language-manifest';
 import { bracketDelta } from './brackets';
+import { findMacroDefinitions } from './macros';
 import { TICKER_KEYWORD } from './ticker';
 import { AxisCompletionItem, AxisPosition } from './types';
 
@@ -182,13 +183,38 @@ function getKeywordCompletions(): AxisCompletionItem[] {
             detail: 'Run an action over and over while the graph is open',
             snippet: 'ticker ${1:a} -> ${2:a + 1} # minStep: ${3:50}, playing: true',
         },
+        {
+            label: 'macro',
+            kind: 'keyword',
+            detail: 'Substitute a piece of source wherever its name appears',
+            snippet: 'macro ${1:NAME}(${2:a}) ${3:a * 2}',
+        },
     ];
 }
 
-/** Functions and variables the document itself defines. */
+/** Macros, functions and variables the document itself defines. */
 function getUserDefinedCompletions(text: string): AxisCompletionItem[] {
     const completions: AxisCompletionItem[] = [];
     const seen = new Set<string>();
+
+    // Macros first: a name is only ever one of these, and a macro is the one
+    // that expands, whatever else in the document happens to share its name.
+    for (const macro of findMacroDefinitions(text)) {
+        if (seen.has(macro.name)) {
+            continue;
+        }
+        seen.add(macro.name);
+        completions.push({
+            label: macro.name,
+            kind: macro.parameters ? 'function' : 'constant',
+            detail: `Macro: ${macro.body}`,
+            ...(macro.parameters?.length && {
+                snippet: `${macro.name}(${macro.parameters
+                    .map((parameter, at) => `\${${at + 1}:${parameter}}`)
+                    .join(', ')})`,
+            }),
+        });
+    }
 
     // Function definitions: name(x) = ...
     const functionRegex = /([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*=/g;
