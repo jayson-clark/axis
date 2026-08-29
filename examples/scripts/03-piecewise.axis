@@ -24,13 +24,13 @@ y = sin(x) {x > 0, x < 2pi} # color: #fa7e19, lineWidth: 3
 
 // A long piecewise reads better split over lines.
 wave(x) = {
-    x < - pi: 0,
-    - pi <= x <= pi: sin(x),
+    x < -pi: 0,
+    -pi <= x <= pi: sin(x),
     x > pi: 0
 } # color: #c74440, lineWidth: 3
 
 folder "Absolute value, three ways" {
     y = abs(x) # color: #c74440,
-    y = {x < 0: - x, x} # color: #2d70b3, lineStyle: DASHED,
+    y = {x < 0: -x, x} # color: #2d70b3, lineStyle: DASHED,
     y = sqrt(x ^ 2) # color: #388c46, lineStyle: DOTTED
 }

@@ -33,6 +33,22 @@ describe('formatAxisCode', () => {
         assert.equal(format('table {\nx=[1],\ny=[2]\n}'), 'table {\n    x = [1],\n    y = [2]\n}');
     });
 
+    test('keeps a unary minus attached to what it negates', () => {
+        // `-` is two operators wearing one character: what stands before it
+        // decides which. Getting this wrong reads as a subtraction with nothing
+        // on its left - `exp(- decay * x)`.
+        assert.equal(format('y=-x'), 'y = -x');
+        assert.equal(format('y=exp(-decay*abs(x))'), 'y = exp(-decay * abs(x))');
+        assert.equal(format('P=[(-3,-3),(0,-1)]'), 'P = [(-3, -3), (0, -1)]');
+        assert.equal(format('y={x<-pi: 0, x}'), 'y = {x < -pi: 0, x}');
+    });
+
+    test('keeps a subtraction spaced on both sides', () => {
+        assert.equal(format('y=x^2-4x+3'), 'y = x ^ 2 - 4x + 3');
+        assert.equal(format('y = a-b'), 'y = a - b');
+        assert.equal(format('y = 2 - -3'), 'y = 2 - -3');
+    });
+
     test('leaves comments and notes untouched', () => {
         assert.equal(format('//  spaced   out'), '//  spaced   out');
         assert.equal(format('"A   note"'), '"A   note"');
