@@ -174,8 +174,13 @@ describe('the ticker', () => {
 });
 
 describe('entries', () => {
-    test('reports an entry that lost its comma', () => {
-        assert.deepEqual(codes('table {\n  x = [1]\n  y = [2]\n}'), ['missing-comma']);
+    test('separates two entries on two lines by the newline between them', () => {
+        assert.deepEqual(codes('table {\n  x = [1]\n  y = [2]\n}'), []);
+        assert.deepEqual(codes('folder "F" {\n  y = x\n  y = 2x\n}'), []);
+    });
+
+    test('reports two entries run together on one line', () => {
+        assert.deepEqual(codes('table { x = [1] y = [2] }'), ['missing-comma']);
     });
 
     test('accepts a block written inline', () => {
@@ -189,10 +194,8 @@ describe('entries', () => {
         assert.deepEqual(codes('folder "F" {\n  y = 1,\n  z = n a with a = 2\n}'), []);
     });
 
-    test('still reports two statements run together after such a binding', () => {
-        assert.deepEqual(codes('folder "F" {\n  x = a for a = [1, 2]\n  y = 3\n}'), [
-            'missing-comma',
-        ]);
+    test('takes the newline after such a binding as the end of the entry', () => {
+        assert.deepEqual(codes('folder "F" {\n  x = a for a = [1, 2]\n  y = 3\n}'), []);
     });
 
     test('lets a statement carry on past the bracket it was wrapped across', () => {
@@ -204,8 +207,12 @@ describe('entries', () => {
     });
 
     test('reports a wrapped entry that really is missing its comma', () => {
-        const wrapped = 'folder "F" {\n  polygon(\n    (1, 2),\n    (3, 4)\n  )\n  y = x\n}';
+        const wrapped = 'folder "F" {\n  polygon(\n    (1, 2),\n    (3, 4)\n  ) y = x\n}';
         assert.deepEqual(codes(wrapped), ['missing-comma']);
+    });
+
+    test('still separates the entries of an ordinary bracket by commas', () => {
+        assert.deepEqual(codes('P = [\n  (0, 0)\n  (4, 0)\n]'), ['missing-comma']);
     });
 
     test('reports a config entry that is not `key: value`', () => {

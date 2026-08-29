@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/language",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "description": "Axis language services: completions, formatting, diagnostics, the manifest and the grammar, with VSCode and Monaco bindings",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

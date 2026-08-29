@@ -34,6 +34,7 @@ import {
     AXIS_GRAPH_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
     expandBlockEntries,
+    foldMetadataBlocks,
     IMPORT_KEYWORD,
     importTitle,
     joinContinuedLines,
@@ -189,7 +190,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
      * leaving exactly one statement per line either way.
      */
     function emitFile(source: string, scope: FileScope): void {
-        const lines = expandBlockEntries(joinContinuedLines(source));
+        const lines = expandBlockEntries(joinContinuedLines(foldMetadataBlocks(source)));
 
         let currentFolderId = scope.folderId;
         let currentTable: { id: string; columns: TableColumn[] } | undefined;
