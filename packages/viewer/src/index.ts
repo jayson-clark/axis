@@ -3,7 +3,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 export { AxisViewer } from './AxisViewer.js';
-export type { AxisViewerProps, AxisViewerTab } from './AxisViewer.js';
+export type { AxisViewerHandle, AxisViewerProps, AxisViewerTab } from './AxisViewer.js';
 export { useLocalViewerHost } from './useLocalViewerHost.js';
 export type { LocalViewerHost } from './useLocalViewerHost.js';
 

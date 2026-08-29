@@ -1,5 +1,11 @@
 import { CSSProperties, ReactNode, Ref, useEffect, useImperativeHandle, useRef } from 'react';
-import { Calculator, CalculatorOptions, DesmosExpression, GraphState } from '@axis-dsl/desmos';
+import {
+    AsyncScreenshotOptions,
+    Calculator,
+    CalculatorOptions,
+    DesmosExpression,
+    GraphState,
+} from '@axis-dsl/desmos';
 import { useDesmos } from './useDesmos.js';
 
 export interface DesmosGraphHandle {
@@ -7,6 +13,12 @@ export interface DesmosGraphHandle {
     getCalculator(): Calculator | null;
     getExpressions(): DesmosExpression[] | null;
     getState(): GraphState | null;
+    /**
+     * A data URI of the graphpaper alone - the expression list is never in it.
+     * Resolves null before the calculator exists, so a caller can offer the
+     * affordance without first knowing whether Desmos has loaded.
+     */
+    capture(options?: AsyncScreenshotOptions): Promise<string | null>;
 }
 
 export interface DesmosGraphProps {
@@ -38,6 +50,24 @@ function graphState(expressions: DesmosExpression[]): GraphState {
 }
 
 /**
+ * asyncScreenshot is the callback form of the two Desmos offers. It is the one
+ * worth wrapping: only it takes a format, a fit mode and explicit math bounds,
+ * and it renders off the animation loop rather than grabbing whatever frame the
+ * canvas happens to be showing.
+ */
+function capture(
+    calculator: Calculator | null,
+    options: AsyncScreenshotOptions | undefined,
+): Promise<string | null> {
+    if (!calculator) {
+        return Promise.resolve(null);
+    }
+    return new Promise(resolve => {
+        calculator.asyncScreenshot(options ?? {}, dataUri => resolve(dataUri));
+    });
+}
+
+/**
  * Renders a Desmos graphing calculator and keeps it in sync with `expressions`
  * and `settings`. Knows nothing about where those come from.
  */
@@ -63,6 +93,7 @@ export function DesmosGraph({
             getCalculator: () => calculatorRef.current,
             getExpressions: () => calculatorRef.current?.getExpressions() ?? null,
             getState: () => calculatorRef.current?.getState() ?? null,
+            capture: options => capture(calculatorRef.current, options),
         }),
         [],
     );
