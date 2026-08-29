@@ -65,9 +65,9 @@ importers:
       '@axis-dsl/desmos':
         specifier: workspace:*
         version: link:../../packages/desmos
-      '@axis-dsl/editor':
+      '@axis-dsl/language':
         specifier: workspace:*
-        version: link:../../packages/editor
+        version: link:../../packages/language
       '@axis-dsl/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
@@ -108,22 +108,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.4.0
-
-  packages/editor:
-    dependencies:
-      '@axis-dsl/language':
-        specifier: workspace:*
-        version: link:../language
-    devDependencies:
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.18
-      monaco-editor:
-        specifier: 'catalog:'
-        version: 0.56.0
-      react:
-        specifier: 'catalog:'
-        version: 19.2.8
 
   packages/extension:
     dependencies:

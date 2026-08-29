@@ -3,8 +3,8 @@
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // Loading Monaco and wiring its web workers is the app's job — every bundler
-// spells it differently, so @axis-dsl/editor takes the instance as a prop
-// rather than importing one. This is the Vite spelling.
+// spells it differently, so Axis registers itself on an instance the app
+// supplies rather than importing one. This is the Vite spelling.
 
 import * as monaco from 'monaco-editor/editor';
 // `monaco-editor/editor` is the bare API; `features/register.all` adds every

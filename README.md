@@ -95,7 +95,7 @@ built from reloads it.
 ## Use it in your own app
 
 ```sh
-npm install @axis-dsl/compiler @axis-dsl/editor @axis-dsl/viewer monaco-editor react react-dom
+npm install @axis-dsl/compiler @axis-dsl/language @axis-dsl/viewer monaco-editor react react-dom
 ```
 
 Compile anywhere — a build step, a server, a test:
@@ -131,25 +131,39 @@ const { expressions, settings, imports } = compileAxis(source, {
 `imports` comes back naming every file that was read, which is what to watch if
 the graph is live.
 
-Or drop the editor and graph into a React app:
+To edit Axis, hand your own Monaco instance to `registerAxisLanguage`. It adds
+highlighting, completions, formatting and diagnostics, plus the `axis-dark` and
+`axis-light` themes, and is idempotent per instance:
+
+```ts
+import { registerAxisLanguage, AXIS_LANGUAGE_ID, AXIS_DARK_THEME } from '@axis-dsl/language/monaco';
+import * as monaco from 'monaco-editor';
+
+registerAxisLanguage(monaco);
+
+monaco.editor.create(container, {
+    value: 'y = x^2 # color: #c74440',
+    language: AXIS_LANGUAGE_ID,
+    theme: AXIS_DARK_THEME,
+});
+```
+
+Axis deliberately ships no editor component: loading Monaco and wrapping it for
+your framework is app-shaped work that every bundler spells differently.
+`examples/web/src/AxisEditor.tsx` is a ~150-line React wrapper to copy, and
+`examples/web/src/monaco.ts` shows the Vite loading and worker setup.
+
+The graph half is a component, since it owns a Desmos instance:
 
 ```tsx
 import { compileAxis } from '@axis-dsl/compiler';
-import { AxisEditor } from '@axis-dsl/editor';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
-import * as monaco from 'monaco-editor';
 
-function Playground() {
-    const [source, setSource] = useState('y = x^2 # color: #c74440');
+function Graph({ source }) {
     const { expressions, settings } = compileAxis(source);
     const transport = useLocalViewerHost({ apiKey: MY_DESMOS_KEY, expressions, settings });
 
-    return (
-        <>
-            <AxisEditor monaco={monaco} value={source} onChange={setSource} theme="dark" />
-            <AxisViewer transport={transport} />
-        </>
-    );
+    return <AxisViewer transport={transport} />;
 }
 ```
 
@@ -162,7 +176,6 @@ React 19 and Monaco 0.56+ are peer dependencies, so your app owns both.
 | -------------------- | ----------------------------------------------- |
 | `@axis-dsl/compiler` | Compiles `.axis` source to Desmos expressions   |
 | `@axis-dsl/language` | Completions, formatting, diagnostics, grammars  |
-| `@axis-dsl/editor`   | Monaco bound to the Axis language, themed       |
 | `@axis-dsl/viewer`   | The results panel: the graph and JSON inspector |
 | `@axis-dsl/protocol` | Messages and transports that drive the viewer   |
 | `@axis-dsl/desmos`   | Typed Desmos calculator API                     |
