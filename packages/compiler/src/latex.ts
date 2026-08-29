@@ -51,7 +51,8 @@ const CONSTANT_PATTERNS = [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => ({
  * - Division: `a/b` → `\frac{a}{b}`
  * - Multiplication: `*` → `\cdot`
  * - Parentheses: `(` `)` → `\left(` `\right)`
- * - Roots and absolute value: `sqrt(x)` → `\sqrt{x}`, `abs(x)` → `|x|`
+ * - Roots: `sqrt(x)` → `\sqrt{x}`, `nthroot(x, 3)` → `\sqrt[3]{x}`
+ * - Absolute value bars: `|x|` → `\left|x\right|`
  * - Multi-letter names: `abc` → `a_{bc}`
  * - Built-in functions: `sin` → `\sin`, `mean` → `\operatorname{mean}`
  * - Greek letters and constants: `pi` → `\pi`, `infinity` → `\infty`
@@ -72,12 +73,10 @@ export function convertToLatex(expr: string): string {
     latex = latex.replace(/>=/g, '\\ge');
     latex = latex.replace(/\(/g, '\\left(');
     latex = latex.replace(/\)/g, '\\right)');
+    latex = sizeBars(latex);
 
     // 4. The functions with a shape of their own rather than a command.
-    //    These regexes assume no nested parentheses in the arguments.
-    latex = latex.replace(/sqrt\\left\(([^)]+)\\right\)/g, '\\sqrt{$1}');
-    latex = latex.replace(/nthroot\\left\(([^,]+),\s*([^)]+)\\right\)/g, '\\sqrt[$2]{$1}');
-    latex = latex.replace(/abs\\left\(([^)]+)\\right\)/g, '|$1|');
+    latex = convertShapedCalls(latex);
 
     // 5. Multi-letter names become subscripted: Desmos reads `abc` as a·b·c, so
     //    a variable of that name has to be written `a_{bc}`. Runs before step 6
@@ -97,6 +96,141 @@ export function convertToLatex(expr: string): string {
     latex = latex.replace(/([a-zA-Z]+)_([a-zA-Z0-9]+)/g, '$1_{$2}');
 
     return removeSpaces(latex);
+}
+
+/**
+ * `|x|` → `\left|x\right|`, so the bars grow around a tall expression.
+ *
+ * A bar is the same character opening and closing, so they are paired off in
+ * order: the first opens, the second closes, and so on. Nested bars - `||x|-1|`
+ * - have no reading this or any other pairing recovers, and Desmos does not
+ * accept them either; `abs` is the way to write that.
+ */
+function sizeBars(input: string): string {
+    let open = true;
+
+    return input.replace(/\|/g, () => {
+        const delimiter = open ? '\\left|' : '\\right|';
+        open = !open;
+        return delimiter;
+    });
+}
+
+/**
+ * The functions Desmos writes as a shape rather than a command, each given the
+ * arguments it takes and the LaTeX it becomes.
+ */
+const SHAPED_FUNCTIONS = new Map<string, { arity: number; format: (args: string[]) => string }>([
+    ['sqrt', { arity: 1, format: ([radicand]) => `\\sqrt{${radicand}}` }],
+    ['nthroot', { arity: 2, format: ([radicand, index]) => `\\sqrt[${index}]{${radicand}}` }],
+]);
+
+/** The names above, longest first, so `nthroot` is never read as a shorter name. */
+const SHAPED_NAMES = [...SHAPED_FUNCTIONS.keys()].sort((a, b) => b.length - a.length);
+
+/**
+ * `sqrt(x)` → `\sqrt{x}` and `nthroot(x, 3)` → `\sqrt[3]{x}`.
+ *
+ * Runs after step 3, so every group is delimited by `\left…` and `\right…` and
+ * the call's extent can be found by matching those rather than guessed at with a
+ * pattern: `sqrt(sin(x))` closes on the outer parenthesis, not the inner one.
+ * Arguments are rewritten in turn, so nesting works to any depth.
+ *
+ * Anything that does not parse - an unbalanced call, or the wrong number of
+ * arguments - is left exactly as written, for Desmos to report.
+ */
+function convertShapedCalls(input: string): string {
+    let output = '';
+    let index = 0;
+
+    while (index < input.length) {
+        const name = shapedNameAt(input, index);
+        const shaped = name === undefined ? undefined : findCall(input, index + name.length);
+
+        if (name === undefined || shaped === undefined) {
+            output += input[index];
+            index++;
+            continue;
+        }
+
+        const { arity, format } = SHAPED_FUNCTIONS.get(name)!;
+        const args = splitArguments(shaped.body);
+
+        if (args.length !== arity) {
+            output += input[index];
+            index++;
+            continue;
+        }
+
+        output += format(args.map(convertShapedCalls));
+        index = shaped.end;
+    }
+
+    return output;
+}
+
+/** The shaped function whose call opens at `index`, if one does. */
+function shapedNameAt(input: string, index: number): string | undefined {
+    // A name carried by a longer one - `y_{abs}`, `arcsqrt` - is not a call.
+    if (/[a-zA-Z0-9\\]/.test(input[index - 1] ?? '')) {
+        return undefined;
+    }
+
+    return SHAPED_NAMES.find(
+        name => input.startsWith(name, index) && input.startsWith('\\left(', index + name.length),
+    );
+}
+
+/**
+ * The body and extent of the `\left( … \right)` group starting at `index`.
+ *
+ * Depth counts every `\left` and `\right`, whatever they delimit, so a
+ * piecewise `\left\{ … \right\}` inside the call is stepped over whole.
+ */
+function findCall(input: string, index: number): { body: string; end: number } | undefined {
+    const start = index + '\\left('.length;
+    let depth = 1;
+    let cursor = start;
+
+    while (cursor < input.length) {
+        if (input.startsWith('\\left', cursor)) {
+            depth++;
+            cursor += '\\left'.length;
+        } else if (input.startsWith('\\right', cursor)) {
+            depth--;
+            if (depth === 0) {
+                return input[cursor + '\\right'.length] === ')'
+                    ? { body: input.slice(start, cursor), end: cursor + '\\right)'.length }
+                    : undefined;
+            }
+            cursor += '\\right'.length;
+        } else {
+            cursor++;
+        }
+    }
+
+    return undefined;
+}
+
+/** Split a call body on the commas that separate its arguments, ignoring nested ones. */
+function splitArguments(body: string): string[] {
+    const args: string[] = [];
+    let depth = 0;
+    let start = 0;
+
+    for (let i = 0; i < body.length; i++) {
+        if (body.startsWith('\\left', i)) {
+            depth++;
+        } else if (body.startsWith('\\right', i)) {
+            depth--;
+        } else if (body[i] === ',' && depth === 0) {
+            args.push(body.slice(start, i).trim());
+            start = i + 1;
+        }
+    }
+
+    args.push(body.slice(start).trim());
+    return args;
 }
 
 /**
