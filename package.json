@@ -1,6 +1,6 @@
 {
     "name": "axis-monorepo",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "Axis (Desmos Scripting Language) monorepo",
     "private": true,
     "packageManager": "pnpm@11.24.0",

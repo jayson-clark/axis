@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/editor",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "The Axis editing surface: Monaco bound to the Axis language, themed",
     "type": "module",
     "main": "./dist/index.js",

@@ -2,7 +2,7 @@
     "name": "axis-dsl",
     "displayName": "Axis — Desmos Scripting Language",
     "description": "Previews the .axis file you have open as a live Desmos graph, with Axis language support",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "publisher": "axis",
     "engines": {
         "vscode": "^1.134.0"
