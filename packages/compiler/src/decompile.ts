@@ -40,6 +40,7 @@ import {
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     AXIS_CONFIG_PROPERTY_NAMES,
+    AXIS_DEFAULT_CONFIG,
     bracketDelta,
     escapeString,
     formatAxisCode,
@@ -564,6 +565,15 @@ function decompileConfig(
     // `ticker` statement standing next to it puts the setting there again.
     if (hasTicker && record.actions === true) {
         delete record.actions;
+    }
+
+    // Likewise for the options Axis switches off on its own: a script that says
+    // nothing compiles to them, so writing them back would put four lines the
+    // author never wrote at the top of every decompiled graph.
+    for (const [key, value] of Object.entries(AXIS_DEFAULT_CONFIG)) {
+        if (record[key] === value) {
+            delete record[key];
+        }
     }
 
     const named = AXIS_CONFIG_PROPERTY_NAMES.filter(name => record[name] !== undefined);

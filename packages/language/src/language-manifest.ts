@@ -904,7 +904,7 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'border',
-            detail: 'Show calculator border [default: true]',
+            detail: 'Show calculator border [default: false]',
             snippet: 'border: ${1|true,false|}',
             valueType: 'boolean',
         },
@@ -1026,7 +1026,7 @@ export const AXIS_MANIFEST = {
         // Behaviour toggles
         {
             name: 'expressions',
-            detail: 'Show the expressions list [default: true]',
+            detail: 'Show the expressions list [default: false]',
             snippet: 'expressions: ${1|true,false|}',
             valueType: 'boolean',
         },
@@ -1038,7 +1038,7 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'zoomButtons',
-            detail: 'Show the zoom buttons [default: true]',
+            detail: 'Show the zoom buttons [default: false]',
             snippet: 'zoomButtons: ${1|true,false|}',
             valueType: 'boolean',
         },
@@ -1056,7 +1056,7 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'settingsMenu',
-            detail: 'Show the graph settings menu [default: true]',
+            detail: 'Show the graph settings menu [default: false]',
             snippet: 'settingsMenu: ${1|true,false|}',
             valueType: 'boolean',
         },
@@ -1370,6 +1370,23 @@ export const AXIS_VIEWPORT_PROPERTY_NAMES = ['xmin', 'xmax', 'ymin', 'ymax'] as 
 
 /** Graph-state config keys that are not part of the viewport rectangle. */
 export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes', 'userLockedViewport'] as const;
+
+/**
+ * The calculator options Axis applies when a script does not say otherwise.
+ *
+ * Desmos's own defaults are those of the full editor at desmos.com - the
+ * expression list, the settings menu, the zoom buttons and a border around the
+ * lot. A compiled Axis script is a *finished* graph rather than something to be
+ * edited in place, so it wants the picture and nothing else; anything a script
+ * writes in its own `config { … }` still wins, so `expressions: true` brings
+ * the list back.
+ */
+export const AXIS_DEFAULT_CONFIG: Readonly<Record<string, boolean>> = {
+    border: false,
+    expressions: false,
+    settingsMenu: false,
+    zoomButtons: false,
+};
 
 /** Metadata keys kept as strings even when they look like numbers. */
 export const AXIS_ALWAYS_STRING_PROPERTIES: ReadonlySet<string> = new Set(

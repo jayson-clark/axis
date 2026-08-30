@@ -10,7 +10,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { AXIS_CONFIG_PROPERTY_NAMES, AXIS_MANIFEST } from '@axis-dsl/language';
+import { AXIS_CONFIG_PROPERTY_NAMES, AXIS_DEFAULT_CONFIG, AXIS_MANIFEST } from '@axis-dsl/language';
 import type { CalculatorOptions } from '@axis-dsl/desmos';
 import { compileAxis } from '@axis-dsl/compiler';
 import { skip, useCalculator } from './support.mts';
@@ -172,7 +172,7 @@ describe('the viewport', { skip }, () => {
         // to updateSettings is not an error, it is silence.
         const compiled = compileAxis('config {\n    xmin: 0,\n    squareAxes: false\n}\ny = x');
 
-        assert.equal(compiled.settings, undefined);
+        assert.deepEqual(compiled.settings, AXIS_DEFAULT_CONFIG);
         assert.deepEqual(compiled.graph, { squareAxes: false, viewport: { xmin: 0 } });
     });
 
