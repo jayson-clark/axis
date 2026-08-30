@@ -36,5 +36,3 @@ folder "Comparison" {
     // one, for the same reason: there is nowhere for a second level to go.
     y = cosine(x) * envelope(x) # color: #2d70b3, lineWidth: 2
 }
-
-a

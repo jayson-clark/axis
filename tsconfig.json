@@ -29,6 +29,7 @@
         { "path": "packages/protocol" },
         { "path": "packages/language" },
         { "path": "packages/compiler" },
+        { "path": "packages/harness" },
         { "path": "packages/extension" }
     ]
 }

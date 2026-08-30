@@ -22,9 +22,33 @@ g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
 `);
 ```
 
-`expressions` is a `DesmosExpression[]` ready for `calculator.setExpressions`,
-and `settings` is the `config` block as `CalculatorOptions` — both typed by
+`expressions` is a `DesmosExpression[]` and `settings` is the `config` block as
+`CalculatorOptions` — both typed by
 [`@axis-dsl/desmos`](https://www.npmjs.com/package/@axis-dsl/desmos).
+
+## Applying the result
+
+Apply the expressions with `setState`, not `setExpressions`:
+
+```ts
+calculator.setState({
+    version: 11,
+    graph: { viewport: { xmin: -10, xmax: 10, ymin: -10, ymax: 10 } },
+    expressions: { list: expressions },
+});
+
+// updateSettings has to follow setState, which resets graph settings.
+if (settings) {
+    calculator.updateSettings(settings);
+}
+```
+
+Desmos has two shapes for an expression, and they are not interchangeable.
+`setExpression` takes the API's; `setState` takes the serialized graph state's,
+which is the only one that carries a folder — and folders are the reason Axis
+compiles to the state form throughout. `folderId`, `collapsed`, `clickableInfo`
+and `slider` all mean nothing to `setExpressions`, and mean nothing _quietly_:
+a property in the wrong shape is dropped rather than reported.
 
 ## Imports
 

@@ -38,6 +38,13 @@ script.onload = () => {
 };
 ```
 
+Note which setter you are calling. Desmos has two shapes for an expression:
+`setExpression` takes the API's, and `setState` takes the serialized graph
+state's — and only the latter carries a folder. `Expression` types both, so the
+ones that belong to just one are marked: `sliderBounds` and `playing` are the
+API's, `slider`, `folderId` and `clickableInfo` are the state's. A property
+given to the wrong setter is dropped rather than reported.
+
 `DESMOS_DEMO_API_KEY` is Desmos' public prototyping key. It works with no setup,
 but it logs a console warning and is not licensed for distribution — get your
 own at [desmos.com/api](https://www.desmos.com/api) before you ship.
