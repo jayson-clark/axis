@@ -25,6 +25,16 @@ export interface AxisViewerProps {
     ref?: Ref<AxisViewerHandle>;
     /** The viewer's only input. Everything it shows arrives over this. */
     transport: ViewerTransport;
+    /**
+     * Show the viewer's own chrome: the Graph/JSON tabs and the path of the
+     * file on screen.
+     *
+     * Off by default, which leaves the graph and nothing else - a preview is a
+     * finished graph to look at rather than a tool to take apart, and a tab
+     * strip over a single tab is only a bar that costs height. A host that is a
+     * workbench rather than a preview turns it on.
+     */
+    debug?: boolean;
     className?: string;
     /** Applied after the theme, so a host can override any `--axis-*` token. */
     style?: CSSProperties;
@@ -70,15 +80,74 @@ function tabStyle(isActive: boolean): CSSProperties {
     };
 }
 
+/** The viewer's chrome: which pane is showing, and what file it is showing. */
+function TabBar({
+    activeTab,
+    onSelect,
+    status,
+}: {
+    activeTab: AxisViewerTab;
+    onSelect: (tab: AxisViewerTab) => void;
+    status: string | null;
+}) {
+    return (
+        <div
+            role="tablist"
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                padding: '0 8px',
+                flex: 'none',
+                borderBottom: '1px solid var(--axis-border)',
+            }}
+        >
+            {TABS.map(tab => (
+                <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => onSelect(tab.id)}
+                    style={tabStyle(activeTab === tab.id)}
+                >
+                    {tab.label}
+                </button>
+            ))}
+            {status !== null && (
+                <span
+                    style={{
+                        marginLeft: 'auto',
+                        paddingRight: 8,
+                        color: 'var(--axis-fg-muted)',
+                        fontFamily: 'var(--axis-mono)',
+                        fontSize: 'var(--axis-mono-size)',
+                        // A long path shortens from the left, keeping the
+                        // file name - the part worth reading - on screen.
+                        direction: 'rtl',
+                        textAlign: 'left',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                    title={status}
+                >
+                    {status}
+                </span>
+            )}
+        </div>
+    );
+}
+
 /**
- * The Axis results panel: a live Desmos graph beside the JSON behind it.
+ * The Axis results panel: a live Desmos graph, and in `debug` the JSON behind
+ * it as well.
  *
  * Every host renders this same component over the same protocol — the preview
  * page over an HTTP event stream, the playground over an in-process channel —
  * and it looks the same in all of them. What differs between hosts is which
  * transport they hand it and nothing else.
  */
-export function AxisViewer({ ref, transport, className, style }: AxisViewerProps) {
+export function AxisViewer({ ref, transport, debug = false, className, style }: AxisViewerProps) {
     const graphRef = useRef<DesmosGraphHandle>(null);
     const [activeTab, setActiveTab] = useState<AxisViewerTab>('graph');
     const {
@@ -136,50 +205,7 @@ export function AxisViewer({ ref, transport, className, style }: AxisViewerProps
                 ...style,
             }}
         >
-            <div
-                role="tablist"
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    padding: '0 8px',
-                    flex: 'none',
-                    borderBottom: '1px solid var(--axis-border)',
-                }}
-            >
-                {TABS.map(tab => (
-                    <button
-                        key={tab.id}
-                        role="tab"
-                        aria-selected={activeTab === tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        style={tabStyle(activeTab === tab.id)}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-                {status !== null && (
-                    <span
-                        style={{
-                            marginLeft: 'auto',
-                            paddingRight: 8,
-                            color: 'var(--axis-fg-muted)',
-                            fontFamily: 'var(--axis-mono)',
-                            fontSize: 'var(--axis-mono-size)',
-                            // A long path shortens from the left, keeping the
-                            // file name - the part worth reading - on screen.
-                            direction: 'rtl',
-                            textAlign: 'left',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}
-                        title={status}
-                    >
-                        {status}
-                    </span>
-                )}
-            </div>
+            {debug && <TabBar activeTab={activeTab} onSelect={setActiveTab} status={status} />}
 
             {notice && (
                 <div
@@ -209,7 +235,7 @@ export function AxisViewer({ ref, transport, className, style }: AxisViewerProps
                 style={{
                     flex: 1,
                     minHeight: 0,
-                    display: activeTab === 'graph' ? 'flex' : 'none',
+                    display: !debug || activeTab === 'graph' ? 'flex' : 'none',
                     flexDirection: 'column',
                 }}
             >
@@ -256,16 +282,18 @@ export function AxisViewer({ ref, transport, className, style }: AxisViewerProps
                 />
             </div>
 
-            <div
-                style={{
-                    flex: 1,
-                    minHeight: 0,
-                    display: activeTab === 'json' ? 'flex' : 'none',
-                    flexDirection: 'column',
-                }}
-            >
-                <JsonInspector views={jsonViews} />
-            </div>
+            {debug && (
+                <div
+                    style={{
+                        flex: 1,
+                        minHeight: 0,
+                        display: activeTab === 'json' ? 'flex' : 'none',
+                        flexDirection: 'column',
+                    }}
+                >
+                    <JsonInspector views={jsonViews} />
+                </div>
+            )}
         </div>
     );
 }

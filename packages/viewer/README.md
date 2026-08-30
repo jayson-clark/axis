@@ -1,7 +1,7 @@
 # @axis-dsl/viewer
 
 The [Axis](https://github.com/jayson-clark/axis) results panel: a live Desmos
-graph beside the JSON behind it.
+graph, and — in `debug` — the JSON behind it beside it.
 
 ```sh
 npm install @axis-dsl/viewer react react-dom
@@ -28,6 +28,20 @@ function Preview({ source }: { source: string }) {
     return <AxisViewer transport={transport} />;
 }
 ```
+
+## Debug mode
+
+The viewer is the graph and nothing else by default: no tabs, no status line,
+the calculator filling whatever it is given. `debug` adds the **Graph**/**JSON**
+tabs and the status the transport reports, for a host that is a workbench rather
+than a preview.
+
+```tsx
+<AxisViewer transport={transport} debug />
+```
+
+The graph is the same either way — the JSON pane is what `debug` adds, so the
+`status` a host reports has somewhere to appear only when it is on.
 
 ## One way in
 
@@ -98,16 +112,16 @@ applied after the theme and therefore wins:
 
 ## API
 
-| Export                      |                                                                 |
-| --------------------------- | --------------------------------------------------------------- |
-| `AxisViewer`                | The panel. Props: `transport`, `ref?`, `className?`, `style?`   |
-| `useLocalViewerHost(state)` | Turns React state into protocol messages; returns the transport |
-| `AxisViewerHandle`          | What its `ref` exposes: `capture(options?)`, `getGraph()`       |
-| `DesmosGraph`               | Just the graph, if you want to arrange things yourself          |
-| `JsonInspector`             | Just the JSON pane                                              |
-| `useDesmos(apiKey)`         | Loads the Desmos script once per page                           |
-| `useViewerState(transport)` | The state `AxisViewer` builds from the messages                 |
-| `AXIS_THEME`                | The palette, as `--axis-*` custom properties                    |
-| `AXIS_COLOR_SCHEME`         | The `color-scheme` those properties need to resolve             |
+| Export                      |                                                                         |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `AxisViewer`                | The panel. Props: `transport`, `debug?`, `ref?`, `className?`, `style?` |
+| `useLocalViewerHost(state)` | Turns React state into protocol messages; returns the transport         |
+| `AxisViewerHandle`          | What its `ref` exposes: `capture(options?)`, `getGraph()`               |
+| `DesmosGraph`               | Just the graph, if you want to arrange things yourself                  |
+| `JsonInspector`             | Just the JSON pane                                                      |
+| `useDesmos(apiKey)`         | Loads the Desmos script once per page                                   |
+| `useViewerState(transport)` | The state `AxisViewer` builds from the messages                         |
+| `AXIS_THEME`                | The palette, as `--axis-*` custom properties                            |
+| `AXIS_COLOR_SCHEME`         | The `color-scheme` those properties need to resolve                     |
 
 MIT
