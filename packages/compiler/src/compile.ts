@@ -33,6 +33,7 @@ import {
 } from '@axis-dsl/desmos';
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
+    AXIS_DEFAULT_CONFIG,
     AXIS_GRAPH_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
     defineMacro,
@@ -643,7 +644,9 @@ function splitConfig(
     settings?: CalculatorOptions;
     graph?: GraphSettings;
 } {
-    const settings: Record<string, unknown> = {};
+    // Axis's own defaults sit under whatever the script wrote, so a config
+    // block that names one of them still has the last word.
+    const settings: Record<string, unknown> = { ...AXIS_DEFAULT_CONFIG };
 
     // `actions` defaults to `auto`, which means "on if the graph uses actions" -
     // and Desmos decides that by looking at the expression list alone. A ticker

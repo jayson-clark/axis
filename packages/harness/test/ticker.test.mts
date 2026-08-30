@@ -9,7 +9,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { AXIS_TICKER_PROPERTY_NAMES } from '@axis-dsl/language';
+import { AXIS_DEFAULT_CONFIG, AXIS_TICKER_PROPERTY_NAMES } from '@axis-dsl/language';
 import { compileAxis } from '@axis-dsl/compiler';
 import { skip, useCalculator } from './support.mts';
 
@@ -71,7 +71,10 @@ describe('the ticker', { skip }, () => {
         // decides that from the expression list — which the ticker is not in.
         // So a graph whose only action is its ticker is left with actions off
         // and silently never ticks; the compiler turns them on for that reason.
-        assert.deepEqual(compileAxis('a = 0\nticker a -> a + 1').settings, { actions: true });
+        assert.deepEqual(compileAxis('a = 0\nticker a -> a + 1').settings, {
+            ...AXIS_DEFAULT_CONFIG,
+            actions: true,
+        });
 
         await calculator().load('a = 0\nticker a -> a + 1 # minStep: 20, playing: true');
         assert.equal((await calculator().getSettings()).actions, true);
@@ -80,7 +83,10 @@ describe('the ticker', { skip }, () => {
     test('a script that switches actions off keeps them off', async () => {
         const source = 'config {\n    actions: false\n}\na = 0\nticker a -> a + 1 # playing: true';
 
-        assert.deepEqual(compileAxis(source).settings, { actions: false });
+        assert.deepEqual(compileAxis(source).settings, {
+            ...AXIS_DEFAULT_CONFIG,
+            actions: false,
+        });
 
         await calculator().load(source);
         assert.equal((await calculator().getSettings()).actions, false);

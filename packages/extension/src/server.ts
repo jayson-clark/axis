@@ -16,7 +16,7 @@ import {
     type HostMessage,
     type ViewerMessage,
 } from '@axis-dsl/protocol';
-import { resolveDesmosApiKey } from './config';
+import { previewDebugEnabled, resolveDesmosApiKey } from './config';
 import { imageHost, importHost } from './imports';
 
 /**
@@ -176,6 +176,12 @@ export class PreviewServer implements vscode.Disposable {
         const params = new URLSearchParams();
         params.set(PREVIEW_QUERY.token, this.token);
         params.set(PREVIEW_QUERY.file, uri.toString());
+        // Read when the link is made rather than by the page, which is served
+        // as a static bundle and has no way to ask VSCode anything. Changing
+        // the setting therefore takes a reopened preview, not a reload.
+        if (previewDebugEnabled()) {
+            params.set(PREVIEW_QUERY.debug, '1');
+        }
         return params.toString();
     }
 

@@ -88,7 +88,10 @@ export function App() {
                         )}
                     </div>
                 }
-                right={<AxisViewer transport={viewerTransport} />}
+                // `debug`: this is a workbench next to an editor, so the JSON
+                // the compiler produced is half of what there is to look at -
+                // and the status line is where the expression count above goes.
+                right={<AxisViewer transport={viewerTransport} debug />}
             />
         </div>
     );

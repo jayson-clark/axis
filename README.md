@@ -32,6 +32,11 @@ between two of them written on one line.
 properties with room to breathe: one to a line, for when there are more of them
 than fit comfortably behind a `#`.
 
+A compiled script is a finished graph rather than an editor, so Axis opens one
+without the chrome Desmos wraps around a graph at desmos.com: the expression
+list, the settings menu, the zoom buttons and the border are all off unless a
+`config` block asks for them back (`expressions: true`, and so on).
+
 ## Features
 
 - **Plain text graphs** — version them, diff them, review them
@@ -65,6 +70,10 @@ The preview is a page served over loopback, not a panel inside the editor, so it
 never competes for a spot in the workbench and you can have as many open as you
 have files. Each one is bound to the file you launched it from and reloads when
 you save it, the same bargain a web dev server strikes.
+
+The page is the graph and nothing else. Turn on `axis.preview.debug` and it
+grows **Graph**/**JSON** tabs and the path it is showing — the JSON is the
+compiled expressions, the settings, and what the calculator made of them.
 
 While the server is up there is an `$(broadcast) Axis` item in the status bar.
 Click it to reopen a preview whose tab you closed, serve another file, or stop
@@ -297,19 +306,23 @@ function Graph({ source }) {
 }
 ```
 
+The viewer is the graph alone — add `debug` for the **Graph**/**JSON** tabs and
+the status line, which is what the playground does and what the extension's
+`axis.preview.debug` turns on.
+
 React 19 and Monaco 0.56+ are peer dependencies, so your app owns both.
 `examples/web` is a runnable Vite app wiring all of this up.
 
 ## Packages
 
-| Package              | Purpose                                         |
-| -------------------- | ----------------------------------------------- |
-| `@axis-dsl/compiler` | Compiles `.axis` source to Desmos expressions   |
-| `@axis-dsl/language` | Completions, formatting, diagnostics, grammars  |
-| `@axis-dsl/viewer`   | The results panel: the graph and JSON inspector |
-| `@axis-dsl/protocol` | Messages and transports that drive the viewer   |
-| `@axis-dsl/desmos`   | Typed Desmos calculator API                     |
-| `@axis-dsl/harness`  | Runs a script against a real headless Desmos    |
+| Package              | Purpose                                             |
+| -------------------- | --------------------------------------------------- |
+| `@axis-dsl/compiler` | Compiles `.axis` source to Desmos expressions       |
+| `@axis-dsl/language` | Completions, formatting, diagnostics, grammars      |
+| `@axis-dsl/viewer`   | The results panel: the graph, and its JSON in debug |
+| `@axis-dsl/protocol` | Messages and transports that drive the viewer       |
+| `@axis-dsl/desmos`   | Typed Desmos calculator API                         |
+| `@axis-dsl/harness`  | Runs a script against a real headless Desmos        |
 
 ## Testing against a real Desmos graph
 

@@ -38,7 +38,9 @@ config {
     // Coordinate system
     polarMode: false
 
-    // Interface
+    // Interface - Axis leaves the expression list, the settings menu, the
+    // zoom buttons and the border off by default, so a graph is just the
+    // picture. Everything here asks for the full calculator back.
     expressions: true
     expressionsCollapsed: false
     settingsMenu: true
