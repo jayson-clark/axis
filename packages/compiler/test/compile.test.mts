@@ -114,9 +114,23 @@ describe('metadata', () => {
         assert.equal(expression.clickableInfo?.enabled, false);
     });
 
-    test('parses sliderBounds into the object Desmos expects', () => {
+    test('parses sliderBounds into the slider the graph state carries', () => {
+        // Not `sliderBounds`: that is what `setExpression` takes, and nothing
+        // applies expressions that way — folder membership needs `setState`,
+        // which reads the serialized form instead.
         const expression = only<Expression>('a = 1 # sliderBounds: {min: 0, max: 10, step: 0.1}');
-        assert.deepEqual(expression.sliderBounds, { min: 0, max: 10, step: 0.1 });
+        assert.deepEqual(expression.slider, {
+            min: '0',
+            max: '10',
+            step: '0.1',
+            hardMin: true,
+            hardMax: true,
+        });
+    });
+
+    test('playing on its own animates without setting a range', () => {
+        const expression = only<Expression>('a = 1 # playing: true');
+        assert.deepEqual(expression.slider, { isPlaying: true });
     });
 });
 
