@@ -27,6 +27,9 @@ catalogs:
     monaco-editor:
       specifier: 0.56.0
       version: 0.56.0
+    playwright-core:
+      specifier: 1.62.1
+      version: 1.62.1
     prettier:
       specifier: 3.9.6
       version: 3.9.6
@@ -133,6 +136,25 @@ importers:
       '@types/vscode':
         specifier: 'catalog:'
         version: 1.134.0
+
+  packages/harness:
+    dependencies:
+      '@axis-dsl/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@axis-dsl/desmos':
+        specifier: workspace:*
+        version: link:../desmos
+      '@axis-dsl/language':
+        specifier: workspace:*
+        version: link:../language
+      playwright-core:
+        specifier: 'catalog:'
+        version: 1.62.1
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.4.0
 
   packages/language:
     devDependencies:
@@ -713,6 +735,11 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   postcss@8.5.26:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
     engines: {node: ^10 || ^12 || >=14}
@@ -1114,6 +1141,8 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.7: {}
+
+  playwright-core@1.62.1: {}
 
   postcss@8.5.26:
     dependencies:
