@@ -211,6 +211,10 @@ assert.deepEqual(await calculator.getErrors(), []);
 assert.equal((await calculator.evaluate('f(20)')).numericValue, 41);
 ```
 
+Its suites drive every metadata property, every config option, and every
+function and constant in the language manifest through a live calculator, so a
+name that Desmos does not accept fails a test rather than a graph.
+
 The real `calculator.js` is cached on disk after the first run, so the suite
 does not depend on desmos.com being up. The harness tests skip themselves when
 no Chromium is installed.
