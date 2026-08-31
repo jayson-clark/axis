@@ -581,11 +581,18 @@ function parseSliderBounds(value: string): SliderBounds | undefined {
         : undefined;
 }
 
-/** `true`/`false` and numbers become themselves; everything else is a string. */
+/**
+ * `true`/`false` and numbers become themselves; everything else is a string.
+ *
+ * Quotes are how a value says it is a string and nothing else, so a quoted
+ * `"2"` stays the two-character label rather than the number 2 - which
+ * `asString` would then drop on the floor.
+ */
 function parseValue(value: string): string | number | boolean {
     if (value === 'true') return true;
     if (value === 'false') return false;
-    return numberOrString(unquote(value));
+    if (/^"[^]*"$|^'[^]*'$/.test(value)) return unquote(value);
+    return numberOrString(value);
 }
 
 /** A numeric string becomes a number; anything else is left as written. */

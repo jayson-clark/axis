@@ -99,6 +99,13 @@ describe('metadata', () => {
         assert.equal(expression.lineWidth, '2');
     });
 
+    test('keeps a quoted value a string, whatever it looks like', () => {
+        // Quotes are how a value says it is a string: without them `42` is the
+        // number, which a string property has no use for.
+        assert.equal(only<Expression>('(0,0) # label: "42"').label, '42');
+        assert.equal(only<Expression>('(0,0) # label: "true"').label, 'true');
+    });
+
     test('reads the bare flags', () => {
         assert.equal(only<Expression>('y = x # hidden').hidden, true);
         assert.equal(only<Expression>('y = x # secret').secret, true);
