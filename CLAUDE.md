@@ -8,7 +8,7 @@ the expressions/folders/tables/settings a graph is made of out.
 | Package                | What lives there                                                                                                |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `@axis-dsl/language`   | The manifest (functions, constants, metadata, config properties), grammar, completions, formatting, diagnostics |
-| `@axis-dsl/compiler`   | `.axis` source → Desmos expressions and settings, plus the latex converter                                      |
+| `@axis-dsl/compiler`   | `.axis` source → Desmos expressions and settings, the decompiler back the other way, and the latex converters   |
 | `@axis-dsl/desmos`     | The Desmos calculator API, typed by hand                                                                        |
 | `@axis-dsl/protocol`   | Messages and transports that drive the viewer                                                                   |
 | `@axis-dsl/viewer`     | React components: the graph and the JSON inspector                                                              |
@@ -97,18 +97,25 @@ to, how a block parses — belongs in `packages/compiler/test` or
 `packages/language/test`, which are fast and run without a browser. Anything
 about what Desmos _does_ with the result goes in `packages/harness/test`:
 
-| File                | What it pins                                                       |
-| ------------------- | ------------------------------------------------------------------ |
-| `metadata.test.mts` | every `# key: value` property, read back off the applied graph     |
-| `config.test.mts`   | every `config { … }` property, read back off `calculator.settings` |
-| `language.test.mts` | every function and constant in the manifest, plus the operators    |
-| `graph.test.mts`    | folders, tables, notes, imports, and every example script          |
-| `harness.test.mts`  | the harness itself                                                 |
+| File                 | What it pins                                                       |
+| -------------------- | ------------------------------------------------------------------ |
+| `metadata.test.mts`  | every `# key: value` property, read back off the applied graph     |
+| `config.test.mts`    | every `config { … }` property, read back off `calculator.settings` |
+| `language.test.mts`  | every function and constant in the manifest, plus the operators    |
+| `graph.test.mts`     | folders, tables, notes, imports, and every example script          |
+| `decompile.test.mts` | decompiling the graph state a real calculator hands back           |
+| `harness.test.mts`   | the harness itself                                                 |
 
 **Adding a name to the manifest means adding a test.** The first three suites
 are driven from `@axis-dsl/language`'s manifest and have a guard test that fails
 when a property or function appears there with nothing exercising it — that is
 deliberate, and the fix is a test, not an exemption.
+
+**Changing how something compiles means changing how it decompiles.** The
+decompiler is the compiler's inverse and is tested as one: `decompile.test.mts`
+in the compiler package holds `compile ∘ decompile ∘ compile ≡ compile` over
+every example, so a new statement, property or latex rule needs the reading of
+it as well as the writing — and the round trip will say so.
 
 **Changing how something compiles means checking the examples.** They are the
 widest use of the language there is, and `graph.test.mts` runs all twenty

@@ -26,6 +26,17 @@ describe('splitTrailingMetadata', () => {
         }
     });
 
+    test('leaves a `#` inside a string alone, since a string is text', () => {
+        assert.deepEqual(splitTrailingMetadata('"step #1: begin"'), {
+            code: '"step #1: begin"',
+            metadata: undefined,
+        });
+        assert.deepEqual(splitTrailingMetadata('(0, 0) # label: "step #1"'), {
+            code: '(0, 0)',
+            metadata: 'label: "step #1"',
+        });
+    });
+
     test('leaves a line with no `#` untouched', () => {
         assert.deepEqual(splitTrailingMetadata('y = x'), { code: 'y = x', metadata: undefined });
     });

@@ -88,6 +88,50 @@ only when it does.
 A script that imports something and is given no resolver fails to compile,
 rather than quietly dropping the import and graphing less than was asked for.
 
+## Decompiling
+
+The other direction: a graph back into the script that builds it.
+
+```ts
+import { decompileAxis } from '@axis-dsl/compiler';
+
+const source = decompileAxis({
+  expressions: calculator.getState().expressions.list,
+  settings: calculator.settings,
+});
+```
+
+Expressions become statements, their Desmos properties become the `# key: value`
+metadata that sets them, folders become `folder "…" { … }` blocks and the
+settings become the `config { … }` block at the top. What comes back is source
+somebody could have written — indented, spaced and quoted the way the formatter
+would write it — and, more to the point, source that compiles to the graph it
+was read from:
+
+```
+compileAxis(decompileAxis(compileAxis(source))) ≡ compileAxis(source)
+```
+
+That holds for every example script, and for the graph state a real calculator
+hands back, which is not the same object: Desmos leaves a slider bound off when
+it matches its own default, writes a switched-off clickable by omitting
+`enabled` rather than storing `false`, and normalises the latex.
+
+Three things a graph cannot tell you, and one it cannot hold:
+
+- **Imports are gone.** They were flattened into folders when the script was
+  compiled, so they come back as the folders the reader sees.
+- **Comments are gone**, along with blank lines and anything else the source
+  said that the graph does not carry.
+- **A note is one line in double quotes**, and Axis has no escape for either, so
+  a newline in the text becomes a space and a `"` becomes a `'`.
+- **LaTeX Axis has no spelling for** — an `\operatorname` it does not know, a
+  command it has never heard of — is passed through as written, which leaves one
+  recognisable thing to fix by hand rather than a mangled expression.
+
+`convertFromLatex` is the expression-level half of it, and the inverse of
+`convertToLatex`.
+
 ## API
 
 | Export                                            |                                                                                     |
@@ -97,6 +141,9 @@ rather than quietly dropping the import and graphing less than was asked for.
 | `createImportResolver(files, resolve)`            | Turns that `Map` into the synchronous `resolveImport` the compiler wants            |
 | `findImports(source)`                             | Just the specifiers one file imports, in order                                      |
 | `convertToLatex(expr)`                            | One Axis expression to the LaTeX Desmos expects                                     |
+| `decompileAxis(graph, options?)`                  | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source     |
+| `convertFromLatex(latex)`                         | One piece of Desmos LaTeX back into the Axis expression it compiles from            |
+| `DecompileInput` / `DecompileOptions`             | `{ expressions, settings? }` and `{ indent? }`                                      |
 | `CompileOptions`                                  | `{ path?, resolveImport? }`                                                         |
 | `CompilationResult`                               | `{ expressions, settings?, imports }`                                               |
 | `ImportHost` / `ResolveImport` / `ResolvedImport` | The resolver types                                                                  |
