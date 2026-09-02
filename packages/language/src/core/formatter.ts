@@ -103,6 +103,48 @@ function formatLineContent(line: string): string {
     return `${formatExpression(code)} # ${entries}`;
 }
 
+/**
+ * Space out every `-`.
+ *
+ * A subtraction takes a space either side; a unary minus takes none and belongs
+ * to what it negates - `-x`, `(-3, -3)`, `exp(-decay * x)`. Which one a `-` is
+ * comes from what stands before it: where there is nothing to subtract from -
+ * the start of the expression, an opening bracket, a separator, another
+ * operator - it negates.
+ *
+ * The `-` of an action arrow is left alone for {@link formatExpression}'s arrow
+ * rule to put back together, since the `>` rule has already split the two.
+ */
+function spaceMinusSigns(expr: string): string {
+    let result = '';
+
+    for (let index = 0; index < expr.length; index++) {
+        const char = expr[index];
+
+        if (char !== '-' || expr[index + 1] === '>') {
+            result += char;
+            continue;
+        }
+
+        const before = result.trimEnd();
+
+        if (!/(^|[([{,:=+\-*/^<>])$/.test(before)) {
+            result = `${before} - `;
+            continue;
+        }
+
+        // Unary, so it belongs to what it negates and nothing comes between
+        // them. The space it sits *after* is whatever was already there: the
+        // padding rules below close up `(-3` and open up `x, -3` in their turn.
+        result += '-';
+        while (/\s/.test(expr[index + 1] ?? '')) {
+            index++;
+        }
+    }
+
+    return result;
+}
+
 function formatExpression(expr: string): string {
     let result = expr;
 
@@ -119,9 +161,8 @@ function formatExpression(expr: string): string {
     result = result.replace(/([^\s\(\[\{])\+/g, '$1 + ');
     result = result.replace(/\+([^\s\)\]\}])/g, '+ $1');
 
-    // Spaces around -, leaving negative numbers alone
-    result = result.replace(/([^\s\(\[\{])-/g, '$1 - ');
-    result = result.replace(/-([^\s\)\]\}\d])/g, '- $1');
+    // Spaces around -, which is two operators wearing one character.
+    result = spaceMinusSigns(result);
 
     // Spaces around * and /
     result = result.replace(/([^\s])\*/g, '$1 * ');
