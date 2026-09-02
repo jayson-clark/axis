@@ -29,6 +29,7 @@ export function getAxisCompletions(text: string, position: AxisPosition): AxisCo
     return [
         ...getFunctionCompletions(),
         ...getConstantCompletions(),
+        ...getOperatorCompletions(),
         ...getKeywordCompletions(),
         ...getUserDefinedCompletions(text),
     ];
@@ -82,6 +83,14 @@ function getConstantCompletions(): AxisCompletionItem[] {
         label: constant.name,
         kind: 'constant' as const,
         detail: constant.detail,
+    }));
+}
+
+function getOperatorCompletions(): AxisCompletionItem[] {
+    return AXIS_MANIFEST.operators.map(operator => ({
+        label: operator.name,
+        kind: 'constant' as const,
+        detail: operator.detail,
     }));
 }
 

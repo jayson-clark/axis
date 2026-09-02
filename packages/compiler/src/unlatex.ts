@@ -29,12 +29,17 @@ import {
     AXIS_CONSTANT_NAMES,
     AXIS_FUNCTION_NAMES,
     AXIS_LATEX_FOR_CONSTANT,
+    AXIS_OPERATOR_NAMES,
     getFunctionLatex,
 } from '@axis-dsl/language';
 import { convertToLatex } from './latex';
 
 /** Every name the language defines, so a decompiled one can be checked against them. */
-const BUILT_IN_NAMES = new Set([...AXIS_FUNCTION_NAMES, ...AXIS_CONSTANT_NAMES]);
+const BUILT_IN_NAMES = new Set([
+    ...AXIS_FUNCTION_NAMES,
+    ...AXIS_CONSTANT_NAMES,
+    ...AXIS_OPERATOR_NAMES,
+]);
 
 /**
  * `\sin` → `sin`, for the functions Desmos writes as a command of their own.
@@ -138,6 +143,12 @@ export function convertFromLatex(latex: string): string {
         if (operatorName) {
             emit(operatorName[1]);
             index += operatorName[0].length;
+            if (/^[a-zA-Z0-9]/.test(latex.slice(index))) {
+                // `\operatorname{for}i` is the operator and then a name of its
+                // own. Written closed up they would be one word, so the space
+                // the compiler dropped goes back.
+                output += ' ';
+            }
             continue;
         }
 

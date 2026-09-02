@@ -14,11 +14,16 @@ import {
     AXIS_CONSTANT_NAMES,
     AXIS_FUNCTION_NAMES,
     AXIS_LATEX_FOR_CONSTANT,
+    AXIS_OPERATOR_NAMES,
     getFunctionLatex,
 } from '@axis-dsl/language';
 
 /** Every name the language defines, so the subscript rule leaves them alone. */
-const BUILT_IN_NAMES = new Set([...AXIS_FUNCTION_NAMES, ...AXIS_CONSTANT_NAMES]);
+const BUILT_IN_NAMES = new Set([
+    ...AXIS_FUNCTION_NAMES,
+    ...AXIS_CONSTANT_NAMES,
+    ...AXIS_OPERATOR_NAMES,
+]);
 
 /**
  * What may not come before a name being recognised.
@@ -56,6 +61,18 @@ const CONSTANT_PATTERNS = [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => ({
 }));
 
 /**
+ * `width` → `\operatorname{width}`, and `for` likewise.
+ *
+ * Only the whole word: unlike a constant, an operator that opens a longer name
+ * is not that operator carrying a subscript, so `heightMap` stays the variable
+ * it looks like.
+ */
+const OPERATOR_PATTERNS = AXIS_OPERATOR_NAMES.map(name => ({
+    pattern: new RegExp(`${NOT_AFTER_NAME}${name}(?![a-zA-Z0-9_])`, 'g'),
+    latex: `\\operatorname{${name}}`,
+}));
+
+/**
  * Convert an Axis expression into the LaTeX Desmos expects:
  * - Braces: `{` `}` → `\left\{` `\right\}` (piecewise, lists, constraints)
  * - Division: `a/b` → `\frac{a}{b}`
@@ -66,6 +83,7 @@ const CONSTANT_PATTERNS = [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => ({
  * - Multi-letter names: `abc` → `a_{bc}`
  * - Built-in functions: `sin` → `\sin`, `mean` → `\operatorname{mean}`
  * - Greek letters and constants: `pi` → `\pi`, `infinity` → `\infty`
+ * - Bare operators: `width` → `\operatorname{width}`, `for` likewise
  * - Inequalities: `<=`, `>=` → `\le`, `\ge`
  * - Action arrow: `->` → `\to`
  */
@@ -98,8 +116,9 @@ export function convertToLatex(expr: string): string {
         latex = latex.replace(pattern, command);
     }
 
-    // 7. Constants standing on their own become their command.
-    latex = substituteConstants(latex);
+    // 7. Constants and bare operators standing on their own become their command.
+    latex = substituteNames(latex, CONSTANT_PATTERNS);
+    latex = substituteNames(latex, OPERATOR_PATTERNS);
 
     // 8. Remaining syntax.
     latex = latex.replace(/->/g, '\\to');
@@ -285,11 +304,14 @@ function subscriptNames(input: string): string {
     );
 }
 
-/** Replace each constant with its command, except where it names a subscript. */
-function substituteConstants(input: string): string {
+/** Replace each name with its command, except where it names a subscript. */
+function substituteNames(
+    input: string,
+    patterns: readonly { pattern: RegExp; latex: string }[],
+): string {
     let latex = input;
 
-    for (const { pattern, latex: command } of CONSTANT_PATTERNS) {
+    for (const { pattern, latex: command } of patterns) {
         latex = latex.replace(pattern, (match, offset: number, text: string) => {
             if (text[offset - 1] === '\\') {
                 return match;
