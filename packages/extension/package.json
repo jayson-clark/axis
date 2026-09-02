@@ -86,6 +86,12 @@
                     ],
                     "default": "ask",
                     "markdownDescription": "Where **Axis: Preview Graph** opens the graph. Pinning a choice in the prompt sets this; set it back to `ask` to be asked again."
+                },
+                "axis.format.maxLineLength": {
+                    "type": "number",
+                    "default": 100,
+                    "minimum": 0,
+                    "markdownDescription": "Column the formatter breaks a long line at, counting its indentation. A statement is broken at a bracket, one entry to a line, which is the only place Axis lets one continue; a line made long by anything else — a note, a comment, a `# key: value` run — is left whole. Set to `0` to never break a line."
                 }
             }
         },
