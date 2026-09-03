@@ -118,10 +118,28 @@ describe('expression metadata', { skip }, () => {
                 Object.keys(expected).map(key => [key, applied[key as keyof typeof applied]]),
             );
 
-            assert.deepEqual(actual, expected);
+            assert.deepEqual(withoutPlayDirection(actual), expected);
         });
     }
 });
+
+/**
+ * Drop the one slider key Desmos keeps for itself.
+ *
+ * `playDirection` appears the moment a playing slider turns around at an end,
+ * so whether it is on the state depends on how long the graph has been open -
+ * and it is not something Axis ever writes. Every other key is under test.
+ */
+function withoutPlayDirection(state: Record<string, unknown>): Record<string, unknown> {
+    const slider = state.slider;
+
+    if (slider === null || typeof slider !== 'object' || !('playDirection' in slider)) {
+        return state;
+    }
+
+    const { playDirection: _ignored, ...rest } = slider as Record<string, unknown>;
+    return { ...state, slider: rest };
+}
 
 describe('metadata Desmos acts on', { skip }, () => {
     const calculator = useCalculator();

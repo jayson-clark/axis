@@ -69,6 +69,7 @@ const CALLS: Record<string, string> = {
     var: 'var([1, 2, 3])',
     varp: 'varp([1, 2, 3])',
     discretedist: 'discretedist([1, 2, 3], [0.2, 0.3, 0.5])',
+    random: 'random()',
 
     // lists
     repeat: 'repeat(3, 5)',
@@ -234,6 +235,84 @@ describe('every constant the language offers', { skip }, () => {
         const [expression] = await calculator().inspectExpressions();
 
         assert.equal(expression.analysis?.isError, false);
+    });
+});
+
+/**
+ * A use of each bare operator — the words Desmos writes as `\operatorname{…}`
+ * without a call to hold them. Every one is written into a definition, so a
+ * name Desmos does not know shows up as an undefined variable rather than
+ * evaluating to nothing in particular.
+ */
+const OPERATOR_USES: Record<string, string> = {
+    width: 'a = width',
+    height: 'a = height',
+    for: 'S = [i ^ 2 for i = [1, ..., 10]]',
+};
+
+describe('every bare operator the language offers', { skip }, () => {
+    const calculator = useCalculator();
+
+    test('every operator in the manifest has a use to test it with', () => {
+        const missing = AXIS_MANIFEST.operators
+            .map(entry => entry.name)
+            .filter(name => !OPERATOR_USES[name]);
+
+        assert.deepEqual(missing, []);
+    });
+
+    for (const { name } of AXIS_MANIFEST.operators) {
+        test(`${name} is a word Desmos knows`, async () => {
+            await calculator().load(OPERATOR_USES[name]);
+            const [expression] = await calculator().inspectExpressions();
+
+            assert.equal(
+                expression.analysis?.isError,
+                false,
+                `Desmos rejected ${expression.latex}: ${expression.analysis?.errorMessage}`,
+            );
+        });
+    }
+
+    test('width and height read the viewport, not two variables', async () => {
+        // Left to the subscript rule these would be `w_{idth}` and `h_{eight}`,
+        // undefined variables Desmos reports nothing at all about.
+        assert.equal(convertToLatex('width'), '\\operatorname{width}');
+        assert.equal(convertToLatex('height'), '\\operatorname{height}');
+
+        await calculator().load('a = width\nb = height\nc = a * b');
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        const area = (await calculator().evaluate('c')).numericValue;
+        assert.ok(area > 0 && Number.isFinite(area), `width * height came out as ${area}`);
+    });
+
+    test('a name that merely opens with an operator is still a variable', async () => {
+        assert.equal(convertToLatex('heightMap = 2'), 'h_{eightMap}=2');
+
+        await calculator().load('heightMap = 2\ny = heightMap * x');
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((await calculator().evaluate('heightMap')).numericValue, 2);
+    });
+
+    test('for builds the list the comprehension describes', async () => {
+        await calculator().load('S = [i ^ 2 for i = [1, ..., 10]]');
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((await calculator().evaluate('length(S)')).numericValue, 10);
+        assert.equal((await calculator().evaluate('total(S)')).numericValue, 385);
+    });
+
+    test('random draws a number rather than naming a variable', async () => {
+        assert.equal(convertToLatex('a = random()'), 'a=\\operatorname{random}\\left(\\right)');
+
+        await calculator().load('a = random()\nR = random(5)');
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        const drawn = (await calculator().evaluate('a')).numericValue;
+        assert.ok(drawn >= 0 && drawn < 1, `random() came out as ${drawn}`);
+        assert.equal((await calculator().evaluate('length(R)')).numericValue, 5);
     });
 });
 

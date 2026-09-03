@@ -67,6 +67,20 @@ describe('block headers', () => {
         assert.deepEqual(codes('folder {\n}'), ['block-header']);
     });
 
+    test('rejects a folder named with an empty string', () => {
+        // Not the same mistake as `folder {`: the shape is right, so the header
+        // reads as a folder everywhere except the compiler, which will not take
+        // an empty title and compiles the line as an expression instead.
+        assert.deepEqual(codes('folder "" {\ny = x\n}'), ['empty-folder-name']);
+        assert.deepEqual(codes('folder "" { # collapsed: true\ny = x\n}'), ['empty-folder-name']);
+    });
+
+    test('leaves a folder whose name is only spaces alone', () => {
+        // Desmos takes it, and shows a folder with a blank label - odd, but the
+        // author's business rather than an error.
+        assert.deepEqual(codes('folder "  " {\ny = x\n}'), []);
+    });
+
     test('rejects a nested folder', () => {
         assert.deepEqual(codes('folder "A" {\nfolder "B" {\n}\n}'), ['nested-folder']);
     });

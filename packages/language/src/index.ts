@@ -17,10 +17,12 @@ export {
     AXIS_LATEX_FOR_CONSTANT,
     AXIS_MANIFEST,
     AXIS_METADATA_PROPERTY_NAMES,
+    AXIS_OPERATOR_NAMES,
     getFunctionLatex,
 } from './language-manifest';
 export type {
     ConstantDefinition,
     FunctionDefinition,
+    OperatorDefinition,
     PropertyDefinition,
 } from './language-manifest';

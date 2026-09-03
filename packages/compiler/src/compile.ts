@@ -190,7 +190,12 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                             nextId('expr'),
                             latex,
                             currentFolderId,
-                            currentPiecewise.metadata,
+                            // The closing line is where metadata lands when a
+                            // piecewise is written - or formatted - over several
+                            // lines, the `}` being the end of the statement it
+                            // annotates. The opening line takes it too, so both
+                            // are read, and the later one wins.
+                            { ...currentPiecewise.metadata, ...metadata },
                         ),
                     );
                     currentPiecewise = undefined;

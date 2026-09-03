@@ -118,6 +118,21 @@ describe('names', () => {
     });
 });
 
+describe('the bare operators', () => {
+    test('reads each back as the word it came from', () => {
+        assert.equal(convertFromLatex('\\operatorname{width}'), 'width');
+        assert.equal(convertFromLatex('\\frac{\\operatorname{height}}{4}'), 'height/4');
+    });
+
+    test('puts back the space an operator ran into', () => {
+        // `\operatorname{for}i` closed up would be the single word `fori`.
+        assert.equal(
+            convertFromLatex('L=[i\\operatorname{for}i=[1,...,10]]'),
+            'L=[i for i=[1,...,10]]',
+        );
+    });
+});
+
 describe('latex it has no Axis for', () => {
     test('passes an unknown command through as written', () => {
         assert.equal(convertFromLatex('\\lfloor x\\rfloor'), '\\lfloor x\\rfloor');
@@ -167,6 +182,13 @@ const EXPRESSIONS = [
     'E -> (2, -6)',
     'x^2 + y^2 <= 9',
     'y = rgb(177, 75, 75)',
+    'a = random()',
+    'R = random(5)',
+    'y = height / 4',
+    'y = width * height',
+    'heightMap = 2',
+    'L = [i for i = [1, ..., 10]]',
+    'S = [i ^ 2 for i = [1, ..., 10]]',
 ];
 
 describe('round trip', () => {

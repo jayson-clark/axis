@@ -1,5 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { formatAxisCode, validateAxis, withAxisExtension } from '@axis-dsl/language';
 import { compileAxis } from '../dist/index.js';
 import type { Expression, Folder, Note, Table } from '@axis-dsl/desmos';
 
@@ -153,4 +157,46 @@ describe('layout', () => {
         // Desmos takes list brackets bare; only parens and braces are sized.
         assert.equal(expression.latex, 'P=[\\left(0,0\\right),\\left(4,0\\right)]');
     });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Formatting an example is a change to how it reads, not to what it graphs
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The formatter breaks a long line at a bracket, one entry to a line, which is
+// only safe because the compiler joins those lines back into the statement they
+// came from. That join is easy to break from either side, and nothing about a
+// wrapped script looks wrong until a graph comes out different - so every
+// example is wrapped hard and compiled again here.
+
+describe('wrapping an example script', () => {
+    const directory = fileURLToPath(new URL('../../../examples/scripts/', import.meta.url));
+
+    /** The examples import each other, so compiling one has to resolve those. */
+    const resolveImport = (specifier: string, from: string) => {
+        const target = withAxisExtension(specifier);
+        const path = target.startsWith('/')
+            ? resolve(directory, target.slice(1))
+            : resolve(dirname(from), target);
+        return { path, source: readFileSync(path, 'utf8') };
+    };
+
+    // Narrow enough that nearly every statement has to be broken, which is the
+    // point: the default of 100 leaves most of them alone.
+    const NARROW = { tabSize: 4, insertSpaces: true, maxLineLength: 30 };
+
+    for (const name of readdirSync(directory).filter(file => file.endsWith('.axis'))) {
+        test(`${name} graphs the same wrapped as it does whole`, () => {
+            const path = resolve(directory, name);
+            const source = readFileSync(path, 'utf8');
+            const wrapped = formatAxisCode(source, NARROW);
+
+            assert.deepEqual(validateAxis(wrapped), [], `wrapping ${name} broke the script`);
+            assert.deepEqual(
+                compileAxis(wrapped, { path, resolveImport }),
+                compileAxis(source, { path, resolveImport }),
+            );
+            assert.equal(formatAxisCode(wrapped, NARROW), wrapped, 'wrapping is not idempotent');
+        });
+    }
 });
