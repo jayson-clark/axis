@@ -248,6 +248,7 @@ const OPERATOR_USES: Record<string, string> = {
     width: 'a = width',
     height: 'a = height',
     for: 'S = [i ^ 2 for i = [1, ..., 10]]',
+    with: 'a = n ^ 2 with n = 3',
 };
 
 describe('every bare operator the language offers', { skip }, () => {
@@ -285,6 +286,17 @@ describe('every bare operator the language offers', { skip }, () => {
         assert.deepEqual(await calculator().getErrors(), []);
         const area = (await calculator().evaluate('c')).numericValue;
         assert.ok(area > 0 && Number.isFinite(area), `width * height came out as ${area}`);
+    });
+
+    test('with names a value for the expression in front of it', async () => {
+        // Left to the subscript rule this would be `w_{ith}`, an undefined
+        // variable multiplying whatever follows it.
+        assert.equal(convertToLatex('a = n ^ 2 with n = 3'), 'a=n^2\\operatorname{with}n=3');
+
+        await calculator().load('a = n ^ 2 with n = 3');
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((await calculator().evaluate('a')).numericValue, 9);
     });
 
     test('a name that merely opens with an operator is still a variable', async () => {

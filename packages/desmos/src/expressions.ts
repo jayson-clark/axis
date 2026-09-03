@@ -114,6 +114,8 @@ export interface Expression {
     latex?: string;
     id?: string;
     color?: string;
+    /** A color from an expression - `rgb(…)`, or a list for a list of colors. */
+    colorLatex?: string;
     lineStyle?: LineStyle | string;
     lineWidth?: number | string;
     lineOpacity?: number | string;
@@ -139,6 +141,8 @@ export interface Expression {
     showLabel?: boolean;
     labelSize?: string;
     labelOrientation?: LabelOrientation | string;
+    /** Drop the outline Desmos draws behind a label. */
+    suppressTextOutline?: boolean;
     folderId?: string;
     /** Click action. Applied via `setState`; `setExpression` ignores it. */
     clickableInfo?: ClickableInfo;

@@ -124,7 +124,46 @@ export function convertToLatex(expr: string): string {
     latex = latex.replace(/->/g, '\\to');
     latex = latex.replace(/([a-zA-Z]+)_([a-zA-Z0-9]+)/g, '$1_{$2}');
 
-    return removeSpaces(latex);
+    // 9. A script's brackets are its grouping, and LaTeX groups with braces.
+    //    After the spaces go, so that the `^ (n)` a formatted script is written
+    //    with is the same thing as `^(n)` by the time it is read.
+    return groupScripts(removeSpaces(latex));
+}
+
+/**
+ * `x^\left(n\right)` → `x^{n}`, and a subscript the same.
+ *
+ * The brackets around a script are how Axis says which characters the script
+ * takes - LaTeX says it with a group, and a group is a brace. Left as they are
+ * they would be drawn: Desmos renders `x^\left(n\right)` with the parentheses
+ * on the page, and `\sum_\left(n=0\right)` is not a bound at all.
+ *
+ * Axis cannot spell the group with braces itself, because a brace there is a
+ * piecewise; the brackets are what it has, and this is where the two spellings
+ * meet.
+ */
+function groupScripts(latex: string): string {
+    let output = '';
+    let index = 0;
+
+    while (index < latex.length) {
+        const script = latex[index] === '^' || latex[index] === '_';
+
+        if (script && latex.startsWith('\\left(', index + 1)) {
+            const group = findCall(latex, index + 1);
+            if (group) {
+                // The body is grouped in turn, for a script inside a script.
+                output += `${latex[index]}{${groupScripts(group.body)}}`;
+                index = group.end;
+                continue;
+            }
+        }
+
+        output += latex[index];
+        index++;
+    }
+
+    return output;
 }
 
 /**

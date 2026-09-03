@@ -169,6 +169,35 @@ describe('the bare operators', () => {
     });
 });
 
+describe('scripts', () => {
+    test('groups a bracketed exponent with braces', () => {
+        // `x^\\left(n\\right)` draws the brackets on the page; the brackets in
+        // `x^(n)` say which characters the exponent takes, which is a group.
+        assert.equal(convertToLatex('x^(n)'), 'x^{n}');
+        assert.equal(convertToLatex('x^(n + 1)'), 'x^{n+1}');
+    });
+
+    test('groups a subscript the same way, which is what a sum needs', () => {
+        assert.equal(convertToLatex('\\sum_(n = 0)^(z - 1)x'), '\\sum_{n=0}^{z-1}x');
+    });
+
+    test('groups a script written with the spaces the formatter adds', () => {
+        assert.equal(convertToLatex('x ^ (n + 1)'), 'x^{n+1}');
+    });
+
+    test('leaves a single-character script alone', () => {
+        assert.equal(convertToLatex('x^2'), 'x^2');
+    });
+
+    test('groups a script inside a script', () => {
+        assert.equal(convertToLatex('x^((a + b)^(2))'), 'x^{\\left(a+b\\right)^{2}}');
+    });
+
+    test('leaves brackets that are not a script alone', () => {
+        assert.equal(convertToLatex('f(n)'), 'f\\left(n\\right)');
+    });
+});
+
 describe('braces', () => {
     test('sizes piecewise braces', () => {
         assert.equal(

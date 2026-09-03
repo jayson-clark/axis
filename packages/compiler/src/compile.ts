@@ -33,6 +33,7 @@ import {
     parseImportStatement,
     splitTopLevel,
     splitTrailingMetadata,
+    unescapeString,
 } from '@axis-dsl/language';
 import { ResolveImport } from './imports';
 import { convertToLatex } from './latex';
@@ -157,7 +158,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
             }
 
             // Folders
-            const folderMatch = /^folder\s+"([^"]+)"\s*\{/.exec(line);
+            const folderMatch = /^folder\s+"((?:[^"\\]|\\[^])*)"\s*\{/.exec(line);
             if (folderMatch) {
                 // An imported file's folders are not folders of their own; what
                 // was in them joins the folder the import landed in.
@@ -169,7 +170,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 expressions.push({
                     type: 'folder',
                     id: currentFolderId,
-                    title: folderMatch[1],
+                    title: unescapeString(folderMatch[1]),
                     collapsed: metadata.collapsed === true,
                     hidden: metadata.hidden === true,
                     secret: metadata.secret === true,
@@ -262,7 +263,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 expressions.push({
                     type: 'text',
                     id: nextId('note'),
-                    text: line.slice(1, -1),
+                    text: unescapeString(line.slice(1, -1)),
                     folderId: currentFolderId,
                 } satisfies Note);
                 continue;
@@ -434,6 +435,7 @@ function buildExpression(
         latex,
         folderId,
         color: asString(metadata.color),
+        colorLatex: asString(metadata.colorLatex),
         lineStyle: asString(metadata.lineStyle),
         lineWidth: asNumberOrString(metadata.lineWidth),
         lineOpacity: asNumberOrString(metadata.lineOpacity),
@@ -452,6 +454,7 @@ function buildExpression(
         showLabel: asBoolean(metadata.showLabel),
         labelSize: asString(metadata.labelSize),
         labelOrientation: asString(metadata.labelOrientation),
+        suppressTextOutline: asBoolean(metadata.suppressTextOutline),
         description: asString(metadata.description),
     };
 
@@ -607,5 +610,5 @@ function numberOrString(value: string): number | string {
 }
 
 function unquote(value: string): string {
-    return value.replace(/^["']|["']$/g, '');
+    return unescapeString(value.replace(/^["']|["']$/g, ''));
 }

@@ -164,6 +164,10 @@
         "operators": {
             "patterns": [
                 {
+                    "name": "keyword.operator.word.axis",
+                    "match": "\\b(for|with)\\b"
+                },
+                {
                     "name": "keyword.operator.comparison.axis",
                     "match": "<=|>=|<|>|="
                 },
