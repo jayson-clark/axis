@@ -129,12 +129,19 @@ export function convertFromLatex(latex: string): string {
         if (rest.startsWith('\\frac')) {
             const fraction = readFraction(latex, index + '\\frac'.length);
             if (fraction) {
+                // What follows decides whether the denominator can stay bare,
+                // and it is what that text *converts to* that runs into it:
+                // `\frac{\pi}{2}\operatorname{floor}(x)` is a fraction times a
+                // floor, but written `pi/2floor(x)` the floor joins the
+                // denominator - a different number, silently. The tail is
+                // converted first so the decision is made on the Axis it will
+                // sit beside rather than on the LaTeX it came from.
                 emit(
                     formatFraction(
                         convertFromLatex(fraction.numerator),
                         convertFromLatex(fraction.denominator),
                         endsWithName(),
-                        latex.slice(fraction.end),
+                        convertFromLatex(latex.slice(fraction.end)),
                     ),
                 );
                 index = fraction.end;
@@ -310,7 +317,11 @@ function readCommand(latex: string, index: number, command: string): { text: str
 
     const fn = FUNCTION_FOR_COMMAND.get(command);
     if (fn) {
-        return { text: fn, end };
+        // Desmos writes `\max \left(a,b\right)` - the space holds the command
+        // apart from a letter that would extend it, and says nothing once the
+        // backslash is gone. Where a letter really does follow, the caller puts
+        // a space back.
+        return { text: fn, end: skipSpace(latex, end) };
     }
 
     switch (command) {
@@ -373,6 +384,9 @@ function name(head: string, tail: string, latex: string): string {
  * only when it is a single run of letters and digits - and not even then if the
  * text beside it would be swept into the fraction: `ca/b` compiles with the `c`
  * in the numerator, so a fraction that follows a name gets brackets.
+ *
+ * `rest` is the already-converted Axis that follows the fraction, since that is
+ * what has to be read for what would run into the denominator.
  */
 function formatFraction(
     numerator: string,
@@ -387,7 +401,10 @@ function formatFraction(
     // A bare denominator only stays bare when nothing runs into it. A letter or
     // digit would join it as one name; a `.` would take the accessor that
     // belongs to the whole fraction - `\frac{a+b}{2}.x` is the x of the
-    // fraction, and `(a+b)/2.x` divides by `2.x` instead.
+    // fraction, and `(a+b)/2.x` divides by `2.x` instead. `rest` is the Axis
+    // the fraction will sit beside, not the LaTeX it came from, because that is
+    // what the compiler will read: `\operatorname{floor}` opens with a
+    // backslash and `floor` with a letter.
     const bottom =
         bare(denominator) && !/^[a-zA-Z0-9.]/.test(rest) ? denominator : `(${denominator})`;
 

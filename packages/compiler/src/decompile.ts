@@ -277,23 +277,33 @@ function groupCommaRun(code: string, actions: ReadonlySet<string>): string {
  * brackets already.
  */
 function bindsCommas(part: string): boolean {
+    return bindingKeyword(part) < part.length;
+}
+
+/**
+ * Where a top-level `with` or `for` starts, or past the end when there is none.
+ *
+ * One inside brackets does not count: it belongs to the bracketed comprehension
+ * around it rather than to the statement.
+ */
+function bindingKeyword(code: string): number {
     let depth = 0;
 
-    for (let i = 0; i < part.length; i++) {
-        const char = part[i];
+    for (let i = 0; i < code.length; i++) {
+        const char = code[i];
         if ('([{'.includes(char)) {
             depth += 1;
         } else if (')]}'.includes(char)) {
             depth -= 1;
         } else if (depth === 0 && /[a-zA-Z]/.test(char)) {
-            const word = /^(?:with|for)(?![a-zA-Z0-9_])/.exec(part.slice(i));
-            if (word && !/[a-zA-Z0-9_]/.test(part[i - 1] ?? '')) {
-                return true;
+            const word = /^(?:with|for)(?![a-zA-Z0-9_])/.exec(code.slice(i));
+            if (word && !/[a-zA-Z0-9_]/.test(code[i - 1] ?? '')) {
+                return i;
             }
         }
     }
 
-    return false;
+    return code.length;
 }
 
 /**
@@ -338,11 +348,19 @@ function isAction(code: string, actions: ReadonlySet<string>): boolean {
  *
  * `<=`, `>=` and `->` all carry an `=` or point like one without defining
  * anything, so the character either side of a candidate has to be looked at.
+ *
+ * A `for` or `with` binding is spelled with an `=` too, and an expression can
+ * open with one: `{c}for j = [1...8], f = [1...6]` defines nothing, and reading
+ * the `j =` as a definition would bracket the run from there - putting the
+ * comprehension's list where its first binding belongs. So the search stops at
+ * the keyword; only an `=` in front of it defines.
  */
 function definitionEnd(code: string): number {
+    const binds = bindingKeyword(code);
+
     for (const part of splitTopLevelParts(code, '=')) {
         const at = part.start + part.text.length;
-        if (at >= code.length) {
+        if (at >= code.length || at > binds) {
             break;
         }
         if (!/[<>!=]/.test(code[at - 1] ?? '') && code[at + 1] !== '=') {

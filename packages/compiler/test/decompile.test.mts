@@ -245,6 +245,25 @@ describe('runs held together by a comma', () => {
         );
     });
 
+    test('brackets a comprehension whose bindings are the run, from the front', () => {
+        // `for` binds with an `=` of its own, and an expression that defines
+        // nothing opens with the binding: reading `j =` as the definition would
+        // put the brackets after it, making the comprehension's list the first
+        // binding's value - a different graph, and one Desmos still accepts.
+        const latex =
+            '\\left\\{c\\ge0:\\operatorname{polygon}\\left(p\\right)\\right\\}' +
+            '\\operatorname{for}j=\\left[1...8\\right],f=\\left[1...6\\right]';
+        const decompiled = decompileAxis({
+            expressions: [
+                { type: 'folder', id: 'f', title: 'F' },
+                { type: 'expression', id: '1', folderId: 'f', latex },
+            ],
+        });
+
+        assert.match(decompiled, /\n {4}\(\{c >= 0/);
+        assert.equal((compileAxis(decompiled).expressions[1] as Expression).latex, latex);
+    });
+
     test('reads a bare run of points back as the run it is', () => {
         assert.equal(
             decompileAxis({
