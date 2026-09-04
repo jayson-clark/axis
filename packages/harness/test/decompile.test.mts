@@ -129,6 +129,53 @@ describe('what Desmos leaves out of a graph state', { skip }, () => {
         assert.equal(await calculator().click({ x: 0, y: 0 }), true);
         assert.equal((await calculator().evaluate('n')).numericValue, 1);
     });
+
+    test('a run of actions still runs all of them after the round trip', async () => {
+        // Bracketed, Desmos reads the run as a point and runs one coordinate of
+        // it - so `a` would come back 0 while `b` came back 2.
+        await calculator().load(
+            'a = 0\nb = 0\nboth = (a -> 1, b -> 2)\n(3, 0) # onClick: both, pointSize: 30',
+        );
+        await reload(calculator());
+
+        assert.equal(await calculator().click({ x: 3, y: 0 }), true);
+        assert.equal((await calculator().evaluate('a')).numericValue, 1);
+        assert.equal((await calculator().evaluate('b')).numericValue, 2);
+    });
+
+    test('a soft slider bound is not hardened by the round trip', async () => {
+        // Desmos says a bound the slider may be dragged past by leaving the
+        // flag off, which is not the same as leaving the bound off.
+        await calculator().load('n = 0 # sliderBounds: {min: 0, max: 5, hardMax: false}');
+        const [before] = (await calculator().getState()).expressions?.list ?? [];
+        assert.deepEqual((before as Expression).slider, { hardMin: true, max: '5', min: '0' });
+
+        const [after] = (await reload(calculator())) as [Comparable];
+        assert.deepEqual((after as Expression).slider, (before as Expression).slider);
+    });
+
+    test('the words Desmos writes as operators survive as themselves', async () => {
+        // `count` and `index` compile to `c_{ount}` and `i_{ndex}` if the
+        // language does not know them - undefined variables Desmos accepts in
+        // silence - and a variable actually called `index` has to stay one.
+        await calculator().load(
+            [
+                'L = [10, 20, 30]',
+                'n = count(L)',
+                'm = L.count',
+                'i_ndex = 0',
+                'P = [(1, 0), (2, 0)] # onClick: i_ndex -> index, pointSize: 30',
+            ].join('\n'),
+        );
+        await reload(calculator());
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((await calculator().evaluate('n')).numericValue, 3);
+        assert.equal((await calculator().evaluate('m')).numericValue, 3);
+
+        assert.equal(await calculator().click({ x: 2, y: 0 }), true);
+        assert.equal((await calculator().evaluate('i_ndex')).numericValue, 2);
+    });
 });
 
 describe('the graph the decompiled source builds', { skip }, () => {

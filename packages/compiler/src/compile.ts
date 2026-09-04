@@ -488,8 +488,12 @@ function buildSlider(metadata: Metadata): SliderState | undefined {
         ...(bounds && {
             min: String(bounds.min),
             max: String(bounds.max),
-            hardMin: true,
-            hardMax: true,
+            // A bound is a limit unless the script says otherwise: `min`/`max`
+            // written out read as the range the slider has, not as where it
+            // happens to start. Desmos says a soft bound by leaving the flag
+            // off entirely, so `false` is written as nothing at all.
+            ...(bounds.hardMin !== false && { hardMin: true }),
+            ...(bounds.hardMax !== false && { hardMax: true }),
             ...(bounds.step !== undefined && { step: String(bounds.step) }),
         }),
         ...(playing !== undefined && { isPlaying: playing }),
@@ -566,7 +570,7 @@ function parseSliderBounds(value: string): SliderBounds | undefined {
         return undefined;
     }
 
-    const bounds: Record<string, string | number> = {};
+    const bounds: Record<string, string | number | boolean> = {};
     for (const part of splitTopLevel(body, ',')) {
         const colon = part.indexOf(':');
         if (colon === -1) {
@@ -575,16 +579,21 @@ function parseSliderBounds(value: string): SliderBounds | undefined {
         const key = part.slice(0, colon).trim();
         const entry = part.slice(colon + 1).trim();
         if (key && entry) {
-            bounds[key] = numberOrString(unquote(entry));
+            bounds[key] =
+                entry === 'true' || entry === 'false'
+                    ? entry === 'true'
+                    : numberOrString(unquote(entry));
         }
     }
 
     // Desmos needs both ends; a half-written bound is left off entirely.
     return bounds.min !== undefined && bounds.max !== undefined
         ? {
-              min: bounds.min,
-              max: bounds.max,
-              ...(bounds.step !== undefined && { step: bounds.step }),
+              min: bounds.min as string | number,
+              max: bounds.max as string | number,
+              ...(bounds.step !== undefined && { step: bounds.step as string | number }),
+              ...(typeof bounds.hardMin === 'boolean' && { hardMin: bounds.hardMin }),
+              ...(typeof bounds.hardMax === 'boolean' && { hardMax: bounds.hardMax }),
           }
         : undefined;
 }

@@ -76,6 +76,40 @@ describe('statements', () => {
     });
 });
 
+describe('runs held together by a comma', () => {
+    test('brackets a run of actions, which the compiler unbrackets again', () => {
+        // A comma inside a folder separates one statement from the next, so the
+        // run has to be written in brackets; Desmos wants it bare, and reads a
+        // bracketed one as a point instead.
+        assert.equal(
+            roundTrip('folder "F" {\n    reset = (a -> 0, b -> 0)\n}'),
+            'folder "F" {\n    reset = (a -> 0, b -> 0)\n}\n',
+        );
+        const [, reset] = compileAxis('folder "F" {\n    reset = (a -> 0, b -> 0)\n}').expressions;
+        assert.equal((reset as Expression).latex, 'r_{eset}=a\\to0,b\\to0');
+    });
+
+    test('reads a bare run of actions back into the brackets it needs', () => {
+        assert.equal(
+            decompileAxis({
+                expressions: [{ type: 'expression', id: '1', latex: 'r_{eset}=a\\to0,b\\to0' }],
+            }),
+            'reset = (a -> 0, b -> 0)\n',
+        );
+    });
+
+    test('reads a bare run of points back as the list it is', () => {
+        assert.equal(
+            decompileAxis({
+                expressions: [
+                    { type: 'expression', id: '1', latex: '\\left(1,2\\right),\\left(3,4\\right)' },
+                ],
+            }),
+            '[(1, 2), (3, 4)]\n',
+        );
+    });
+});
+
 describe('folders', () => {
     test('writes a folder around the expressions that claim it', () => {
         assert.equal(
@@ -176,6 +210,17 @@ describe('sliders', () => {
         assert.equal(
             roundTrip('a = 1 # sliderBounds: {min: -2pi, max: 2pi}'),
             'a = 1 # sliderBounds: {min: -2pi, max: 2pi}\n',
+        );
+    });
+
+    test('writes a soft bound, which Desmos says by leaving the flag off', () => {
+        assert.equal(
+            roundTrip('a = 1 # sliderBounds: {min: 0, max: 10, hardMax: false}'),
+            'a = 1 # sliderBounds: {min: 0, max: 10, hardMax: false}\n',
+        );
+        assert.equal(
+            roundTrip('a = 1 # sliderBounds: {min: 0, max: 10, hardMin: false, hardMax: false}'),
+            'a = 1 # sliderBounds: {min: 0, max: 10, hardMin: false, hardMax: false}\n',
         );
     });
 });

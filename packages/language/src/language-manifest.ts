@@ -249,6 +249,12 @@ export const AXIS_MANIFEST = {
             category: 'statistics',
         },
         {
+            name: 'count',
+            detail: 'Number of elements in a list; also written `list.count`',
+            snippet: 'count(${1:list})',
+            category: 'statistics',
+        },
+        {
             name: 'mean',
             detail: 'Mean of list',
             snippet: 'mean(${1:list})',
@@ -417,6 +423,11 @@ export const AXIS_MANIFEST = {
             name: 'with',
             detail: 'Local definition: f(x) = x n with n = length(a)',
             category: 'scope',
+        },
+        {
+            name: 'index',
+            detail: "The element's 1-based position, inside a list filter or a clickable action",
+            category: 'list',
         },
     ] satisfies OperatorDefinition[],
 
@@ -621,7 +632,7 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'sliderBounds',
-            detail: 'Slider range for a defined value, e.g. `sliderBounds: {min: 0, max: 10, step: 0.1}`',
+            detail: 'Slider range for a defined value, e.g. `sliderBounds: {min: 0, max: 10, step: 0.1}`. Both ends are limits unless `hardMin: false` or `hardMax: false` says otherwise',
             snippet: 'sliderBounds: {min: ${1:0}, max: ${2:10}}',
             valueType: 'string',
         },

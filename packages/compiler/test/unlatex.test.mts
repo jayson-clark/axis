@@ -201,14 +201,20 @@ describe('round trip', () => {
 });
 
 describe('bars and fractions', () => {
-    test('reads a bar holding another bar as abs, which nests', () => {
-        // Axis pairs bars in the order they appear, so `|x/|a-b||` cannot say
-        // which bar opened what - Desmos is handed `\\right|` where an opener
-        // belongs, and rejects the whole expression.
+    test('keeps a bar holding another bar as bars', () => {
+        // A bar opens or closes according to what precedes it, so the inner
+        // pair here is recovered: the `(` in front of it can only be opening.
         assert.equal(
             convertFromLatex('\\left|\\frac{x}{\\left|a-b\\right|}\\right|'),
-            'abs(x/(|a-b|))',
+            '|x/(|a-b|)|',
         );
+    });
+
+    test('falls back to abs where the bars cannot be paired back', () => {
+        // `|a|b||` reads as `abs(a)` times `b` and then a bar with nothing to
+        // close, which is not what Desmos was holding. `abs` nests whatever
+        // sits inside it, so it says what the bars cannot.
+        assert.equal(convertFromLatex('\\left|a\\left|b\\right|\\right|'), 'abs(a|b|)');
     });
 
     test('leaves a bar that holds no other bar as bars', () => {

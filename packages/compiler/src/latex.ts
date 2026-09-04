@@ -54,6 +54,20 @@ const FUNCTION_PATTERNS = AXIS_FUNCTION_NAMES.map(name => ({
     latex: getFunctionLatex(name),
 }));
 
+/**
+ * `L.count` → `L.\operatorname{count}`: the same names, read as an accessor.
+ *
+ * Desmos writes the statistics of a list either way round, and the postfix form
+ * is not a call: nothing follows it but whatever the expression around it puts
+ * there, so `i[x.count]` runs straight into the bracket and the pattern above
+ * never fires. The `.` in front is what marks it instead - the language puts
+ * one nowhere else.
+ */
+const ACCESSOR_PATTERNS = AXIS_FUNCTION_NAMES.map(name => ({
+    pattern: new RegExp(`(?<=\\.)${name}(?![a-zA-Z0-9_])`, 'g'),
+    latex: getFunctionLatex(name),
+}));
+
 /** `pi` → `\pi`, for a constant standing on its own. */
 const CONSTANT_PATTERNS = [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => ({
     pattern: new RegExp(`${NOT_AFTER_NAME}${name}\\b`, 'g'),
@@ -111,8 +125,8 @@ export function convertToLatex(expr: string): string {
     //    so that the backslashes it adds are not treated as name characters.
     latex = subscriptNames(latex);
 
-    // 6. Built-in functions become their LaTeX command.
-    for (const { pattern, latex: command } of FUNCTION_PATTERNS) {
+    // 6. Built-in functions become their LaTeX command, called or accessed.
+    for (const { pattern, latex: command } of [...FUNCTION_PATTERNS, ...ACCESSOR_PATTERNS]) {
         latex = latex.replace(pattern, command);
     }
 
@@ -127,7 +141,68 @@ export function convertToLatex(expr: string): string {
     // 9. A script's brackets are its grouping, and LaTeX groups with braces.
     //    After the spaces go, so that the `^ (n)` a formatted script is written
     //    with is the same thing as `^(n)` by the time it is read.
-    return groupScripts(removeSpaces(latex));
+    return unwrapActionRun(groupScripts(removeSpaces(latex)));
+}
+
+/**
+ * `\left(a\to1,b\to2\right)` → `a\to1,b\to2`.
+ *
+ * Desmos reads a bare comma-separated run of actions as a multi-action, and the
+ * same run in brackets as a *point* - which runs the last coordinate and drops
+ * the rest, silently. Axis cannot write the run bare, because a comma at the top
+ * level of a block entry is what separates one statement from the next, so the
+ * brackets are how an author (and the decompiler) says the run is one thing.
+ * They come off here, once the statement is whole again.
+ *
+ * Only the brackets around the entire value, and only when a part of the run
+ * acts: `(1, 2)` is a point wherever it appears, and so is anything with a name
+ * in front of it.
+ */
+function unwrapActionRun(latex: string): string {
+    const start = valueStart(latex);
+    const value = latex.slice(start);
+
+    if (!value.startsWith('\\left(')) {
+        return latex;
+    }
+
+    const group = findCall(value, 0);
+    if (!group || group.end !== value.length) {
+        return latex;
+    }
+
+    const parts = splitArguments(group.body);
+    if (parts.length < 2 || !parts.some(part => part.includes('\\to'))) {
+        return latex;
+    }
+
+    return latex.slice(0, start) + group.body;
+}
+
+/**
+ * Where a definition's value starts - just past the `=` that defines it - or 0
+ * for a statement that is a value throughout.
+ *
+ * Only an `=` outside every bracket defines: the one in `\left\{c=1\right\}` is
+ * a condition, and the one in `f\left(x\right)=…` is the definition it looks
+ * like precisely because the call around `x` has closed by then.
+ */
+function valueStart(latex: string): number {
+    let depth = 0;
+
+    for (let i = 0; i < latex.length; i++) {
+        if (latex.startsWith('\\left', i)) {
+            depth++;
+            i += '\\left'.length - 1;
+        } else if (latex.startsWith('\\right', i)) {
+            depth--;
+            i += '\\right'.length - 1;
+        } else if (latex[i] === '=' && depth === 0) {
+            return i + 1;
+        }
+    }
+
+    return 0;
 }
 
 /**
@@ -169,19 +244,41 @@ function groupScripts(latex: string): string {
 /**
  * `|x|` → `\left|x\right|`, so the bars grow around a tall expression.
  *
- * A bar is the same character opening and closing, so they are paired off in
- * order: the first opens, the second closes, and so on. Nested bars - `||x|-1|`
- * - have no reading this or any other pairing recovers, and Desmos does not
- * accept them either; `abs` is the way to write that.
+ * A bar is the same character opening and closing, so which one it is has to be
+ * read off what comes before it: a bar can only close something that is open,
+ * and only where a value has just ended. `2|x|` opens on the digit because
+ * nothing is open to close; `|x/|a-b||` nests, because the second bar follows a
+ * `/` and so cannot be closing anything.
+ *
+ * That reading covers every bar an expression can be written with except one:
+ * `||x|-1|`, where a bar follows a bar and both readings are available. Axis
+ * takes the closing one, as it always has, and `abs` is the way to say the
+ * other.
  */
 function sizeBars(input: string): string {
-    let open = true;
+    let depth = 0;
+    /** Whether the bar most recently written closed a pair, for the rule below. */
+    let closed = false;
+    let output = '';
 
-    return input.replace(/\|/g, () => {
-        const delimiter = open ? '\\left|' : '\\right|';
-        open = !open;
-        return delimiter;
-    });
+    for (let i = 0; i < input.length; i++) {
+        if (input[i] !== '|') {
+            output += input[i];
+            continue;
+        }
+
+        // What a bar closes has to have a value in front of it. A bar counts as
+        // one only when it was a closer itself: `|a|` ends a value, `\left|`
+        // opens one.
+        const before = input.slice(0, i).trimEnd();
+        const ends: boolean = before.endsWith('|') ? closed : /[a-zA-Z0-9_)\]}]$/.test(before);
+
+        closed = depth > 0 && ends;
+        depth += closed ? -1 : 1;
+        output += closed ? '\\right|' : '\\left|';
+    }
+
+    return output;
 }
 
 /**

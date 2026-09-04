@@ -59,6 +59,7 @@ const CALLS: Record<string, string> = {
     // statistics — over a list
     total: 'total([1, 2, 3])',
     length: 'length([1, 2, 3])',
+    count: 'count([1, 2, 3])',
     mean: 'mean([1, 2, 3])',
     median: 'median([1, 2, 3])',
     min: 'min([1, 2, 3])',
@@ -249,6 +250,9 @@ const OPERATOR_USES: Record<string, string> = {
     height: 'a = height',
     for: 'S = [i ^ 2 for i = [1, ..., 10]]',
     with: 'a = n ^ 2 with n = 3',
+    // `index` only exists where Desmos is walking a list one element at a time,
+    // which is a clickable action on a list of points and nowhere else.
+    index: 'P = [(1, 1), (2, 2)] # onClick: n -> index\nn = 0',
 };
 
 describe('every bare operator the language offers', { skip }, () => {
