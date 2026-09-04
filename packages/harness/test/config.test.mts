@@ -10,7 +10,12 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { AXIS_CONFIG_PROPERTY_NAMES, AXIS_DEFAULT_CONFIG, AXIS_MANIFEST } from '@axis-dsl/language';
+import {
+    AXIS_CONFIG_PROPERTY_NAMES,
+    AXIS_DEFAULT_CONFIG,
+    AXIS_MANIFEST,
+    AXIS_STATE_PROPERTY_NAMES,
+} from '@axis-dsl/language';
 import type { CalculatorOptions } from '@axis-dsl/desmos';
 import { compileAxis } from '@axis-dsl/compiler';
 import { skip, useCalculator } from './support.mts';
@@ -65,6 +70,14 @@ const NOT_REFLECTED = new Set([
 const GRAPH_STATE = new Set(['xmin', 'xmax', 'ymin', 'ymax', 'squareAxes', 'userLockedViewport']);
 
 /**
+ * The keys Desmos reads off the *top* of the graph state, outside `graph`.
+ * `calculator.settings` says nothing about them either, and neither does
+ * `getState().graph` — they are checked in `randomization` below, which reads
+ * them back off the state and then proves the graph actually behaves that way.
+ */
+const TOP_LEVEL_STATE = new Set<string>(AXIS_STATE_PROPERTY_NAMES);
+
+/**
  * Options Desmos only reads when the calculator is constructed. `updateSettings`
  * takes them silently and changes nothing, so they are tested by building a
  * calculator around them instead.
@@ -91,7 +104,11 @@ describe('the config block', { skip }, () => {
     const calculator = useCalculator();
 
     const reflected = AXIS_CONFIG_PROPERTY_NAMES.filter(
-        name => !NOT_REFLECTED.has(name) && !CONSTRUCTION_ONLY.has(name) && !GRAPH_STATE.has(name),
+        name =>
+            !NOT_REFLECTED.has(name) &&
+            !CONSTRUCTION_ONLY.has(name) &&
+            !GRAPH_STATE.has(name) &&
+            !TOP_LEVEL_STATE.has(name),
     );
 
     test('every property in the manifest is accounted for', () => {
@@ -100,6 +117,7 @@ describe('the config block', { skip }, () => {
             ...NOT_REFLECTED,
             ...CONSTRUCTION_ONLY,
             ...GRAPH_STATE,
+            ...TOP_LEVEL_STATE,
         ]);
         const missing = AXIS_CONFIG_PROPERTY_NAMES.filter(name => !known.has(name));
 
@@ -141,6 +159,95 @@ describe('the config block', { skip }, () => {
 
         assert.equal(applied.logScales, false);
         assert.equal(applied.xAxisScale, 'linear');
+    });
+});
+
+describe('randomization', { skip }, () => {
+    const calculator = useCalculator();
+
+    /**
+     * A graph whose only content is one function that shuffles, called twice.
+     * Under the legacy behaviour both calls draw the same list; under the new
+     * one the argument is part of the seed and they diverge. The seed is fixed
+     * so that a failure is a real difference rather than a fresh roll.
+     */
+    const SOURCE = (flag: string) =>
+        'config {\n' +
+        '    randomSeed: "axis-random-seed",\n' +
+        `    includeFunctionParametersInRandomSeed: ${flag}\n` +
+        '}\n' +
+        'h(k) = [1...10].shuffle\n' +
+        'A = h(1)\n' +
+        'B = h(2)';
+
+    test('it is neither a calculator option nor part of graph', () => {
+        // The reason it is a bucket of its own: Desmos takes it through
+        // updateSettings, as a construction option, and inside `graph`, and
+        // ignores it in all three.
+        const compiled = compileAxis('y = x');
+
+        assert.deepEqual(compiled.settings, AXIS_DEFAULT_CONFIG);
+        assert.equal(compiled.graph, undefined);
+        assert.deepEqual(compiled.state, { includeFunctionParametersInRandomSeed: true });
+    });
+
+    test('it reaches the top of the graph state', async () => {
+        await calculator().load(SOURCE('true'));
+        const state = await calculator().getState();
+
+        assert.equal(state.includeFunctionParametersInRandomSeed, true);
+        // Beside `graph` rather than in it, which is the distinction the whole
+        // third bucket exists for.
+        assert.equal(state.graph?.includeFunctionParametersInRandomSeed, undefined);
+    });
+
+    test('off, it is written by being left out', async () => {
+        // Desmos serializes the flag only when it is on: a saved state without
+        // it *is* a state with it off. Worth pinning, because it means the
+        // decompiler cannot tell "legacy" from "unset" — there is no
+        // difference — and so has to write the `false` back explicitly.
+        await calculator().load(SOURCE('false'));
+        const state = await calculator().getState();
+
+        assert.equal(state.includeFunctionParametersInRandomSeed, undefined);
+    });
+
+    test("on, a function's arguments change what it draws", async () => {
+        await calculator().load(SOURCE('true'));
+
+        const a = await calculator().evaluate('A');
+        const b = await calculator().evaluate('B');
+
+        assert.equal(a.listValue.length, 10);
+        assert.notDeepEqual(a.listValue, b.listValue);
+    });
+
+    test('off, every call to the same function draws alike', async () => {
+        await calculator().load(SOURCE('false'));
+
+        const a = await calculator().evaluate('A');
+        const b = await calculator().evaluate('B');
+
+        assert.equal(a.listValue.length, 10);
+        assert.deepEqual(a.listValue, b.listValue);
+    });
+
+    test('a script that says nothing gets the modern behaviour', async () => {
+        // The default, and the whole point of having one: a graph written today
+        // should not silently inherit a migration flag from 2024.
+        await calculator().load(
+            'config {\n    randomSeed: "axis-random-seed"\n}\n' +
+                'h(k) = [1...10].shuffle\nA = h(1)\nB = h(2)',
+        );
+
+        const a = await calculator().evaluate('A');
+        const b = await calculator().evaluate('B');
+
+        assert.notDeepEqual(a.listValue, b.listValue);
+    });
+
+    test('nothing logged to the console', () => {
+        assert.deepEqual(calculator().consoleErrors(), []);
     });
 });
 
