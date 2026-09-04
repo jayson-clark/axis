@@ -3,6 +3,7 @@ import type {
     CalculatorOptions,
     DesmosExpression,
     GraphSettings,
+    GraphStateFlags,
     TickerState,
 } from '@axis-dsl/desmos';
 import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
@@ -15,6 +16,7 @@ export interface ViewerState {
     expressions: DesmosExpression[];
     settings: CalculatorOptions | undefined;
     graph: GraphSettings | undefined;
+    state: GraphStateFlags | undefined;
     ticker: TickerState | undefined;
     status: string | null;
     /** `connected` for a transport that does not report one. */
@@ -33,6 +35,7 @@ const INITIAL: ViewerState = {
     expressions: [],
     settings: undefined,
     graph: undefined,
+    state: undefined,
     ticker: undefined,
     status: null,
     connection: 'connecting',
@@ -63,6 +66,7 @@ export function useViewerState(transport: ViewerTransport): ViewerState {
                         expressions: message.data.expressions,
                         settings: message.data.settings,
                         graph: message.data.graph,
+                        state: message.data.state,
                         ticker: message.data.ticker,
                     }));
                     break;

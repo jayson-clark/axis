@@ -11,6 +11,7 @@ import type {
     CalculatorOptions,
     DesmosExpression,
     GraphSettings,
+    GraphStateFlags,
     TickerState,
 } from '@axis-dsl/desmos';
 
@@ -39,6 +40,12 @@ export type ViewerMessage =
                * through its state rather than through `updateSettings`.
                */
               graph?: GraphSettings;
+              /**
+               * The flags Desmos reads off the top of a graph state, outside
+               * `graph` — `includeFunctionParametersInRandomSeed` and any
+               * later sibling.
+               */
+              state?: GraphStateFlags;
               /** The graph's ticker, which reaches it the same way. */
               ticker?: TickerState;
           };

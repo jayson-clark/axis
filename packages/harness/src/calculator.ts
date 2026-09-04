@@ -24,6 +24,7 @@ import {
     ExpressionAnalysis,
     ExpressionState,
     GraphSettings,
+    GraphStateFlags,
     TickerState,
     GraphState,
     MathBounds,
@@ -210,6 +211,7 @@ export class AxisCalculator {
             compiled.expressions,
             { ...compiled.settings, ...options.settings },
             compiled.graph,
+            compiled.state,
             compiled.ticker,
         );
         return compiled;
@@ -223,10 +225,11 @@ export class AxisCalculator {
         expressions: DesmosExpression[],
         settings?: CalculatorOptions,
         graph?: GraphSettings,
+        state?: GraphStateFlags,
         ticker?: TickerState,
     ): Promise<void> {
         await this.page.evaluate(
-            ([list, options, graphSettings, tickerState]) => {
+            ([list, options, graphSettings, stateFlags, tickerState]) => {
                 const { calculator } = window.__axisHarness!;
                 // setState, not setExpressions: folder membership only travels
                 // as part of a whole graph state.
@@ -238,6 +241,9 @@ export class AxisCalculator {
                 const bounds = calculator.graphpaperBounds.mathCoordinates;
                 calculator.setState({
                     version: 11,
+                    // The top-level state flags. Desmos reads these here and
+                    // nowhere else - see GraphStateFlags.
+                    ...stateFlags,
                     // See DesmosGraph.tsx: a point style is the author's, on a
                     // movable point as much as a fixed one.
                     doNotMigrateMovablePointStyle: true,
@@ -265,6 +271,7 @@ export class AxisCalculator {
                 expressions as ExpressionState[],
                 settings ?? null,
                 graph ?? null,
+                state ?? null,
                 ticker ?? null,
             ] as const,
         );
