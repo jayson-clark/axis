@@ -18,6 +18,7 @@ import {
     DesmosExpression,
     Expression,
     Folder,
+    GraphSettings,
     Note,
     SliderBounds,
     SliderState,
@@ -26,6 +27,8 @@ import {
 } from '@axis-dsl/desmos';
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
+    AXIS_GRAPH_PROPERTY_NAMES,
+    AXIS_VIEWPORT_PROPERTY_NAMES,
     expandBlockEntries,
     IMPORT_KEYWORD,
     importTitle,
@@ -43,8 +46,21 @@ export interface CompilationResult {
     /**
      * The `config { … }` block, if the script or anything it imports has one.
      * Imported settings are merged first, so the entry script always wins.
+     *
+     * Calculator options only — what {@link updateSettings} understands. The
+     * viewport keys a config block may also hold come back as {@link graph}.
      */
     settings?: CalculatorOptions;
+    /**
+     * The config keys Desmos keeps in the graph state instead of the calculator
+     * options: `xmin`/`xmax`/`ymin`/`ymax` and `squareAxes`.
+     *
+     * Separate from {@link settings} because they are applied differently —
+     * through `setState` or `setMathBounds`, never `updateSettings`, which
+     * ignores them without complaint. A host that renders a compilation has to
+     * apply both halves.
+     */
+    graph?: GraphSettings;
     /**
      * Every file pulled in by `import`, transitively, as the resolver named it.
      * A host watching a script for changes has to watch these too.
@@ -353,11 +369,51 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     emitFile(script, { path: options.path ?? '', flatten: false });
 
     const layers = [...importedConfigs, ...rootConfigs];
-    const settings = layers.length
-        ? (Object.assign({}, ...layers) as CalculatorOptions)
-        : undefined;
+    const { settings, graph } = splitConfig(Object.assign({}, ...layers));
 
-    return { expressions, settings, imports };
+    return { expressions, settings, graph, imports };
+}
+
+/**
+ * Divide a merged `config { … }` into the half `updateSettings` takes and the
+ * half that has to go into the graph state.
+ *
+ * The viewport is the reason this exists. `xmin` and its three siblings read
+ * like any other config key, but Desmos holds them in the state rather than in
+ * the calculator's options, so handing them to `updateSettings` with the rest
+ * would apply everything except the framing — and say nothing about it.
+ */
+function splitConfig(config: Record<string, unknown>): {
+    settings?: CalculatorOptions;
+    graph?: GraphSettings;
+} {
+    const settings: Record<string, unknown> = {};
+    const viewport: Record<string, number> = {};
+    const graph: GraphSettings = {};
+
+    for (const [key, value] of Object.entries(config)) {
+        if ((AXIS_VIEWPORT_PROPERTY_NAMES as readonly string[]).includes(key)) {
+            // A viewport edge is a number even when the config block spelled it
+            // as a string, since the state will not take `"0"` for one.
+            const bound = typeof value === 'number' ? value : Number(value);
+            if (Number.isFinite(bound)) {
+                viewport[key] = bound;
+            }
+        } else if ((AXIS_GRAPH_PROPERTY_NAMES as readonly string[]).includes(key)) {
+            (graph as Record<string, unknown>)[key] = value;
+        } else {
+            settings[key] = value;
+        }
+    }
+
+    if (Object.keys(viewport).length > 0) {
+        graph.viewport = viewport;
+    }
+
+    return {
+        settings: Object.keys(settings).length > 0 ? (settings as CalculatorOptions) : undefined,
+        graph: Object.keys(graph).length > 0 ? graph : undefined,
+    };
 }
 
 /**
@@ -410,6 +466,7 @@ function buildColumn(line: string, metadata: Metadata): Omit<TableColumn, 'id'> 
         lineWidth: asNumberOrString(metadata.lineWidth),
         lineOpacity: asNumberOrString(metadata.lineOpacity),
         pointSize: asNumberOrString(metadata.pointSize),
+        movablePointSize: asNumberOrString(metadata.movablePointSize ?? metadata.pointSize),
         pointOpacity: asNumberOrString(metadata.pointOpacity),
         lines: asBoolean(metadata.lines),
         points: asBoolean(metadata.points),
@@ -441,6 +498,12 @@ function buildExpression(
         lineOpacity: asNumberOrString(metadata.lineOpacity),
         pointStyle: asString(metadata.pointStyle),
         pointSize: asNumberOrString(metadata.pointSize),
+        // Desmos sizes a movable point from its own property and ignores
+        // `pointSize` entirely, so a script that set only that would watch its
+        // point resize the moment the point turned out to be draggable.
+        // `pointSize` means the size; `movablePointSize` overrides it for the
+        // draggable case, for a script that really does want the two to differ.
+        movablePointSize: asNumberOrString(metadata.movablePointSize ?? metadata.pointSize),
         pointOpacity: asNumberOrString(metadata.pointOpacity),
         fillOpacity: asNumberOrString(metadata.fillOpacity),
         points: asBoolean(metadata.points),

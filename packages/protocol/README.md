@@ -20,7 +20,7 @@ over an in-memory channel.
 ```ts
 type ViewerMessage =
   | { command: 'init'; data: { desmosApiKey: string; canSetApiKey?: boolean } }
-  | { command: 'setExpressions'; data: { expressions: DesmosExpression[]; settings?: CalculatorOptions } }
+  | { command: 'setExpressions'; data: { expressions: DesmosExpression[]; settings?: CalculatorOptions; graph?: GraphSettings } }
   | { command: 'setStatus'; data: { status: string | null } };
 
 type HostMessage = { command: 'ready' } | { command: 'requestApiKey' };
@@ -44,7 +44,7 @@ const { host, viewer } = createLocalChannel();
 host.onMessage(message => {
   if (message.command === 'ready') {
     host.send({ command: 'init', data: { desmosApiKey: key } });
-    host.send({ command: 'setExpressions', data: { expressions, settings } });
+    host.send({ command: 'setExpressions', data: { expressions, settings, graph } });
   }
 });
 

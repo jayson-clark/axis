@@ -7,7 +7,7 @@
 // HTTP event stream, the playground over an in-memory channel. One path means a
 // feature is built once and every host gets it.
 
-import type { CalculatorOptions, DesmosExpression } from '@axis-dsl/desmos';
+import type { CalculatorOptions, DesmosExpression, GraphSettings } from '@axis-dsl/desmos';
 
 /** Host → viewer. */
 export type ViewerMessage =
@@ -26,7 +26,15 @@ export type ViewerMessage =
       }
     | {
           command: 'setExpressions';
-          data: { expressions: DesmosExpression[]; settings?: CalculatorOptions };
+          data: {
+              expressions: DesmosExpression[];
+              settings?: CalculatorOptions;
+              /**
+               * The viewport and `squareAxes`, which reach the calculator
+               * through its state rather than through `updateSettings`.
+               */
+              graph?: GraphSettings;
+          };
       }
     /** Free text shown in the tab strip — a count, "Compiling…", null to clear. */
     | { command: 'setStatus'; data: { status: string | null } };

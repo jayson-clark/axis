@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { CalculatorOptions, DesmosExpression } from '@axis-dsl/desmos';
+import type { CalculatorOptions, DesmosExpression, GraphSettings } from '@axis-dsl/desmos';
 import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
 
 export interface ViewerState {
@@ -9,6 +9,7 @@ export interface ViewerState {
     canSetApiKey: boolean;
     expressions: DesmosExpression[];
     settings: CalculatorOptions | undefined;
+    graph: GraphSettings | undefined;
     status: string | null;
     /** `connected` for a transport that does not report one. */
     connection: ConnectionState;
@@ -25,6 +26,7 @@ const INITIAL: ViewerState = {
     canSetApiKey: false,
     expressions: [],
     settings: undefined,
+    graph: undefined,
     status: null,
     connection: 'connecting',
     hasConnected: false,
@@ -53,6 +55,7 @@ export function useViewerState(transport: ViewerTransport): ViewerState {
                         ...current,
                         expressions: message.data.expressions,
                         settings: message.data.settings,
+                        graph: message.data.graph,
                     }));
                     break;
                 case 'setStatus':

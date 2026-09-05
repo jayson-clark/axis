@@ -27,7 +27,13 @@
 //     because a note that cannot be reopened is worse than one whose quotes
 //     changed shape.
 
-import { CalculatorOptions, DesmosExpression, Expression, TableColumn } from '@axis-dsl/desmos';
+import {
+    CalculatorOptions,
+    DesmosExpression,
+    Expression,
+    GraphSettings,
+    TableColumn,
+} from '@axis-dsl/desmos';
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     AXIS_CONFIG_PROPERTY_NAMES,
@@ -43,6 +49,13 @@ import { convertFromLatex } from './unlatex';
 export interface DecompileInput {
     expressions: DesmosExpression[];
     settings?: CalculatorOptions;
+    /**
+     * The graph-state half of a `config` block — the viewport and `squareAxes`.
+     * A state off desmos.com holds these under its own `graph` key, which is
+     * exactly the shape {@link compileAxis} hands back, so either can be passed
+     * through unchanged.
+     */
+    graph?: GraphSettings;
 }
 
 export interface DecompileOptions {
@@ -59,6 +72,7 @@ const EXPRESSION_PROPERTIES = [
     'lineOpacity',
     'pointStyle',
     'pointSize',
+    'movablePointSize',
     'pointOpacity',
     'fillOpacity',
     'fill',
@@ -105,7 +119,7 @@ export function decompileAxis(input: DecompileInput, options: DecompileOptions =
     const indent = options.indent ?? '    ';
     const document = new Document();
 
-    document.add(decompileConfig(input.settings, indent));
+    document.add(decompileConfig(input.settings, input.graph, indent));
 
     // A folder's contents are wherever the expression list happens to keep
     // them, so they are gathered up front: the folder is written where it
@@ -251,6 +265,24 @@ function definitionEnd(code: string): number {
     return 0;
 }
 
+/**
+ * Drop `movablePointSize` when it only repeats `pointSize`.
+ *
+ * That is what the compiler writes for a script that named one size, so writing
+ * both back would grow a property the author never typed - and it would grow
+ * again on every round trip. A graph that really does size its draggable state
+ * differently keeps both.
+ */
+function sized<T extends { pointSize?: number | string; movablePointSize?: number | string }>(
+    source: T,
+): T {
+    if (source.movablePointSize === undefined || source.movablePointSize !== source.pointSize) {
+        return source;
+    }
+    const { movablePointSize: _dropped, ...rest } = source;
+    return rest as T;
+}
+
 /** A table column: its header, the values under it, and how it is drawn. */
 function decompileColumn(column: TableColumn): string {
     // Values are the one thing the compiler takes verbatim rather than
@@ -258,12 +290,12 @@ function decompileColumn(column: TableColumn): string {
     const values = column.values?.length ? ` = [${column.values.join(', ')}]` : '';
     const header = formatExpression(convertFromLatex(column.latex ?? ''));
 
-    return `${header}${values}${trailing(properties(column, COLUMN_PROPERTIES))}`;
+    return `${header}${values}${trailing(properties(sized(column), COLUMN_PROPERTIES))}`;
 }
 
 /** Every `# key: value` a plain expression carries, slider and click included. */
 function expressionProperties(expression: Expression): string[] {
-    const entries = properties(expression, EXPRESSION_PROPERTIES);
+    const entries = properties(sized(expression), EXPRESSION_PROPERTIES);
     const { slider, clickableInfo } = expression;
 
     if (slider && (slider.min !== undefined || slider.max !== undefined)) {
@@ -312,14 +344,18 @@ function expressionProperties(expression: Expression): string[] {
 }
 
 /** The `config { … }` block for a graph's settings, or nothing when it has none. */
-function decompileConfig(settings: CalculatorOptions | undefined, indent: string): string[] {
-    if (!settings) {
+function decompileConfig(
+    settings: CalculatorOptions | undefined,
+    graph: GraphSettings | undefined,
+    indent: string,
+): string[] {
+    if (!settings && !graph) {
         return [];
     }
 
     // Manifest order first, so the block reads the way the language documents
     // it; anything else the graph carries follows in the order it is held.
-    const record = settings as Record<string, unknown>;
+    const record = { ...settings, ...flattenGraph(graph) } as Record<string, unknown>;
     const named = AXIS_CONFIG_PROPERTY_NAMES.filter(name => record[name] !== undefined);
     const rest = Object.keys(record).filter(key => !named.includes(key));
 
@@ -328,6 +364,23 @@ function decompileConfig(settings: CalculatorOptions | undefined, indent: string
         .map(key => [`${key}: ${value(record[key] as string | number | boolean)}`]);
 
     return entries.length ? block('config {', entries, indent) : [];
+}
+
+/**
+ * A graph's state settings as the flat config keys that set them: the viewport
+ * rectangle becomes `xmin`/`xmax`/`ymin`/`ymax`, and `squareAxes` is already
+ * flat.
+ *
+ * The nesting only exists because Desmos' state nests it. Axis says the four
+ * edges as four keys, so this is where the two shapes meet.
+ */
+function flattenGraph(graph: GraphSettings | undefined): Record<string, unknown> {
+    if (!graph) {
+        return {};
+    }
+
+    const { viewport, ...rest } = graph;
+    return { ...rest, ...viewport };
 }
 
 /**

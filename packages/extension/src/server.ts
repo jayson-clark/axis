@@ -456,7 +456,7 @@ export class PreviewServer implements vscode.Disposable {
             // browser that has no filesystem to read.
             const path = uri.toString();
             const files = await loadImports({ path, source }, importHost);
-            const { expressions, settings, imports } = compileAxis(source, {
+            const { expressions, settings, graph, imports } = compileAxis(source, {
                 path,
                 resolveImport: createImportResolver(files, importHost.resolve),
             });
@@ -464,7 +464,7 @@ export class PreviewServer implements vscode.Disposable {
             this.watchImports(preview, imports);
             this.broadcast(preview, {
                 command: 'setExpressions',
-                data: { expressions, settings },
+                data: { expressions, settings, graph },
             });
             this.broadcast(preview, {
                 command: 'setStatus',
