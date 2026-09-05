@@ -62,7 +62,8 @@ describe('imports', () => {
             (compile(source, files).expressions[0] as Folder).collapsed;
 
         assert.equal(collapsed('import "./curves.axis"'), true);
-        assert.equal(collapsed('import "./curves.axis" # collapsed: false'), false);
+        // A folder Desmos does not collapse carries no `collapsed` at all.
+        assert.equal(collapsed('import "./curves.axis" # collapsed: false'), undefined);
     });
 
     test('flattens the folders inside the imported file away', () => {

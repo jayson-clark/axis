@@ -182,6 +182,32 @@ describe('entries', () => {
         assert.deepEqual(codes('table { x = [1, 2], y = [1, 4] }'), []);
     });
 
+    test('takes a for binding as part of the entry, not a second one', () => {
+        // `for` and `with` bind names of their own, so the `=` after one is
+        // theirs - not a statement that has run into this one.
+        assert.deepEqual(codes('folder "F" {\n  y = 1,\n  x = a for a = [-10, 10]\n}'), []);
+        assert.deepEqual(codes('folder "F" {\n  y = 1,\n  z = n a with a = 2\n}'), []);
+    });
+
+    test('still reports two statements run together after such a binding', () => {
+        assert.deepEqual(codes('folder "F" {\n  x = a for a = [1, 2]\n  y = 3\n}'), [
+            'missing-comma',
+        ]);
+    });
+
+    test('lets a statement carry on past the bracket it was wrapped across', () => {
+        // The comma belongs after the `for`, which ends the entry - not after
+        // the `)`, which only ends the call the entry was written across.
+        const wrapped =
+            'folder "F" {\n  polygon(\n    (1, 2),\n    (3, 4)\n  )for a = [1, 2],\n  y = x\n}';
+        assert.deepEqual(codes(wrapped), []);
+    });
+
+    test('reports a wrapped entry that really is missing its comma', () => {
+        const wrapped = 'folder "F" {\n  polygon(\n    (1, 2),\n    (3, 4)\n  )\n  y = x\n}';
+        assert.deepEqual(codes(wrapped), ['missing-comma']);
+    });
+
     test('reports a config entry that is not `key: value`', () => {
         assert.deepEqual(codes('config {\nshowGrid\n}'), ['entry-syntax']);
     });

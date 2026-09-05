@@ -112,8 +112,10 @@ export function scanBlockLine(
             parent: stack[stack.length - 1],
             block,
             separated: false,
-            // A `#` that opens a line annotates nothing, so it reads as a
-            // comment rather than as an entry of its own.
+            // A `#` that opens a line is the blank row Desmos keeps for
+            // spacing - properties and no expression. It compiles to one, but
+            // it separates nothing, so the comma rules step over it the way
+            // they step over a comment.
             comment: text.startsWith('//') || text.startsWith('#'),
         };
         segments.push(segment);
@@ -234,6 +236,10 @@ function scanBlockSegments(lines: string[]): BlockSegment[] {
  * An entry needs a separator unless it is the last one in its block - the comma
  * before a closing bracket is optional - and a nested block's `}` needs one just
  * as much as a plain entry does.
+ *
+ * A bracket that merely wrapped a statement over several lines is different:
+ * `polygon(\n  …\n)for a = […]` closes its call and carries straight on, so
+ * the comma belongs after the `for`, not after the `)`.
  */
 export function missingSeparators(segments: BlockSegment[]): BlockSegment[] {
     // Comments sit between entries without being one, so they are dropped
@@ -251,9 +257,21 @@ export function missingSeparators(segments: BlockSegment[]): BlockSegment[] {
         }
 
         const next = entries[i + 1];
-        if (next && next.kind !== 'close') {
-            missing.push(segment);
+        if (!next || next.kind === 'close') {
+            continue;
         }
+
+        // The rest of the statement the bracket was holding open, on the line
+        // the bracket closed on. The separator it needs is that statement's.
+        if (
+            segment.kind === 'close' &&
+            segment.block?.kind === 'list' &&
+            next.line === segment.line
+        ) {
+            continue;
+        }
+
+        missing.push(segment);
     }
 
     return missing;

@@ -139,6 +139,14 @@ Three things a graph cannot tell you, and one it cannot hold:
   command it has never heard of — is passed through as written, which leaves one
   recognisable thing to fix by hand rather than a mangled expression.
 
+What survives is what the graph _means_, not always the characters it was
+written with. Desmos keeps whatever spacing an author typed — `\ ` between two
+arguments — and Axis has no way to say that, so a decompiled graph closes those
+up. A bare run of points comes back as the list it is, and a fraction written
+beside a name comes back with the name in its numerator, which is the same
+number. The check that matters is that a real calculator reads the two graphs
+the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
+
 `convertFromLatex` is the expression-level half of it, and the inverse of
 `convertToLatex`.
 

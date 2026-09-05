@@ -743,6 +743,10 @@ function checkMetadata(
  *
  * Only assignments are looked for: they are what a table column or a defined
  * value is written as, and so are what a missing comma runs together.
+ *
+ * A `for` or a `with` binds names of its own - `x = a for a = [-10, 10]` - and
+ * every `=` after one belongs to it rather than to a statement that has run
+ * into this one, so the search stops where the bindings start.
  */
 function findSecondStatement(text: string): number {
     let seen = 0;
@@ -751,6 +755,9 @@ function findSecondStatement(text: string): number {
     scanCode(
         text,
         (char, index, depth) => {
+            if (depth <= 0 && /[a-zA-Z]/.test(char) && opensBindings(text, index)) {
+                return true;
+            }
             if (
                 char === '=' &&
                 depth <= 0 &&
@@ -766,6 +773,14 @@ function findSecondStatement(text: string): number {
     );
 
     return start;
+}
+
+/** Whether the word at `index` is a `for` or a `with` taking bindings. */
+function opensBindings(text: string, index: number): boolean {
+    return (
+        /^(?:for|with)(?![a-zA-Z0-9_])/.test(text.slice(index)) &&
+        !/[a-zA-Z0-9_]/.test(text[index - 1] ?? '')
+    );
 }
 
 /** Walk back from an `=` over the name - `x`, or `f(t)` - being defined. */

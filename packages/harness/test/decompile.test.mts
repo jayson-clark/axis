@@ -311,3 +311,143 @@ describe('the graph the decompiled source builds', { skip }, () => {
         assert.equal(inequality.analysis?.isGraphable, true);
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A graph written in Desmos rather than in Axis
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Everything above starts from a script, so everything above starts from latex
+// the compiler wrote. A graph somebody built on desmos.com and shared does not:
+// its lists are sized brackets, its names carry digits in the middle, its
+// widths and opacities are expressions rather than numbers, and its sliders
+// animate. Each of those has been a way of losing an expression on the way back
+// in, so the state below is written the way Desmos writes one and applied
+// directly.
+
+/** A 1x1 transparent GIF, the way Desmos stores an image dropped onto a graph. */
+const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/** A graph state shaped the way desmos.com writes one. */
+const DESMOS_STATE: ExpressionState[] = [
+    { type: 'folder', id: 'f1', title: 'sound', collapsed: true },
+    {
+        type: 'expression',
+        id: 'e1',
+        folderId: 'f1',
+        color: '#6042a6',
+        latex: 'f_{requency}=440',
+        slider: {
+            hardMin: true,
+            hardMax: true,
+            loopMode: 'PLAY_INDEFINITELY',
+            playDirection: -1,
+            min: '110',
+            max: '880',
+            step: '1',
+        },
+    },
+    {
+        type: 'expression',
+        id: 'e2',
+        folderId: 'f1',
+        color: '#6042a6',
+        latex: '\\operatorname{tone}\\left(f_{requency},0.2\\right)',
+    },
+    // A name with a digit in the middle of it, which is not two names.
+    {
+        type: 'expression',
+        id: 'e3',
+        folderId: 'f1',
+        color: '#2d70b3',
+        latex: 'P_{hillL2rand}=\\left[\\left(0,0\\right),\\left(1,1\\right)\\right]',
+    },
+    // The commas belong to the `with`, not to the folder around it.
+    {
+        type: 'expression',
+        id: 'e4',
+        folderId: 'f1',
+        color: '#388c46',
+        latex: 'g_{ap}=a-b\\operatorname{with}a=2,b=1',
+    },
+    // Desmos keeps the row Desmos keeps: a colour, and no expression at all.
+    { type: 'expression', id: 'e5', folderId: 'f1', color: '#c74440' },
+    {
+        type: 'expression',
+        id: 'e6',
+        color: '#000000',
+        latex: '\\operatorname{polygon}\\left(P_{hillL2rand}\\right)',
+        // Latex rather than a number, which is what makes it worth pinning:
+        // written back as raw text this comes out as a carriage return.
+        fillOpacity: '\\left[1,0.8\\right]',
+        lines: false,
+    },
+    {
+        type: 'expression',
+        id: 'e7',
+        color: '#c74440',
+        latex: '\\left(\\cos t,\\sin t\\right)',
+        domain: { min: '0', max: '2\\pi' },
+        parametricDomain: { min: '', max: '2\\pi' },
+        pointOutline: true,
+    },
+    {
+        type: 'image',
+        id: 'e8',
+        image_url: PIXEL,
+        name: 'pixel',
+        center: '\\left(0,1\\right)',
+        width: '10\\cdot4.05',
+        height: '7.5',
+        angle: '-\\frac{\\pi}{200}',
+        foreground: true,
+    },
+];
+
+describe('a graph written in Desmos rather than in Axis', { skip }, () => {
+    const calculator = useCalculator();
+
+    test('comes back as the same graph, expression for expression', async () => {
+        await calculator().setExpressions(DESMOS_STATE);
+        const state = await calculator().getState();
+        const before = comparable(state.expressions?.list ?? []);
+
+        const after = await reload(calculator());
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.deepEqual(after, before);
+    });
+
+    test('reads every expression the same way afterwards', async () => {
+        // The comparison above is on the state; this is on what Desmos makes of
+        // it, which is the question the state is a proxy for.
+        await calculator().setExpressions(DESMOS_STATE);
+        const before = await calculator().inspectExpressions();
+
+        await reload(calculator());
+        const after = await calculator().inspectExpressions();
+
+        assert.equal(after.length, before.length);
+        for (const [index, expression] of before.entries()) {
+            assert.deepEqual(
+                after[index].analysis?.evaluation,
+                expression.analysis?.evaluation,
+                `expression ${index} evaluates differently: ${after[index].latex}`,
+            );
+            assert.equal(after[index].analysis?.isGraphable, expression.analysis?.isGraphable);
+            assert.equal(after[index].analysis?.isError, expression.analysis?.isError);
+        }
+    });
+
+    test('still plays the tone the graph was built to play', async () => {
+        // `tone` is a function, not the variable `t_{one}` an unknown name
+        // compiles to - which Desmos accepts in silence and never evaluates.
+        await calculator().setExpressions(DESMOS_STATE);
+        await reload(calculator());
+        const played = (await calculator().inspectExpressions()).find(expression =>
+            expression.latex?.includes('tone'),
+        );
+
+        assert.ok(played, 'the tone is not in the graph at all');
+        assert.equal(played.analysis?.isError, false);
+    });
+});

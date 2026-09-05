@@ -8,6 +8,7 @@
         { "include": "#config" },
         { "include": "#import" },
         { "include": "#ticker" },
+        { "include": "#image" },
         { "include": "#folder" },
         { "include": "#table" },
         { "include": "#metadata" },
@@ -59,6 +60,14 @@
                 {
                     "name": "keyword.control.ticker.axis",
                     "match": "^\\s*(ticker)\\b"
+                }
+            ]
+        },
+        "image": {
+            "patterns": [
+                {
+                    "name": "keyword.control.image.axis",
+                    "match": "^\\s*(image)\\b"
                 }
             ]
         },

@@ -62,7 +62,7 @@ const NOT_REFLECTED = new Set([
  * four edges are one rectangle, and Desmos squares up whichever pair the script
  * left out. `squareAxes` is the switch that decides whether it does.
  */
-const GRAPH_STATE = new Set(['xmin', 'xmax', 'ymin', 'ymax', 'squareAxes']);
+const GRAPH_STATE = new Set(['xmin', 'xmax', 'ymin', 'ymax', 'squareAxes', 'userLockedViewport']);
 
 /**
  * Options Desmos only reads when the calculator is constructed. `updateSettings`

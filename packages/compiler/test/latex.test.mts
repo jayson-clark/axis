@@ -192,11 +192,11 @@ describe('the bare operators', () => {
     test('joins a list comprehension with for', () => {
         assert.equal(
             convertToLatex('L = [i for i = [1, ..., 10]]'),
-            'L=[i\\operatorname{for}i=[1,...,10]]',
+            'L=\\left[i\\operatorname{for}i=\\left[1,...,10\\right]\\right]',
         );
         assert.equal(
             convertToLatex('S = [i ^ 2 for i = [1, ..., 10]]'),
-            'S=[i^2\\operatorname{for}i=[1,...,10]]',
+            'S=\\left[i^2\\operatorname{for}i=\\left[1,...,10\\right]\\right]',
         );
     });
 

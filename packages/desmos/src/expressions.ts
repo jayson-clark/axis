@@ -52,8 +52,12 @@ export interface DomainBounds {
 }
 
 export interface SliderBounds {
-    min: string | number;
-    max: string | number;
+    /**
+     * An end left out is the one Desmos assumes, which is how it stores a
+     * slider whose author only moved the other end.
+     */
+    min?: string | number;
+    max?: string | number;
     step?: string | number;
     /**
      * Whether the bound is a limit rather than just the initial range. Axis
@@ -82,6 +86,8 @@ export interface SliderState {
     isPlaying?: boolean;
     loopMode?: 'LOOP_FORWARD_REVERSE' | 'LOOP_FORWARD' | 'PLAY_ONCE' | 'PLAY_INDEFINITELY';
     playDirection?: 1 | -1;
+    /** How long one sweep of the slider takes, in milliseconds. */
+    animationPeriod?: number;
 }
 
 export interface TableColumn {
@@ -149,6 +155,15 @@ export interface Expression {
     playing?: boolean;
     /** Slider range and animation, as `setState` takes them. */
     slider?: SliderState;
+    /**
+     * The range of the parameter a parametric or polar curve is drawn over.
+     *
+     * Desmos keeps two copies of the same bounds: `domain` is what it reads,
+     * and `parametricDomain` is the older key it still writes beside it. They
+     * hold the same thing, except that `parametricDomain` says "the default"
+     * with an empty string where `domain` writes the default out.
+     */
+    domain?: DomainBounds;
     parametricDomain?: DomainBounds;
     polarDomain?: DomainBounds;
     dragMode?: DragMode | string;
@@ -158,6 +173,8 @@ export interface Expression {
     labelOrientation?: LabelOrientation | string;
     /** Drop the outline Desmos draws behind a label. */
     suppressTextOutline?: boolean;
+    /** Draw a ring around each point, in the graph's background colour. */
+    pointOutline?: boolean;
     folderId?: string;
     /** Click action. Applied via `setState`; `setExpression` ignores it. */
     clickableInfo?: ClickableInfo;
@@ -216,6 +233,38 @@ export interface TickerState {
     open?: boolean;
 }
 
-export type ExpressionState = Expression | Table | Note | Folder;
+/**
+ * An image placed on the graphpaper.
+ *
+ * Everything but the URL is latex, because every one of them may be an
+ * expression: an image can be centred on a point the graph computes, sized by a
+ * slider, and rotated as it animates.
+ *
+ * @see https://help.desmos.com/hc/en-us/articles/4405633787533-Images
+ */
+export interface GraphImage {
+    type: 'image';
+    id?: string;
+    folderId?: string;
+    /** The image itself, as a `data:` URI or an address Desmos may fetch. */
+    image_url?: string;
+    /** The caption shown in the expression list. */
+    name?: string;
+    width?: string;
+    height?: string;
+    /** The point the image is centred on, as latex - `\left(0,0\right)`. */
+    center?: string;
+    angle?: string;
+    opacity?: string;
+    /** Whether the image is drawn over the graph rather than under it. */
+    foreground?: boolean;
+    /** Whether the image ignores clicks aimed at what is behind it. */
+    clickableInfo?: ClickableInfo;
+    hidden?: boolean;
+    secret?: boolean;
+    dragMode?: DragMode | string;
+}
+
+export type ExpressionState = Expression | Table | Note | Folder | GraphImage;
 
 export type DesmosExpression = ExpressionState;
