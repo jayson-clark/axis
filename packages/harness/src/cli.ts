@@ -161,6 +161,16 @@ function report(name: string, inspection: Inspection, evaluated: [string, unknow
         console.log(describe(expression));
     }
 
+    // The ticker is in the graph but not in the list, so it would otherwise be
+    // the one thing a script can say that this report never mentions.
+    const ticker = inspection.state.expressions?.ticker;
+    if (ticker?.handlerLatex) {
+        const paced = ticker.minStepLatex ? ` every ${ticker.minStepLatex}ms` : '';
+        console.log(
+            `\n  ticker     ${ticker.handlerLatex}${paced}${ticker.playing ? ' (playing)' : ''}`,
+        );
+    }
+
     if (evaluated.length > 0) {
         console.log('\nEvaluated');
         for (const [latex, value] of evaluated) {

@@ -6,6 +6,7 @@ import { insertMissingSeparators } from './blocks';
 import { bracketDelta, leadingClosers } from './brackets';
 import { splitTopLevel, splitTrailingMetadata } from './metadata';
 import { matchingBracket, OPENERS, scanCode } from './scan';
+import { parseTickerStatement } from './ticker';
 import { AxisFormattingOptions } from './types';
 
 /**
@@ -244,6 +245,14 @@ function formatLineContent(line: string): string {
         line.startsWith('import')
     ) {
         return line;
+    }
+
+    // A ticker is a keyword and then an expression, so only the expression is
+    // spaced - running the whole line through would read `ticker a` as two
+    // names multiplied together and close the gap between them.
+    const ticker = parseTickerStatement(line);
+    if (ticker) {
+        return ticker.handler ? `ticker ${formatLineContent(ticker.handler)}` : line;
     }
 
     // Trailing `# key: value` metadata formats differently from the expression

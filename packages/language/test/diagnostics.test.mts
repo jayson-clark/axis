@@ -148,6 +148,31 @@ describe('imports', () => {
     });
 });
 
+describe('the ticker', () => {
+    test('accepts a ticker at the top level, with or without properties', () => {
+        assert.deepEqual(codes('ticker a -> a + 1'), []);
+        assert.deepEqual(codes('ticker a -> a + 1 # minStep: 50, playing: true, open: true'), []);
+    });
+
+    test('reports a ticker with no action to run', () => {
+        assert.deepEqual(codes('ticker'), ['empty-ticker']);
+    });
+
+    test('reports a ticker written inside a block, since the graph has one', () => {
+        assert.deepEqual(codes('folder "F" {\n    ticker a -> a + 1\n}'), ['ticker-placement']);
+    });
+
+    test('warns on an expression property written on a ticker, and the reverse', () => {
+        assert.deepEqual(codes('ticker a -> a + 1 # lineWidth: 3'), ['unknown-metadata-property']);
+        assert.deepEqual(codes('y = x # minStep: 50'), ['unknown-metadata-property']);
+    });
+
+    test('leaves a name that merely starts with the word alone', () => {
+        assert.deepEqual(codes('tickerRate = 3'), []);
+        assert.deepEqual(codes('ticker = 3'), []);
+    });
+});
+
 describe('entries', () => {
     test('reports an entry that lost its comma', () => {
         assert.deepEqual(codes('table {\n  x = [1]\n  y = [2]\n}'), ['missing-comma']);

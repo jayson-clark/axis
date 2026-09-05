@@ -3,6 +3,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { AXIS_MANIFEST } from '../language-manifest';
+import { TICKER_KEYWORD } from './ticker';
 import { AxisCompletionItem, AxisPosition } from './types';
 
 /**
@@ -10,7 +11,8 @@ import { AxisCompletionItem, AxisPosition } from './types';
  *
  * The context rules are deliberately cheap (no parse): inside a `config` block
  * only config properties make sense, after a `#` on the line only metadata
- * properties do, and otherwise everything in scope is offered.
+ * properties do - the ticker's own, on a `ticker` line - and otherwise
+ * everything in scope is offered.
  */
 export function getAxisCompletions(text: string, position: AxisPosition): AxisCompletionItem[] {
     const lines = text.split('\n');
@@ -23,7 +25,9 @@ export function getAxisCompletions(text: string, position: AxisPosition): AxisCo
     }
 
     if (linePrefix.includes('#')) {
-        return getMetadataCompletions();
+        return TICKER_KEYWORD.test(lineText.trim())
+            ? getTickerPropertyCompletions()
+            : getMetadataCompletions();
     }
 
     return [
@@ -53,6 +57,15 @@ function isInConfigBlock(textUpToPosition: string): boolean {
 
 function getConfigPropertyCompletions(): AxisCompletionItem[] {
     return AXIS_MANIFEST.configProperties.map(prop => ({
+        label: prop.name,
+        kind: 'property' as const,
+        detail: prop.detail,
+        snippet: prop.snippet,
+    }));
+}
+
+function getTickerPropertyCompletions(): AxisCompletionItem[] {
+    return AXIS_MANIFEST.tickerProperties.map(prop => ({
         label: prop.name,
         kind: 'property' as const,
         detail: prop.detail,
@@ -119,6 +132,12 @@ function getKeywordCompletions(): AxisCompletionItem[] {
             kind: 'keyword',
             detail: 'Configure calculator settings',
             snippet: 'config {\n\t${1:degreeMode}: ${2|true,false|}$0\n}',
+        },
+        {
+            label: 'ticker',
+            kind: 'keyword',
+            detail: 'Run an action over and over while the graph is open',
+            snippet: 'ticker ${1:a} -> ${2:a + 1} # minStep: ${3:50}, playing: true',
         },
     ];
 }

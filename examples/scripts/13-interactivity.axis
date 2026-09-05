@@ -3,7 +3,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // dragMode says how a point may be moved. onClick attaches an action, written
-// `target -> new value`, that runs when the object is clicked.
+// `target -> new value`, that runs when the object is clicked. A ticker runs
+// one action over and over on its own, with no click at all.
 
 config {
     actions: true
@@ -38,4 +39,16 @@ folder "Clicking a shape" {
 folder "Switching an action off" {
     "clickable: false keeps the action but disables it - the same as unticking the box in Desmos.",
     (6, 2) # color: #6042a6, pointSize: 18, onClick: n -> 99, clickable: false
+}
+
+// The graph has one ticker, so it is written at the top level rather than in a
+// folder. minStep is the shortest gap between two ticks, in milliseconds;
+// playing starts it as soon as the graph opens.
+ticker T -> mod(T + 1, 60) # minStep: 50, playing: true, open: true
+
+folder "A ticker" {
+    "T counts itself up, one step every 50ms, and starts over at 60.",
+    T = 0 # sliderBounds: {min: 0, max: 60, step: 1},
+    "A point going round while it counts.",
+    (7 + 1.5cos(T * pi / 30), 2 + 1.5sin(T * pi / 30)) # color: #fa7e19, pointSize: 20
 }

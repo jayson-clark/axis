@@ -25,6 +25,15 @@ describe('formatAxisCode', () => {
         assert.equal(format('p = (1,2) # onClick: a->a+1'), 'p = (1, 2) # onClick: a->a+1');
     });
 
+    test('spaces a ticker\u2019s action without gluing it to the keyword', () => {
+        // `ticker a` is a keyword and a name, not two names multiplied - so the
+        // expression rules apply to the action and stop short of the keyword.
+        assert.equal(
+            format('ticker a->a+1 #minStep:50,playing:true'),
+            'ticker a -> a + 1 # minStep: 50, playing: true',
+        );
+    });
+
     test('indents block bodies', () => {
         assert.equal(format('folder "A" {\ny=x\n}'), 'folder "A" {\n    y = x\n}');
     });

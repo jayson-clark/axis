@@ -188,6 +188,34 @@ export interface Folder {
     secret?: boolean;
 }
 
+/**
+ * The graph's ticker: one action, run over and over while the ticker plays.
+ *
+ * State-only, and not part of the expression *list* — Desmos keeps it beside
+ * the list, under `expressions.ticker`, so it travels through `setState` and
+ * nothing else. There is exactly one per graph.
+ *
+ * Desmos normalises what it is given here as it does everywhere else: `open`
+ * and `playing` are written by leaving them off rather than storing `false`,
+ * and a ticker with no handler at all comes back as no ticker.
+ *
+ * @see https://help.desmos.com/hc/en-us/articles/8459434454669-Tickers
+ */
+export interface TickerState {
+    /** The action to run on each tick, as latex - `a\\to a+1`. */
+    handlerLatex?: string;
+    /**
+     * The shortest gap between two ticks, in milliseconds, as latex. Desmos
+     * ticks once a frame when this is 0 or absent, and the handler can read the
+     * gap it actually got as `dt`.
+     */
+    minStepLatex?: string;
+    /** Whether the ticker starts running as soon as the graph opens. */
+    playing?: boolean;
+    /** Whether the ticker's row sits expanded in the expression list. */
+    open?: boolean;
+}
+
 export type ExpressionState = Expression | Table | Note | Folder;
 
 export type DesmosExpression = ExpressionState;

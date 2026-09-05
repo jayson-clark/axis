@@ -7,6 +7,7 @@
 //   - `// …` lines are comments, and `# key: value` trailing a statement is its
 //     metadata (color, lineStyle, sliderBounds, onClick, …)
 //   - `folder "Name" { … }`, `table { … }` and `config { … }` are blocks
+//   - `ticker a -> a + 1` is the graph's ticker, which sits beside the list
 //   - `"Text"` on its own is a note
 //   - `import "other.axis"` drops another script in, flattened into a folder
 //   - a block written inline reads the same as one spread over lines, because
@@ -24,6 +25,7 @@ import {
     SliderState,
     Table,
     TableColumn,
+    TickerState,
 } from '@axis-dsl/desmos';
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
@@ -34,6 +36,7 @@ import {
     importTitle,
     joinContinuedLines,
     parseImportStatement,
+    parseTickerStatement,
     splitTopLevel,
     splitTrailingMetadata,
     unescapeString,
@@ -61,6 +64,14 @@ export interface CompilationResult {
      * apply both halves.
      */
     graph?: GraphSettings;
+    /**
+     * The `ticker` statement, if the script or anything it imports has one.
+     *
+     * Neither a settings key nor an expression: Desmos keeps the ticker under
+     * `expressions.ticker`, beside the list rather than in it, so a host applies
+     * it as the third part of the same `setState`.
+     */
+    ticker?: TickerState;
     /**
      * Every file pulled in by `import`, transitively, as the resolver named it.
      * A host watching a script for changes has to watch these too.
@@ -133,6 +144,10 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     // settings win over an imported file's wherever its config block is written.
     const importedConfigs: Record<string, unknown>[] = [];
     const rootConfigs: Record<string, unknown>[] = [];
+    // A graph has one ticker, so the same bargain: an imported script may bring
+    // one, and the entry script's replaces it rather than merging with it.
+    let importedTicker: TickerState | undefined;
+    let rootTicker: TickerState | undefined;
 
     let expressionCount = 0;
     const nextId = (prefix: string) => `${prefix}_${++expressionCount}`;
@@ -268,6 +283,20 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 continue;
             }
 
+            // The ticker, which belongs to the graph rather than to the list
+            const ticker = parseTickerStatement(line);
+            if (ticker) {
+                const built = buildTicker(ticker.handler, metadata);
+                if (built) {
+                    if (scope.flatten) {
+                        importedTicker = built;
+                    } else {
+                        rootTicker = built;
+                    }
+                }
+                continue;
+            }
+
             // Imports
             if (IMPORT_KEYWORD.test(line)) {
                 emitImport(line, metadata, currentFolderId, scope);
@@ -368,10 +397,11 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
 
     emitFile(script, { path: options.path ?? '', flatten: false });
 
+    const ticker = rootTicker ?? importedTicker;
     const layers = [...importedConfigs, ...rootConfigs];
-    const { settings, graph } = splitConfig(Object.assign({}, ...layers));
+    const { settings, graph } = splitConfig(Object.assign({}, ...layers), ticker !== undefined);
 
-    return { expressions, settings, graph, imports };
+    return { expressions, settings, graph, ticker, imports };
 }
 
 /**
@@ -383,11 +413,26 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
  * the calculator's options, so handing them to `updateSettings` with the rest
  * would apply everything except the framing — and say nothing about it.
  */
-function splitConfig(config: Record<string, unknown>): {
+function splitConfig(
+    config: Record<string, unknown>,
+    hasTicker: boolean,
+): {
     settings?: CalculatorOptions;
     graph?: GraphSettings;
 } {
     const settings: Record<string, unknown> = {};
+
+    // `actions` defaults to `auto`, which means "on if the graph uses actions" -
+    // and Desmos decides that by looking at the expression list alone. A ticker
+    // is nothing but an action, but it is not in the list, so a graph whose only
+    // action is its ticker is left with actions switched off and simply never
+    // ticks. Turning them on here is the difference between a ticker that runs
+    // and one that silently does not; a script that writes `actions` itself,
+    // including `actions: false`, still has the last word.
+    if (hasTicker && config.actions === undefined) {
+        settings.actions = true;
+    }
+
     const viewport: Record<string, number> = {};
     const graph: GraphSettings = {};
 
@@ -527,6 +572,33 @@ function buildExpression(
     }
 
     return expression;
+}
+
+/**
+ * Turn `ticker a -> a + 1 # minStep: 50, playing: true` into the ticker the
+ * graph state carries.
+ *
+ * `minStep` reaches Desmos as latex rather than as a number, because that is
+ * what the state holds and because it need not be a literal: a ticker may pace
+ * itself off a variable the graph defines.
+ *
+ * `playing` and `open` are written only when they are true, which is how Desmos
+ * writes them itself - it says "not playing" by leaving the key off rather than
+ * by storing `false`. A ticker with nothing to run is no ticker at all.
+ */
+function buildTicker(handler: string, metadata: Metadata): TickerState | undefined {
+    if (!handler) {
+        return undefined;
+    }
+
+    const minStep = asNumberOrString(metadata.minStep);
+
+    return {
+        handlerLatex: convertToLatex(handler),
+        ...(minStep !== undefined && { minStepLatex: convertToLatex(String(minStep)) }),
+        ...(metadata.playing === true && { playing: true }),
+        ...(metadata.open === true && { open: true }),
+    };
 }
 
 /**

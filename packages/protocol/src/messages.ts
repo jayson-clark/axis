@@ -7,7 +7,12 @@
 // HTTP event stream, the playground over an in-memory channel. One path means a
 // feature is built once and every host gets it.
 
-import type { CalculatorOptions, DesmosExpression, GraphSettings } from '@axis-dsl/desmos';
+import type {
+    CalculatorOptions,
+    DesmosExpression,
+    GraphSettings,
+    TickerState,
+} from '@axis-dsl/desmos';
 
 /** Host → viewer. */
 export type ViewerMessage =
@@ -34,6 +39,8 @@ export type ViewerMessage =
                * through its state rather than through `updateSettings`.
                */
               graph?: GraphSettings;
+              /** The graph's ticker, which reaches it the same way. */
+              ticker?: TickerState;
           };
       }
     /** Free text shown in the tab strip — a count, "Compiling…", null to clear. */

@@ -92,6 +92,29 @@ imports itself, however indirectly, is an error rather than a hang.
 A preview watches everything the script imports, so saving any file the graph is
 built from reloads it.
 
+## Tickers
+
+A ticker runs one action over and over for as long as the graph is open — the
+way a graph animates something a slider cannot.
+
+```
+n = 0
+
+// Every 50ms, and running from the moment the graph opens.
+ticker n -> mod(n + 1, 60) # minStep: 50, playing: true
+```
+
+`minStep` is the shortest gap between two ticks, in milliseconds; leave it out
+and Desmos ticks once a frame. `playing` starts it on load, and `open` shows the
+ticker expanded in Desmos' expression list.
+
+A graph has exactly one ticker, and Desmos keeps it beside the expression list
+rather than in it — so the statement goes at the top level, outside every folder,
+and `compileAxis` hands it back as `ticker` rather than as an expression. It also
+switches `actions` on for you: Desmos decides that setting by looking at the
+expression list alone, so a graph whose only action is its ticker would otherwise
+never tick.
+
 ## Use it in your own app
 
 ```sh
@@ -103,7 +126,7 @@ Compile anywhere — a build step, a server, a test:
 ```ts
 import { compileAxis } from '@axis-dsl/compiler';
 
-const { expressions, settings } = compileAxis(source);
+const { expressions, settings, graph, ticker } = compileAxis(source);
 ```
 
 Compilation is synchronous and touches no filesystem, so a script with imports
@@ -160,8 +183,14 @@ import { compileAxis } from '@axis-dsl/compiler';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 
 function Graph({ source }) {
-    const { expressions, settings } = compileAxis(source);
-    const transport = useLocalViewerHost({ apiKey: MY_DESMOS_KEY, expressions, settings });
+    const { expressions, settings, graph, ticker } = compileAxis(source);
+    const transport = useLocalViewerHost({
+        apiKey: MY_DESMOS_KEY,
+        expressions,
+        settings,
+        graph,
+        ticker,
+    });
 
     return <AxisViewer transport={transport} />;
 }

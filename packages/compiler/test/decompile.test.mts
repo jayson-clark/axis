@@ -38,6 +38,7 @@ function roundTrip(source: string, options: CompileOptions = {}): string {
     );
     assert.deepEqual(again.settings, graph.settings);
     assert.deepEqual(again.graph, graph.graph);
+    assert.deepEqual(again.ticker, graph.ticker);
 
     return decompiled;
 }
@@ -286,6 +287,51 @@ describe('config', () => {
             }),
             'config {\n    xmin: 0,\n    xmax: 1,\n    ymin: 0,\n    ymax: 1\n}\n',
         );
+    });
+});
+
+describe('the ticker', () => {
+    test('writes the statement back with the properties that pace it', () => {
+        assert.equal(
+            roundTrip('a = 0\nticker a -> a + 1 # minStep: 50, playing: true, open: true'),
+            'ticker a -> a + 1 # minStep: 50, playing: true, open: true\n\na = 0\n',
+        );
+    });
+
+    test('leaves out the properties Desmos says by omission', () => {
+        assert.equal(roundTrip('a = 0\nticker a -> a + 1'), 'ticker a -> a + 1\n\na = 0\n');
+    });
+
+    test('does not write back the `actions` a ticker switched on for itself', () => {
+        // The compiler adds it so the ticker runs at all; writing it out would
+        // grow a config block the author never wrote, and the ticker standing
+        // next to it puts the setting back anyway.
+        const source = 'a = 0\nticker a -> a + 1';
+        assert.equal(compileAxis(source).settings?.actions, true);
+        assert.equal(roundTrip(source).includes('config'), false);
+    });
+
+    test('keeps an `actions` the script asked for itself', () => {
+        assert.equal(
+            roundTrip('config {\n    actions: false\n}\na = 0\nticker a -> a + 1'),
+            'config {\n    actions: false\n}\n\nticker a -> a + 1\n\na = 0\n',
+        );
+    });
+
+    test("reads a graph state's own ticker", () => {
+        // What a state off desmos.com hands over: the ticker beside the list
+        // rather than in it.
+        assert.equal(
+            decompileAxis({
+                expressions: [],
+                ticker: { handlerLatex: 'c_{ursorBlink}', playing: true, open: true },
+            }),
+            'ticker cursorBlink # playing: true, open: true\n',
+        );
+    });
+
+    test('has nothing to write for a ticker with no handler', () => {
+        assert.equal(decompileAxis({ expressions: [], ticker: { playing: true } }), '');
     });
 });
 

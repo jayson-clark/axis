@@ -10,6 +10,7 @@ import {
 } from './calculator';
 import {
     ExpressionState,
+    TickerState,
     LineStyle,
     PointStyle,
     DragMode,
@@ -86,7 +87,7 @@ export interface GraphSettings {
 export interface GraphState {
     version: number;
     graph?: GraphSettings & { [key: string]: unknown };
-    expressions?: { list?: ExpressionState[]; ticker?: unknown };
+    expressions?: { list?: ExpressionState[]; ticker?: TickerState };
     randomSeed?: string;
     [key: string]: unknown;
 }

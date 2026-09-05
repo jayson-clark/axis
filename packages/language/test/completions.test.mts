@@ -18,9 +18,15 @@ describe('getAxisCompletions', () => {
         assert.ok(!offered.includes('sin'));
     });
 
+    test('offers the ticker\u2019s own properties after a `#` on a ticker', () => {
+        const offered = labels('ticker a -> a + 1 # ', 0, 20);
+        assert.ok(offered.includes('minStep'));
+        assert.ok(!offered.includes('lineWidth'));
+    });
+
     test('offers builtins, constants and keywords at the top level', () => {
         const offered = labels('', 0, 0);
-        for (const expected of ['sin', 'pi', 'folder', 'table', 'config']) {
+        for (const expected of ['sin', 'pi', 'folder', 'table', 'config', 'ticker']) {
             assert.ok(offered.includes(expected), `expected ${expected}`);
         }
     });
