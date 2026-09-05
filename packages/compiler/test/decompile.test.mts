@@ -257,7 +257,7 @@ describe('folders', () => {
     test('writes a folder around the expressions that claim it', () => {
         assert.equal(
             roundTrip('folder "Curves" {\ny = x,\ny = 2x\n}\ny = 3x'),
-            'folder "Curves" {\n    y = x,\n    y = 2x\n}\n\ny = 3x\n',
+            'folder "Curves" {\n    y = x\n    y = 2x\n}\n\ny = 3x\n',
         );
     });
 
@@ -272,7 +272,7 @@ describe('folders', () => {
         const source = roundTrip('folder "F" {\n"A note",\ntable { x = [1, 2] },\ny = x\n}');
         assert.equal(
             source,
-            'folder "F" {\n    "A note",\n    table {\n        x = [1, 2]\n    },\n    y = x\n}\n',
+            'folder "F" {\n    "A note"\n    table {\n        x = [1, 2]\n    }\n    y = x\n}\n',
         );
     });
 
@@ -314,21 +314,21 @@ describe('tables', () => {
     test('writes a column and the values under it', () => {
         assert.equal(
             roundTrip('table {\nx = [1, 2, 3],\ny = [2, 4, 8]\n}'),
-            'table {\n    x = [1, 2, 3],\n    y = [2, 4, 8]\n}\n',
+            'table {\n    x = [1, 2, 3]\n    y = [2, 4, 8]\n}\n',
         );
     });
 
     test('writes a computed column, which has no values of its own', () => {
         assert.equal(
             roundTrip('table {\nu = [-1, 0, 1],\nu^2 # color: #6042a6\n}'),
-            'table {\n    u = [-1, 0, 1],\n    u ^ 2 # color: #6042a6\n}\n',
+            'table {\n    u = [-1, 0, 1]\n    u ^ 2 # color: #6042a6\n}\n',
         );
     });
 
     test('writes a column’s styling behind it', () => {
         assert.equal(
             roundTrip('table {\nt = [0, 1],\npos = [0, 5] # color: #388c46, pointStyle: OPEN\n}'),
-            'table {\n    t = [0, 1],\n    pos = [0, 5] # color: #388c46, pointStyle: OPEN\n}\n',
+            'table {\n    t = [0, 1]\n    pos = [0, 5] # color: #388c46, pointStyle: OPEN\n}\n',
         );
     });
 });
@@ -391,7 +391,7 @@ describe('config', () => {
             roundTrip(
                 'config {\nshowGrid: false,\nxAxisLabel: "time (s)",\nfontSize: 16\n}\ny = x',
             ),
-            'config {\n    showGrid: false,\n    xAxisLabel: "time (s)",\n    fontSize: 16\n}\n\ny = x\n',
+            'config {\n    showGrid: false\n    xAxisLabel: "time (s)"\n    fontSize: 16\n}\n\ny = x\n',
         );
     });
 
@@ -407,14 +407,14 @@ describe('config', () => {
             roundTrip(
                 'config {\nxmin: 0,\nxmax: 1,\nymin: 0,\nymax: 1,\nsquareAxes: false\n}\ny = x',
             ),
-            'config {\n    xmin: 0,\n    xmax: 1,\n    ymin: 0,\n    ymax: 1,\n    squareAxes: false\n}\n\ny = x\n',
+            'config {\n    xmin: 0\n    xmax: 1\n    ymin: 0\n    ymax: 1\n    squareAxes: false\n}\n\ny = x\n',
         );
     });
 
     test('writes a viewport alongside the settings that share its block', () => {
         assert.equal(
             roundTrip('config {\nshowGrid: false,\nxmin: -1,\nxmax: 1\n}\ny = x'),
-            'config {\n    showGrid: false,\n    xmin: -1,\n    xmax: 1\n}\n\ny = x\n',
+            'config {\n    showGrid: false\n    xmin: -1\n    xmax: 1\n}\n\ny = x\n',
         );
     });
 
@@ -426,7 +426,7 @@ describe('config', () => {
                 expressions: [],
                 graph: { viewport: { xmin: 0, xmax: 1, ymin: 0, ymax: 1 } },
             }),
-            'config {\n    xmin: 0,\n    xmax: 1,\n    ymin: 0,\n    ymax: 1\n}\n',
+            'config {\n    xmin: 0\n    xmax: 1\n    ymin: 0\n    ymax: 1\n}\n',
         );
     });
 });

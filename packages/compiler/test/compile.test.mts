@@ -186,6 +186,71 @@ describe('the ticker', () => {
     });
 });
 
+describe('a metadata block', () => {
+    test('reads as the run it is the other spelling of', () => {
+        const run = compileAxis('y = x # color: #c74440, lineWidth: 3, lineStyle: DASHED');
+        const block = compileAxis(
+            'y = x #{\n    color: #c74440\n    lineWidth: 3\n    lineStyle: DASHED\n}',
+        );
+        assert.deepEqual(block, run);
+    });
+
+    test('takes a comma between two properties on one line', () => {
+        assert.deepEqual(
+            compileAxis('y = x #{ color: red, lineWidth: 3 }'),
+            compileAxis('y = x # color: red, lineWidth: 3'),
+        );
+    });
+
+    test('keeps a `{…}` value whole across the lines around it', () => {
+        const slider = only<Expression>(
+            'a = 1 #{\n    sliderBounds: {min: 0, max: 5, step: 0.5}\n    playing: true\n}',
+        );
+
+        assert.deepEqual(slider.slider, {
+            min: '0',
+            max: '5',
+            hardMin: true,
+            hardMax: true,
+            step: '0.5',
+            isPlaying: true,
+        });
+    });
+
+    test('annotates a folder from inside its brace', () => {
+        const [folder] = compileAxis('folder "A" { #{\n    collapsed: true\n}\n    y = x\n}')
+            .expressions as [Folder];
+
+        assert.equal(folder.title, 'A');
+        assert.equal(folder.collapsed, true);
+    });
+
+    test('annotates a table column like any other entry', () => {
+        const [table] = compileAxis(
+            'table {\n    x = [1, 2]\n    y = [3, 4] #{\n        color: #388c46\n    }\n}',
+        ).expressions as [Table];
+
+        assert.equal(table.columns[1].color, '#388c46');
+    });
+
+    test('opens the blank row where it annotates nothing', () => {
+        // Properties and no expression is the row Desmos keeps for spacing.
+        const blank = only<Expression>('#{\n    color: #c74440\n}');
+
+        assert.equal(blank.latex, undefined);
+        assert.equal(blank.color, '#c74440');
+    });
+
+    test('carries the ticker’s own properties', () => {
+        const { ticker } = compileAxis(
+            'ticker a -> a + 1 #{\n    minStep: 50\n    playing: true\n}',
+        );
+
+        assert.equal(ticker?.minStepLatex, '50');
+        assert.equal(ticker?.playing, true);
+    });
+});
+
 describe('metadata', () => {
     test('applies styling properties', () => {
         const expression = only<Expression>('y = x # color: #c74440, lineStyle: DASHED');
@@ -280,6 +345,22 @@ describe('layout', () => {
         const inline = compileAxis('folder "A" { y = x, z = 1 }');
         const expanded = compileAxis('folder "A" {\n    y = x,\n    z = 1\n}');
         assert.deepEqual(inline, expanded);
+    });
+
+    test('a block separates its entries by their newlines, as the top level does', () => {
+        const separated = compileAxis('folder "A" {\n    y = x,\n    z = 1\n}');
+        assert.deepEqual(compileAxis('folder "A" {\n    y = x\n    z = 1\n}'), separated);
+    });
+
+    test('a table and a config block do the same', () => {
+        assert.deepEqual(
+            compileAxis('table {\n    x = [1, 2]\n    y = [3, 4]\n}'),
+            compileAxis('table {\n    x = [1, 2],\n    y = [3, 4]\n}'),
+        );
+        assert.deepEqual(
+            compileAxis('config {\n    showGrid: false\n    degreeMode: true\n}'),
+            compileAxis('config {\n    showGrid: false,\n    degreeMode: true\n}'),
+        );
     });
 
     test('joins a statement split across an open bracket', () => {

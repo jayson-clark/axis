@@ -3,20 +3,51 @@
     "name": "Axis",
     "scopeName": "source.axis",
     "patterns": [
-        { "include": "#comments" },
-        { "include": "#strings" },
-        { "include": "#config" },
-        { "include": "#import" },
-        { "include": "#ticker" },
-        { "include": "#image" },
-        { "include": "#folder" },
-        { "include": "#table" },
-        { "include": "#metadata" },
-        { "include": "#functions" },
-        { "include": "#constants" },
-        { "include": "#numbers" },
-        { "include": "#operators" },
-        { "include": "#variables" }
+        {
+            "include": "#comments"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#config"
+        },
+        {
+            "include": "#import"
+        },
+        {
+            "include": "#ticker"
+        },
+        {
+            "include": "#image"
+        },
+        {
+            "include": "#folder"
+        },
+        {
+            "include": "#table"
+        },
+        {
+            "include": "#metadataBlock"
+        },
+        {
+            "include": "#metadata"
+        },
+        {
+            "include": "#functions"
+        },
+        {
+            "include": "#constants"
+        },
+        {
+            "include": "#numbers"
+        },
+        {
+            "include": "#operators"
+        },
+        {
+            "include": "#variables"
+        }
     ],
     "repository": {
         "comments": {
@@ -42,7 +73,6 @@
                 }
             ]
         },
-
         "import": {
             "patterns": [
                 {
@@ -105,13 +135,93 @@
                     "name": "meta.metadata.axis",
                     "match": "#\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*:\\s*([^,}]+)",
                     "captures": {
-                        "1": { "name": "variable.parameter.axis" },
-                        "2": { "name": "string.unquoted.axis" }
+                        "1": {
+                            "name": "variable.parameter.axis"
+                        },
+                        "2": {
+                            "name": "string.unquoted.axis"
+                        }
                     }
                 },
                 {
                     "name": "keyword.other.metadata.axis",
                     "match": "#\\s*(hidden|secret)\\b"
+                }
+            ]
+        },
+        "metadataBlock": {
+            "patterns": [
+                {
+                    "name": "meta.metadata.block.axis",
+                    "begin": "#\\{",
+                    "end": "\\}",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "keyword.other.metadata.axis"
+                        }
+                    },
+                    "endCaptures": {
+                        "0": {
+                            "name": "keyword.other.metadata.axis"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#comments"
+                        },
+                        {
+                            "include": "#strings"
+                        },
+                        {
+                            "begin": "\\{",
+                            "end": "\\}",
+                            "patterns": [
+                                {
+                                    "include": "#comments"
+                                },
+                                {
+                                    "include": "#strings"
+                                },
+                                {
+                                    "match": "([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=:)",
+                                    "name": "variable.parameter.axis"
+                                },
+                                {
+                                    "include": "#constants"
+                                },
+                                {
+                                    "include": "#numbers"
+                                },
+                                {
+                                    "include": "#operators"
+                                }
+                            ]
+                        },
+                        {
+                            "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=:)",
+                            "name": "variable.parameter.axis"
+                        },
+                        {
+                            "match": "^\\s*(hidden|secret)\\s*$",
+                            "name": "keyword.other.metadata.axis"
+                        },
+                        {
+                            "match": "#[0-9a-fA-F]{3,8}\\b",
+                            "name": "string.unquoted.axis"
+                        },
+                        {
+                            "include": "#functions"
+                        },
+                        {
+                            "include": "#constants"
+                        },
+                        {
+                            "include": "#numbers"
+                        },
+                        {
+                            "include": "#operators"
+                        }
+                    ]
                 }
             ]
         },

@@ -6,17 +6,17 @@
 // maps to one word: stretch, shift, squeeze, raise.
 
 config {
-    showGrid: true,
-    xAxisStep: 1,
+    showGrid: true
+    xAxisStep: 1
     yAxisStep: 1
 }
 
 "y = a * f(b * (x - h)) + k"
 
 folder "Sliders" {
-    a = 1 # sliderBounds: {min: -3, max: 3, step: 0.1},
-    b = 1 # sliderBounds: {min: -3, max: 3, step: 0.1},
-    h = 0 # sliderBounds: {min: -6, max: 6, step: 0.1},
+    a = 1 # sliderBounds: {min: -3, max: 3, step: 0.1}
+    b = 1 # sliderBounds: {min: -3, max: 3, step: 0.1}
+    h = 0 # sliderBounds: {min: -6, max: 6, step: 0.1}
     k = 0 # sliderBounds: {min: -6, max: 6, step: 0.1}
 }
 
@@ -31,9 +31,15 @@ f(x) # color: #000000, lineWidth: 2, lineOpacity: 0.3, lineStyle: DASHED
 g(x) = a * f(b * (x - h)) + k # color: #6042a6, lineWidth: 4
 
 folder "What each slider does" {
-    "a stretches vertically, and flips when negative.",
-    "b squeezes horizontally, and flips when negative.",
-    "h shifts right, k shifts up.",
-    "The image of the parent's vertex.",
-    (h, k) # color: #6042a6, pointSize: 16, label: "(h, k)", showLabel: true, labelOrientation: above_right
+    "a stretches vertically, and flips when negative."
+    "b squeezes horizontally, and flips when negative."
+    "h shifts right, k shifts up."
+    "The image of the parent's vertex."
+    (h, k) #{
+        color: #6042a6
+        pointSize: 16
+        label: "(h, k)"
+        showLabel: true
+        labelOrientation: above_right
+    }
 }

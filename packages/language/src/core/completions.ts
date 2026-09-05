@@ -3,6 +3,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { AXIS_MANIFEST } from '../language-manifest';
+import { bracketDelta } from './brackets';
 import { TICKER_KEYWORD } from './ticker';
 import { AxisCompletionItem, AxisPosition } from './types';
 
@@ -10,15 +11,25 @@ import { AxisCompletionItem, AxisPosition } from './types';
  * All completions offered at `position` within `text`.
  *
  * The context rules are deliberately cheap (no parse): inside a `config` block
- * only config properties make sense, after a `#` on the line only metadata
- * properties do - the ticker's own, on a `ticker` line - and otherwise
- * everything in scope is offered.
+ * only config properties make sense, inside a `#{ … }` block or after a `#` on
+ * the line only metadata properties do - the ticker's own, where the ticker is
+ * what carries them - and otherwise everything in scope is offered.
  */
 export function getAxisCompletions(text: string, position: AxisPosition): AxisCompletionItem[] {
     const lines = text.split('\n');
     const lineText = lines[position.line] ?? '';
     const linePrefix = lineText.slice(0, position.character);
     const textUpToPosition = [...lines.slice(0, position.line), linePrefix].join('\n');
+
+    // Inside a block the properties are on lines of their own, with no `#` in
+    // front of them, so what they belong to comes from the statement the block
+    // was opened on rather than from the line being typed.
+    const annotated = openMetadataBlock(textUpToPosition);
+    if (annotated !== undefined) {
+        return TICKER_KEYWORD.test(annotated)
+            ? getTickerPropertyCompletions()
+            : getMetadataCompletions();
+    }
 
     if (isInConfigBlock(textUpToPosition)) {
         return getConfigPropertyCompletions();
@@ -37,6 +48,38 @@ export function getAxisCompletions(text: string, position: AxisPosition): AxisCo
         ...getKeywordCompletions(),
         ...getUserDefinedCompletions(text),
     ];
+}
+
+/**
+ * The statement a still-open `#{ … }` block annotates, or undefined when the
+ * text does not end inside one.
+ *
+ * Brace depth rather than a bare `}`, since a property may be written as a
+ * `{min: 0, max: 5}` of its own and closing that one closes nothing.
+ */
+function openMetadataBlock(textUpToPosition: string): string | undefined {
+    let annotated: string | undefined;
+    let depth = 0;
+
+    for (const line of textUpToPosition.split('\n')) {
+        if (annotated === undefined) {
+            const opener = /(^|\s)#\{/.exec(line);
+            if (!opener) {
+                continue;
+            }
+            const at = opener.index + opener[1].length;
+            annotated = line.slice(0, at).trim();
+            depth = 1 + bracketDelta(line.slice(at + 2));
+        } else {
+            depth += bracketDelta(line);
+        }
+
+        if (depth <= 0) {
+            annotated = undefined;
+        }
+    }
+
+    return annotated;
 }
 
 /** True when the text ends inside an unclosed `config { ... }` block. */

@@ -12,25 +12,25 @@ config {
 "Inequalities"
 
 folder "Half planes" {
-    y > 2x - 3 # color: #c74440, fillOpacity: 0.2,
-    y < -x + 4 # color: #2d70b3, fillOpacity: 0.2,
+    y > 2x - 3 # color: #c74440, fillOpacity: 0.2
+    y < -x + 4 # color: #2d70b3, fillOpacity: 0.2
     "Where both hold, the shading doubles up."
 }
 
 folder "Regions from curves" {
-    y > x ^ 2 - 4 # color: #388c46, fillOpacity: 0.25,
-    x ^ 2 + y ^ 2 <= 16 # color: #6042a6, fillOpacity: 0.2,
-    "lines: false drops the boundary curve.",
+    y > x ^ 2 - 4 # color: #388c46, fillOpacity: 0.25
+    x ^ 2 + y ^ 2 <= 16 # color: #6042a6, fillOpacity: 0.2
+    "lines: false drops the boundary curve."
     abs(x) + abs(y) <= 3 # color: #fa7e19, fillOpacity: 0.4, lines: false
 }
 
 folder "A bounded strip" {
-    "Two inequalities in one statement bound a band, with y on its own in the middle - Desmos only shades a band that is solved for a variable.",
-    sin(x) - 1 < y < sin(x) + 1 # color: #c74440, fillOpacity: 0.25,
+    "Two inequalities in one statement bound a band, with y on its own in the middle - Desmos only shades a band that is solved for a variable."
+    sin(x) - 1 < y < sin(x) + 1 # color: #c74440, fillOpacity: 0.25
     y = sin(x) # color: #c74440, lineWidth: 3
 }
 
 folder "Restricting a shaded region" {
-    "A brace group trims the region to a window.",
+    "A brace group trims the region to a window."
     y < 4 - x ^ 2 {y > 0} # color: #2d70b3, fillOpacity: 0.3
 }

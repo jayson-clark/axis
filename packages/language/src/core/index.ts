@@ -51,8 +51,11 @@ export { bracketDelta, joinContinuedLines, leadingClosers } from './brackets';
 export {
     BLOCK_KEYWORDS,
     expandBlockEntries,
+    foldMetadataBlocks,
     insertMissingSeparators,
+    metadataBlockLines,
     missingSeparators,
+    removeRedundantSeparators,
     scanBlockLine,
 } from './blocks';
 export type { BlockFrame, BlockKind, BlockSegment, BlockSegmentKind } from './blocks';

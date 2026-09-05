@@ -144,6 +144,12 @@ touched is the quick version.
   expression list, and the ticker is not in it - so a graph whose only action is
   its ticker gets actions switched off and simply never ticks. The compiler sets
   `actions: true` for a script with a ticker for that reason.
+- **The layout passes run in one order, and it matters.**
+  `foldMetadataBlocks` collapses a `#{ … }` block onto its statement, then
+  `joinContinuedLines` folds a statement split across brackets, then
+  `expandBlockEntries` spreads an inline block back out. Fold first: the join
+  runs lines together with a space, which between two properties would swallow
+  the separator the newline stood for.
 - **Desmos normalises what you give it.** It leaves a bound off the state when
   it matches its own default, and writes a switched-off clickable by omitting
   `enabled` rather than storing `false`. Assert against what it actually

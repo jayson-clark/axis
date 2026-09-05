@@ -246,14 +246,20 @@ function scanLine(text: string): ScannedLine {
         return { code: '', codeStart: 0, brackets: [], unterminatedStringAt: quoteStart };
     }
 
+    // A `#{` opens a block, whose properties are checked one at a time off the
+    // segments they become - each on the line it was written on, which a run
+    // read off a single line could never give them. Here it is only structure:
+    // its braces pair up like any others, and nothing on the line is metadata.
+    const metadataBlock = hashStart !== -1 && text[hashStart + 1] === '{';
+
     // A `#` only opens metadata when what follows reads as properties; anything
     // else - a stray hex colour, a `#` used as a comment - is left in place.
     let metadata: MetadataSpan | undefined;
     const trailing =
-        hashStart === -1
+        hashStart === -1 || metadataBlock
             ? ''
             : text.slice(hashStart + 1, commentStart === -1 ? undefined : commentStart);
-    if (hashStart !== -1 && (trailing.includes(':') || FLAG_PROPERTIES.has(trailing.trim()))) {
+    if (trailing.includes(':') || FLAG_PROPERTIES.has(trailing.trim())) {
         const leading = trailing.length - trailing.trimStart().length;
         metadata = { text: trailing.trim(), start: hashStart + 1 + leading };
     }
@@ -269,8 +275,9 @@ function scanLine(text: string): ScannedLine {
     const codeStart = region.length - region.trimStart().length;
     const code = region.trim();
 
-    // A line whose first character is `#` is a comment, not a statement.
-    if (code.startsWith('#')) {
+    // A line whose first character is `#` is a comment, not a statement - but a
+    // `#{` is the brace that opens a block, and has to be counted as one.
+    if (code.startsWith('#') && !metadataBlock) {
         return { code: '', codeStart, brackets: [], metadata };
     }
 
@@ -347,9 +354,24 @@ function entryLabel(kind: BlockKind): string {
             return 'Table';
         case 'folder':
             return 'Folder';
+        case 'metadata':
+            return 'Metadata';
         default:
             return 'List';
     }
+}
+
+/**
+ * What to say about a separator that is missing.
+ *
+ * Inside a block the newline is the separator, so a comma is only wanted where
+ * one was not taken; inside an ordinary bracket the comma is the only separator
+ * there is.
+ */
+function separatorAdvice(kind: BlockKind): string {
+    return kind === 'list'
+        ? 'List entries are separated by commas'
+        : `Two ${entryLabel(kind).toLowerCase()} entries on one line are separated by a comma`;
 }
 
 /**
@@ -364,6 +386,14 @@ function checkSegments(segments: BlockSegment[], report: Report): void {
     let configBlocks = 0;
 
     for (const segment of segments.filter(entry => !entry.comment)) {
+        // A `#{` header is the statement it annotates with the brace on the
+        // end, so it is checked as one - the brace itself has no spelling to
+        // get wrong.
+        if (segment.kind === 'header' && segment.block?.kind === 'metadata') {
+            checkEntry({ ...segment, text: segment.text.slice(0, -2).trimEnd() }, report);
+            continue;
+        }
+
         if (segment.kind === 'header' && segment.block) {
             checkHeader(segment, segment.block, report);
             if (segment.block.kind === 'config' && ++configBlocks > 1) {
@@ -390,7 +420,7 @@ function checkSegments(segments: BlockSegment[], report: Report): void {
         report(
             'error',
             'missing-comma',
-            `${entryLabel(segment.parent.kind)} entries are separated by commas - add a \`,\` after this one.`,
+            `${separatorAdvice(segment.parent.kind)} - add a \`,\` after this one.`,
             segment.line,
             Math.max(end - 1, segment.start),
             end,
@@ -537,6 +567,24 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         return;
     }
 
+    // A `#{ … }` entry is a property, and is held to the same rules as the one
+    // written after a `#` - which of the two sets it comes from depends on what
+    // the block was opened on, the ticker taking properties of its own.
+    if (segment.parent.kind === 'metadata') {
+        const onTicker = TICKER_KEYWORD.test(segment.parent.header ?? '');
+        checkEntries(
+            code,
+            segment.line,
+            segment.start,
+            onTicker ? TICKER_PROPERTIES : METADATA_PROPERTIES,
+            onTicker ? 'Ticker' : 'Metadata',
+            !onTicker,
+            'unknown-metadata-property',
+            report,
+        );
+        return;
+    }
+
     // Two statements with no comma between them read as one entry: `x = [1, 2]
     // y = [3, 4]` is a single column until the comma is put back.
     const second = findSecondStatement(code);
@@ -544,7 +592,7 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         report(
             'error',
             'missing-comma',
-            `${entryLabel(segment.parent.kind)} entries are separated by commas - add a \`,\` before this one.`,
+            `${separatorAdvice(segment.parent.kind)} - add a \`,\` before this one.`,
             segment.line,
             segment.start + second,
             segment.start + code.length,

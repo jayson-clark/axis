@@ -10,45 +10,45 @@
 N = [1, 2, 3, 4, 5, 6, 7, 8] # hidden
 
 folder "Building lists" {
-    "Arithmetic maps over every element.",
-    squares = N ^ 2 # hidden,
-    "join glues lists together, sort orders them.",
-    both = join(N, squares) # hidden,
-    ordered = sort(both) # hidden,
-    "repeat builds a list of one repeated value.",
-    flat = repeat(3, 5) # hidden,
-    "L[3] indexes, length counts.",
-    third = ordered[3] # hidden,
+    "Arithmetic maps over every element."
+    squares = N ^ 2 # hidden
+    "join glues lists together, sort orders them."
+    both = join(N, squares) # hidden
+    ordered = sort(both) # hidden
+    "repeat builds a list of one repeated value."
+    flat = repeat(3, 5) # hidden
+    "L[3] indexes, length counts."
+    third = ordered[3] # hidden
     size = length(ordered) # hidden
 }
 
 folder "Lists as points" {
-    "Two lists paired coordinate-wise become a list of points.",
-    (N, N ^ 2) # color: #c74440, pointSize: 12,
-    "One list against a function of it.",
-    (N, sqrt(N)) # color: #2d70b3, pointSize: 12,
-    "points: false connects them into a path instead.",
+    "Two lists paired coordinate-wise become a list of points."
+    (N, N ^ 2) # color: #c74440, pointSize: 12
+    "One list against a function of it."
+    (N, sqrt(N)) # color: #2d70b3, pointSize: 12
+    "points: false connects them into a path instead."
     (N, 0.5N) # color: #388c46, points: false, lineWidth: 3
 }
 
 folder "A list of graphs" {
-    "A list where a constant would go draws one curve per element.",
-    K = [-3, -2, -1, 0, 1, 2, 3] # hidden,
-    y = x + K # color: #6042a6, lineOpacity: 0.6,
-    "The same trick on a family of circles.",
-    R = [1, 2, 3, 4] # hidden,
+    "A list where a constant would go draws one curve per element."
+    K = [-3, -2, -1, 0, 1, 2, 3] # hidden
+    y = x + K # color: #6042a6, lineOpacity: 0.6
+    "The same trick on a family of circles."
+    R = [1, 2, 3, 4] # hidden
     x ^ 2 + y ^ 2 = R ^ 2 # color: #fa7e19, lineOpacity: 0.7
 }
 
 folder "Lists built from a rule" {
-    "[1, ..., 10] is the range; `for` runs an expression over it.",
-    S = [i ^ 2 for i = [1, ..., 10]] # hidden,
-    "The comprehension is a list like any other.",
-    (S, sqrt(S)) # color: #c74440, pointSize: 12,
-    "Two variables after `for` pair off every combination.",
-    G = [(a, b) for a = [-4, ..., 4], b = [1, 2]] # color: #2d70b3, pointSize: 8, lines: false,
-    "random() draws a number in [0, 1); random(n) draws a list of n.",
-    seed = random() # hidden,
-    noise = random(length(N)) # hidden,
+    "[1, ..., 10] is the range; `for` runs an expression over it."
+    S = [i ^ 2 for i = [1, ..., 10]] # hidden
+    "The comprehension is a list like any other."
+    (S, sqrt(S)) # color: #c74440, pointSize: 12
+    "Two variables after `for` pair off every combination."
+    G = [(a, b) for a = [-4, ..., 4], b = [1, 2]] # color: #2d70b3, pointSize: 8, lines: false
+    "random() draws a number in [0, 1); random(n) draws a list of n."
+    seed = random() # hidden
+    noise = random(length(N)) # hidden
     (N, noise) # color: #388c46, pointSize: 12, lines: false
 }

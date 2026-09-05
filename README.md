@@ -6,7 +6,7 @@ made of — with a VSCode extension that graphs it as you type.
 
 ```
 config {
-    showGrid: true,
+    showGrid: true
     degreeMode: false
 }
 
@@ -15,8 +15,22 @@ config {
 f(x) = x^2 - 4x + 3     # color: #c74440
 g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
 
+h(x) = e^(-x^2) #{
+    color: #388c46
+    lineStyle: DASHED
+    label: "a bell"
+}
+
 table { x = [1, 2, 3], y = [1, 4, 9] }
 ```
+
+A statement ends at the newline after it, inside a `folder`, a `table`, a
+`config` or a `#{ … }` block just as at the top level — a comma is only needed
+between two of them written on one line.
+
+`# key: value` styles the statement it trails, and `#{ … }` is the same
+properties with room to breathe: one to a line, for when there are more of them
+than fit comfortably behind a `#`.
 
 ## Features
 

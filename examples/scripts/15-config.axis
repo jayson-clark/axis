@@ -8,58 +8,58 @@
 
 config {
     // Angles
-    degreeMode: false,
+    degreeMode: false
 
     // Grid and axes
-    showGrid: true,
-    showXAxis: true,
-    showYAxis: true,
-    xAxisNumbers: true,
-    yAxisNumbers: true,
-    xAxisLabel: "time (s)",
-    yAxisLabel: "height (m)",
-    xAxisStep: 1,
-    yAxisStep: 2,
-    xAxisMinorSubdivisions: 2,
-    yAxisMinorSubdivisions: 2,
-    xAxisArrowMode: POSITIVE,
-    yAxisArrowMode: POSITIVE,
+    showGrid: true
+    showXAxis: true
+    showYAxis: true
+    xAxisNumbers: true
+    yAxisNumbers: true
+    xAxisLabel: "time (s)"
+    yAxisLabel: "height (m)"
+    xAxisStep: 1
+    yAxisStep: 2
+    xAxisMinorSubdivisions: 2
+    yAxisMinorSubdivisions: 2
+    xAxisArrowMode: POSITIVE
+    yAxisArrowMode: POSITIVE
 
     // The viewport - the rectangle of graph the calculator opens on. Desmos
     // keeps these in the graph's state rather than in its calculator options,
     // so they are the one part of a config block that setState carries and
     // updateSettings does not.
-    xmin: -1,
-    xmax: 6,
-    ymin: -5,
-    ymax: 25,
-    squareAxes: false,
+    xmin: -1
+    xmax: 6
+    ymin: -5
+    ymax: 25
+    squareAxes: false
 
     // Coordinate system
-    polarMode: false,
+    polarMode: false
 
     // Interface
-    expressions: true,
-    expressionsCollapsed: false,
-    settingsMenu: true,
-    zoomButtons: true,
-    keypad: true,
-    border: true,
-    lockViewport: false,
-    trace: true,
-    pointsOfInterest: true,
+    expressions: true
+    expressionsCollapsed: false
+    settingsMenu: true
+    zoomButtons: true
+    keypad: true
+    border: true
+    lockViewport: false
+    trace: true
+    pointsOfInterest: true
 
     // Theming
-    backgroundColor: "#ffffff",
-    textColor: "#222222",
-    fontSize: 16,
+    backgroundColor: "#ffffff"
+    textColor: "#222222"
+    fontSize: 16
 
     // Features
-    actions: true,
-    sliders: true,
-    folders: true,
-    notes: true,
-    images: true,
+    actions: true
+    sliders: true
+    folders: true
+    notes: true
+    images: true
     graphpaper: true
 }
 
@@ -79,8 +79,8 @@ y = 0 # color: \C, lineOpacity: 0.4
 
 C = rgb(177, 75, 75)
 folder "The viewport, read back" {
-    "width and height are the viewport in graph units, so an expression can size itself to the window.",
-    y = height / 4 # color: #388c46, lineStyle: DASHED,
-    "A point that stays a fifth of the way in from the left.",
+    "width and height are the viewport in graph units, so an expression can size itself to the window."
+    y = height / 4 # color: #388c46, lineStyle: DASHED
+    "A point that stays a fifth of the way in from the left."
     (-width / 2 + width / 5, height / 4) # color: #388c46, pointSize: 14
 }

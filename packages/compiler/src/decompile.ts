@@ -713,9 +713,9 @@ function trailing(entries: string[]): string {
 /**
  * A block and the entries inside it, one indented statement each.
  *
- * Entries inside a bracket are comma separated however they are laid out, and
- * only the last one may go without - so the comma lands on the line that ends
- * each entry, which for a nested block is its closing brace.
+ * One entry to a line, with nothing between them: a block's entries are
+ * separated by their newlines, the same way top-level statements are, so the
+ * commas a script may still be written with are not written back out.
  */
 function block(
     header: string,
@@ -725,13 +725,9 @@ function block(
 ): string[] {
     const lines = [`${header}${trailing(metadata)}`];
 
-    entries.forEach((entry, position) => {
-        const body = entry.map(line => indentLines(line, indent));
-        if (position < entries.length - 1) {
-            body[body.length - 1] += ',';
-        }
-        lines.push(...body);
-    });
+    for (const entry of entries) {
+        lines.push(...entry.map(line => indentLines(line, indent)));
+    }
 
     return [...lines, '}'];
 }

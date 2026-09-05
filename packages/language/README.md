@@ -27,8 +27,8 @@ const items = getAxisCompletions(source, { line: 3, character: 8 });
 ```
 
 Completions are context-sensitive without a parse: inside a `config` block only
-config properties are offered, after a `#` on the line only metadata properties,
-and otherwise everything in scope. Diagnostics carry an `AxisDiagnosticCode`, so
+config properties are offered, inside a `#{ … }` block or after a `#` on the
+line only metadata properties, and otherwise everything in scope. Diagnostics carry an `AxisDiagnosticCode`, so
 editors and tests can match on the rule rather than on its wording.
 
 ## In an editor
@@ -110,20 +110,20 @@ compiler all read from it, so a function is added in one place.
 
 ## API
 
-| Export                                                                                  |                                                                                   |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `validateAxis(text)`                                                                    | Syntax diagnostics, in document order                                             |
-| `formatAxisCode(text, options)`                                                         | Re-indent and normalise a whole document                                          |
-| `formatAxisCodeWithIndent(...)` / `indentLevelOf(...)`                                  | The same, for a fragment at a known depth (range formatting)                      |
-| `getAxisCompletions(text, position)`                                                    | Completions in context                                                            |
-| `missingImportDiagnostic(located)`                                                      | The diagnostic for an import whose file is not there                              |
-| `findImportStatements` / `parseImportStatement` / `importTitle` / `withAxisExtension`   | Reading `import` statements                                                       |
-| `splitTopLevel` / `splitTrailingMetadata` / `joinContinuedLines` / `expandBlockEntries` | The layout services the compiler shares                                           |
-| `AXIS_MANIFEST` and the `AXIS_*_NAMES` sets                                             | Every name the language knows                                                     |
-| `getFunctionLatex(name)` / `AXIS_LATEX_FOR_CONSTANT`                                    | What the compiler emits for a name                                                |
-| `AXIS_LANGUAGE_ID` / `AXIS_FILE_EXTENSION` / `AXIS_LANGUAGE_CONFIGURATION`              | The identifiers a host registers                                                  |
-| `createDebouncer(ms)`                                                                   | The debouncer both editor bindings validate on                                    |
-| `/monaco` → `registerAxisLanguage(monaco)`                                              | Plus `createAxisMonarchLanguage` and the individual `register*` calls             |
-| `/vscode` → `registerAxisLanguage()`                                                    | Plus the providers, `registerAxisDiagnostics`, `resolveImportUri`, `importExists` |
+| Export                                                                                                         |                                                                                   |
+| -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `validateAxis(text)`                                                                                           | Syntax diagnostics, in document order                                             |
+| `formatAxisCode(text, options)`                                                                                | Re-indent and normalise a whole document                                          |
+| `formatAxisCodeWithIndent(...)` / `indentLevelOf(...)`                                                         | The same, for a fragment at a known depth (range formatting)                      |
+| `getAxisCompletions(text, position)`                                                                           | Completions in context                                                            |
+| `missingImportDiagnostic(located)`                                                                             | The diagnostic for an import whose file is not there                              |
+| `findImportStatements` / `parseImportStatement` / `importTitle` / `withAxisExtension`                          | Reading `import` statements                                                       |
+| `splitTopLevel` / `splitTrailingMetadata` / `foldMetadataBlocks` / `joinContinuedLines` / `expandBlockEntries` | The layout services the compiler shares, in the order it runs them                |
+| `AXIS_MANIFEST` and the `AXIS_*_NAMES` sets                                                                    | Every name the language knows                                                     |
+| `getFunctionLatex(name)` / `AXIS_LATEX_FOR_CONSTANT`                                                           | What the compiler emits for a name                                                |
+| `AXIS_LANGUAGE_ID` / `AXIS_FILE_EXTENSION` / `AXIS_LANGUAGE_CONFIGURATION`                                     | The identifiers a host registers                                                  |
+| `createDebouncer(ms)`                                                                                          | The debouncer both editor bindings validate on                                    |
+| `/monaco` → `registerAxisLanguage(monaco)`                                                                     | Plus `createAxisMonarchLanguage` and the individual `register*` calls             |
+| `/vscode` → `registerAxisLanguage()`                                                                           | Plus the providers, `registerAxisDiagnostics`, `resolveImportUri`, `importExists` |
 
 MIT
