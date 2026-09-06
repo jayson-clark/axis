@@ -16,6 +16,10 @@ function completionKinds(
         keyword: CompletionItemKind.Keyword,
         property: CompletionItemKind.Property,
         variable: CompletionItemKind.Variable,
+        // No host in a browser has files to name, so these two never arrive -
+        // but the map is total, so the compiler says so if that ever changes.
+        file: CompletionItemKind.File,
+        folder: CompletionItemKind.Folder,
     };
 }
 
