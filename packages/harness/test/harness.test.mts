@@ -135,6 +135,7 @@ describe('a real Desmos calculator', { skip }, () => {
                 await calculator().load(script.source, {
                     path: script.path,
                     resolveImport: script.resolveImport,
+                    resolveImage: script.resolveImage,
                 });
 
                 assert.deepEqual(await calculator().getErrors(), []);

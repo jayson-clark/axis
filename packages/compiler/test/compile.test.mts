@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { formatAxisCode, validateAxis, withAxisExtension } from '@axis-dsl/language';
+import {
+    formatAxisCode,
+    imageMediaType,
+    validateAxis,
+    withAxisExtension,
+} from '@axis-dsl/language';
 import { compileAxis } from '../dist/index.js';
 import type { Expression, Folder, GraphImage, Note, Table } from '@axis-dsl/desmos';
 
@@ -46,7 +51,7 @@ describe('images', () => {
         // None of them need be a literal: an image can be sized by a slider and
         // centred on a point the graph works out.
         const image = only<GraphImage>(
-            'image "a.png" # center: (x0, y0), width: 10 * s, angle: -pi / 200, opacity: 0.5',
+            'image "https://example.com/a.png" # center: (x0, y0), width: 10 * s, angle: -pi / 200, opacity: 0.5',
         );
         assert.equal(image.center, '\\left(x_{0},y_{0}\\right)');
         assert.equal(image.width, '10\\cdot s');
@@ -55,7 +60,9 @@ describe('images', () => {
     });
 
     test('carries the flags an image shares with every other statement', () => {
-        const image = only<GraphImage>('image "a.png" # foreground: true, hidden');
+        const image = only<GraphImage>(
+            'image "https://example.com/a.png" # foreground: true, hidden',
+        );
         assert.equal(image.foreground, true);
         assert.equal(image.hidden, true);
     });
@@ -480,6 +487,15 @@ describe('wrapping an example script', () => {
         return { path, source: readFileSync(path, 'utf8') };
     };
 
+    /** And they draw pictures, which are read off disk and inlined. */
+    const resolveImage = (url: string, from: string) => {
+        const path = url.startsWith('/')
+            ? resolve(directory, url.slice(1))
+            : resolve(dirname(from), url);
+        const data = readFileSync(path).toString('base64');
+        return { path, dataUri: `data:${imageMediaType(path)};base64,${data}` };
+    };
+
     // Narrow enough that nearly every statement has to be broken, which is the
     // point: the default of 100 leaves most of them alone.
     const NARROW = { tabSize: 4, insertSpaces: true, maxLineLength: 30 };
@@ -492,8 +508,8 @@ describe('wrapping an example script', () => {
 
             assert.deepEqual(validateAxis(wrapped), [], `wrapping ${name} broke the script`);
             assert.deepEqual(
-                compileAxis(wrapped, { path, resolveImport }),
-                compileAxis(source, { path, resolveImport }),
+                compileAxis(wrapped, { path, resolveImport, resolveImage }),
+                compileAxis(source, { path, resolveImport, resolveImage }),
             );
             assert.equal(formatAxisCode(wrapped, NARROW), wrapped, 'wrapping is not idempotent');
         });
