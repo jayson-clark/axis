@@ -36,6 +36,7 @@ than fit comfortably behind a `#`.
 
 - **Plain text graphs** — version them, diff them, review them
 - **Imports** — `import "./waves.axis"` drops a whole script in, as a folder
+- **Macros** — `macro LERP(a, b, t) …` is substituted away before compiling
 - **Live preview** — the graph updates as you edit
 - **Editor support** — syntax highlighting, completions, formatting, diagnostics
 - **Embeddable** — the compiler, editor and viewer ship as npm packages
@@ -128,6 +129,58 @@ and `compileAxis` hands it back as `ticker` rather than as an expression. It als
 switches `actions` on for you: Desmos decides that setting by looking at the
 expression list alone, so a graph whose only action is its ticker would otherwise
 never tick.
+
+## Macros
+
+A macro is a piece of source with a name. Wherever the name appears it is
+substituted away before anything else is read, so nothing about it reaches
+Desmos — the graph is the one you would have written out by hand.
+
+```
+macro TAU 6.283185
+macro WAVE(k, phase) sin(k * x + phase)
+
+y = WAVE(1, 0) + WAVE(2, TAU / 4)
+```
+
+Without a parameter list a macro stands for a piece of text; with one it takes
+arguments and puts them into its body. The `(` has to touch the name — with a
+space in between, `macro ORIGIN (0, 0)` is a macro whose body is a point.
+
+Substitution is textual, so a macro's body can be anything a statement can
+hold, its metadata included:
+
+```
+macro SWATCH pointSize: 14, showLabel: true
+macro FAINT # lineOpacity: 0.35, lineStyle: DOTTED
+
+(-2, 1) # SWATCH, color: #c74440, label: "one"
+(0, 1)  # SWATCH, color: #2d70b3, label: "two"
+y = x FAINT
+```
+
+The `#` can sit on either side of the substitution — in the body, as `FAINT`
+has it, or on the statement, as `SWATCH` expects — and a body may be written in
+the `#{ … }` spelling too. Expansion happens before a line is read at all, so
+what comes out of it is settled by the same passes that read what you wrote by
+hand: a macro standing for a whole `folder "…" { … }` or for a table's column
+is read as one.
+
+Three things are worth knowing:
+
+- **Definitions are hoisted.** A macro is in scope for the whole compilation —
+  the lines above its definition, and every file that imports the one defining
+  it — so a file of nothing but macros is a library, and where the `macro` line
+  sits is a matter of taste. It belongs at the top level, outside every block,
+  since that is what its scope actually is. Two definitions of one name that
+  disagree are an error rather than a race.
+- **Arguments and expansions are bracketed where brackets change nothing but
+  precedence**, so `macro DOUBLE(x) 2 * x` used as `DOUBLE(1 + 2) ^ 2` is 36
+  rather than 25. Anything brackets would _re-read_ — a run of actions, a
+  point, a whole `y = …` statement — is spliced in exactly as written.
+- **Strings and comments are text.** A note that mentions a macro's name keeps
+  it. And, as in C, a macro is never expanded inside its own expansion, so two
+  that name each other substitute once each and stop.
 
 ## Images
 

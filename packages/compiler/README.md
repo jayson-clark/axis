@@ -130,7 +130,9 @@ it matches its own default, writes a switched-off clickable by omitting
 Three things a graph cannot tell you, and one it cannot hold:
 
 - **Imports are gone.** They were flattened into folders when the script was
-  compiled, so they come back as the folders the reader sees.
+  compiled, so they come back as the folders the reader sees. **Macros are gone**
+  for the same reason and more finally: they were substituted away before the
+  first statement was read, so what comes back is what they expanded to.
 - **Comments are gone**, along with blank lines and anything else the source
   said that the graph does not carry.
 - **A note is one line in double quotes**, and Axis has no escape for either, so
