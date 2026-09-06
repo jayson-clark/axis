@@ -21,6 +21,14 @@ import {
     scanBlockLine,
 } from './blocks';
 import { IMPORT_KEYWORD, parseImportStatement, type LocatedImport } from './imports';
+import {
+    expandMacros,
+    findMacroDefinitions,
+    MACRO_KEYWORD,
+    MacroError,
+    parseMacroDefinition,
+    type MacroDefinition,
+} from './macros';
 import { parseTickerStatement, TICKER_KEYWORD } from './ticker';
 import { splitTopLevelParts, splitTrailingMetadata } from './metadata';
 import {
@@ -51,6 +59,10 @@ export type AxisDiagnosticCode =
     | 'config-placement'
     | 'ticker-placement'
     | 'empty-ticker'
+    | 'macro-syntax'
+    | 'macro-placement'
+    | 'duplicate-macro'
+    | 'macro-arity'
     | 'duplicate-config'
     | 'entry-syntax'
     | 'missing-value'
@@ -85,6 +97,15 @@ export function validateAxis(text: string): AxisDiagnostic[] {
     const diagnostics: AxisDiagnostic[] = [];
     const lines = text.split('\n');
     const scans = lines.map(scanLine);
+    // Gathered before anything is checked, since a macro is in scope for the
+    // whole document however far down it is written. The first definition of a
+    // name is the one kept: a second that disagrees is reported, not obeyed.
+    const macros = new Map<string, MacroDefinition>();
+    for (const definition of findMacroDefinitions(text)) {
+        if (!macros.has(definition.name)) {
+            macros.set(definition.name, definition);
+        }
+    }
     const brackets: BracketFrame[] = [];
     const blocks: BlockFrame[] = [];
     const segments: BlockSegment[] = [];
@@ -130,7 +151,10 @@ export function validateAxis(text: string): AxisDiagnostic[] {
             continue;
         }
 
-        if (scan.metadata) {
+        // A property run that a macro expands into is checked as it is written
+        // rather than as it ends up: the expansion has no columns in this
+        // document to underline, so there is nowhere to put the squiggle.
+        if (scan.metadata && expand(scan.metadata.text, macros) === scan.metadata.text) {
             // Which properties are legal depends on what is being annotated: a
             // ticker takes `minStep` and nothing an expression takes, and an
             // expression takes the reverse.
@@ -152,7 +176,7 @@ export function validateAxis(text: string): AxisDiagnostic[] {
         );
     }
 
-    checkSegments(segments, report);
+    checkSegments(segments, macros, report);
 
     // The checks run in passes rather than strictly left to right, so the list
     // is put back into document order before it is handed to an editor.
@@ -381,7 +405,11 @@ function separatorAdvice(kind: BlockKind): string {
  * raw lines, so a block written inline is held to exactly the same rules as one
  * spread over several lines.
  */
-function checkSegments(segments: BlockSegment[], report: Report): void {
+function checkSegments(
+    segments: BlockSegment[],
+    macros: ReadonlyMap<string, MacroDefinition>,
+    report: Report,
+): void {
     const unseparated = new Set(missingSeparators(segments));
     let configBlocks = 0;
 
@@ -390,7 +418,16 @@ function checkSegments(segments: BlockSegment[], report: Report): void {
         // end, so it is checked as one - the brace itself has no spelling to
         // get wrong.
         if (segment.kind === 'header' && segment.block?.kind === 'metadata') {
-            checkEntry({ ...segment, text: segment.text.slice(0, -2).trimEnd() }, report);
+            // A macro whose body is the block - `macro STYLE #{ … }` - is not a
+            // statement with properties on it, it is a definition of the run.
+            // Only where it is written can be judged from this one line; the
+            // definition itself is read whole, off the flattened document.
+            if (MACRO_KEYWORD.test(segment.text)) {
+                checkMacroPlacement(segment, report);
+                continue;
+            }
+
+            checkEntry({ ...segment, text: segment.text.slice(0, -2).trimEnd() }, macros, report);
             continue;
         }
 
@@ -409,7 +446,7 @@ function checkSegments(segments: BlockSegment[], report: Report): void {
         }
 
         if (segment.kind === 'entry') {
-            checkEntry(segment, report);
+            checkEntry(segment, macros, report);
         }
 
         if (!unseparated.has(segment) || !segment.parent) {
@@ -516,8 +553,32 @@ function checkHeader(segment: BlockSegment, block: BlockFrame, report: Report): 
     }
 }
 
+/** {@link expandMacros}, with a call it cannot expand left as it was written. */
+function expand(text: string, macros: ReadonlyMap<string, MacroDefinition>): string {
+    try {
+        return expandMacros(text, macros);
+    } catch (error) {
+        if (error instanceof MacroError) {
+            return text;
+        }
+        throw error;
+    }
+}
+
 /** Check one statement: its shape, and whether it hides an entry that lost its comma. */
-function checkEntry(segment: BlockSegment, report: Report): void {
+function checkEntry(
+    segment: BlockSegment,
+    macros: ReadonlyMap<string, MacroDefinition>,
+    report: Report,
+): void {
+    // A macro's body is everything after its name, its trailing metadata
+    // included: `macro STYLE # color: blue` defines the whole run, and splitting
+    // the `#` off would leave a definition with nothing to expand to.
+    if (MACRO_KEYWORD.test(segment.text)) {
+        checkMacro(segment.text, segment, macros, report);
+        return;
+    }
+
     // Metadata is checked against its own rules, on the line it was found.
     const { code } = splitTrailingMetadata(segment.text);
     if (!code) {
@@ -532,6 +593,25 @@ function checkEntry(segment: BlockSegment, report: Report): void {
     if (TICKER_KEYWORD.test(code)) {
         checkTicker(code, segment, report);
         return;
+    }
+
+    // Every other statement is a place a macro may be used, and the one thing
+    // substitution can judge for itself is whether a call has the arguments the
+    // definition asks for. Run through the expander rather than a rule of its
+    // own, so an editor and the compiler cannot disagree about what expands.
+    try {
+        expandMacros(code, macros);
+    } catch (error) {
+        if (error instanceof MacroError) {
+            report(
+                'error',
+                'macro-arity',
+                error.message,
+                segment.line,
+                segment.start,
+                segment.start + code.length,
+            );
+        }
     }
 
     const keyword = BLOCK_KEYWORDS.exec(code)?.[1];
@@ -550,6 +630,13 @@ function checkEntry(segment: BlockSegment, report: Report): void {
     }
 
     if (!segment.parent) {
+        return;
+    }
+
+    // A property or a config entry a macro expands into is checked the same way
+    // a trailing run is: not at all, since the text being underlined is not the
+    // text that will be read.
+    if (expand(code, macros) !== code) {
         return;
     }
 
@@ -598,6 +685,79 @@ function checkEntry(segment: BlockSegment, report: Report): void {
             segment.start + code.length,
         );
     }
+}
+
+/**
+ * Check a `macro` statement: that it is a definition at all, that it sits where
+ * one belongs, and that it is the only definition of its name.
+ */
+function checkMacro(
+    code: string,
+    segment: BlockSegment,
+    macros: ReadonlyMap<string, MacroDefinition>,
+    report: Report,
+): void {
+    const { line, start } = segment;
+    const end = start + code.length;
+    let definition: MacroDefinition | undefined;
+
+    try {
+        definition = parseMacroDefinition(code);
+    } catch (error) {
+        report('error', 'macro-syntax', (error as Error).message, line, start, end);
+        return;
+    }
+
+    if (!definition) {
+        report(
+            'error',
+            'macro-syntax',
+            'A macro is written as `macro NAME body` or `macro NAME(a, b) body`.',
+            line,
+            start,
+            end,
+        );
+        return;
+    }
+
+    checkMacroPlacement(segment, report);
+
+    // Defining the same macro twice the same way is harmless; two definitions
+    // that disagree are the compiler's error, since which of them expands would
+    // come down to the order the files happened to be read in.
+    const first = macros.get(definition.name);
+    if (first && !sameMacro(first, definition)) {
+        report(
+            'error',
+            'duplicate-macro',
+            `\`${definition.name}\` is defined twice, with different bodies - remove one of them.`,
+            line,
+            start,
+            end,
+        );
+    }
+}
+
+/**
+ * A macro is a preprocessor directive rather than an expression, so a folder
+ * cannot hold one: it would be in scope for the whole script anyway, and
+ * writing it inside a block says otherwise.
+ */
+function checkMacroPlacement(segment: BlockSegment, report: Report): void {
+    if (segment.parent) {
+        report(
+            'error',
+            'macro-placement',
+            'A macro is in scope for the whole script, so it is written at the top level, outside every folder and table.',
+            segment.line,
+            segment.start,
+            segment.start + segment.text.length,
+        );
+    }
+}
+
+function sameMacro(a: MacroDefinition, b: MacroDefinition): boolean {
+    return a.body === b.body && (a.parameters ?? []).join(',') === (b.parameters ?? []).join(',');
 }
 
 /**
