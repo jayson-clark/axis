@@ -168,6 +168,62 @@ describe('imports', () => {
     });
 });
 
+describe('macros across imports', () => {
+    const latex = (result: { expressions: DesmosExpression[] }) =>
+        result.expressions.filter(e => e.type === 'expression').map(e => (e as Expression).latex);
+
+    test('an imported file brings its macros with it', () => {
+        const result = compile('import "./lib.axis"\ny = TAU * x', {
+            '/lib.axis': 'macro TAU 6.28',
+        });
+        assert.deepEqual(latex(result), ['y=6.28\\cdot x']);
+    });
+
+    test('they are in scope above the import, since definitions are hoisted', () => {
+        const result = compile('y = TAU\nimport "./lib.axis"', { '/lib.axis': 'macro TAU 6.28' });
+        assert.deepEqual(latex(result), ['y=6.28']);
+    });
+
+    test('a macro reaches through an import of an import', () => {
+        const result = compile('import "./a.axis"\ny = TAU', {
+            '/a.axis': 'import "./b.axis"',
+            '/b.axis': 'macro TAU 6.28',
+        });
+        assert.deepEqual(latex(result), ['y=6.28']);
+    });
+
+    test('the entry script may use a macro the import itself uses', () => {
+        const result = compile('import "./lib.axis"\nz = D(2)', {
+            '/lib.axis': 'macro D(x) 2 * x\ny = D(x)',
+        });
+        assert.deepEqual(latex(result), ['y=2\\cdot x', 'z=2\\cdot2']);
+    });
+
+    test('refuses two files that define one macro differently', () => {
+        assert.throws(
+            () =>
+                compile('import "./a.axis"\nimport "./b.axis"', {
+                    '/a.axis': 'macro TAU 6.28',
+                    '/b.axis': 'macro TAU 6.29',
+                }),
+            /defined twice/,
+        );
+    });
+
+    test('a file imported twice defines its macros once', () => {
+        const result = compile('import "./a.axis"\nimport "./b.axis"\ny = TAU', {
+            '/a.axis': 'import "./lib.axis"',
+            '/b.axis': 'import "./lib.axis"',
+            '/lib.axis': 'macro TAU 6.28',
+        });
+        assert.deepEqual(latex(result), ['y=6.28']);
+    });
+
+    test('an import that does not resolve is still reported as one', () => {
+        assert.throws(() => compile('import "./missing.axis"'), /Cannot resolve import/);
+    });
+});
+
 describe('finding imports', () => {
     test('finds them wherever they are written', () => {
         const source = 'y = x\nimport "./a.axis"\nfolder "F" { import "./b.axis" }';
