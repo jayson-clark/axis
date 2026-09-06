@@ -40,6 +40,9 @@ export {
 } from './imports';
 export type { ImportStatement, LocatedImport } from './imports';
 
+export { findAxisLinks } from './links';
+export type { AxisLink, AxisLinkKind } from './links';
+
 export { parseTickerStatement, TICKER_KEYWORD } from './ticker';
 export type { TickerStatement } from './ticker';
 

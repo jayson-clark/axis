@@ -38,7 +38,8 @@ than fit comfortably behind a `#`.
 - **Imports** — `import "./waves.axis"` drops a whole script in, as a folder
 - **Macros** — `macro LERP(a, b, t) …` is substituted away before compiling
 - **Live preview** — the graph updates as you edit
-- **Editor support** — syntax highlighting, completions, formatting, diagnostics
+- **Editor support** — syntax highlighting, completions, formatting, diagnostics,
+  and ctrl-click to open the file an `import` or an `image` names
 - **Embeddable** — the compiler, editor and viewer ship as npm packages
 
 ## Quick start
@@ -105,7 +106,7 @@ the importing script's settings winning wherever the two disagree. A file that
 imports itself, however indirectly, is an error rather than a hang.
 
 A preview watches everything the script imports, so saving any file the graph is
-built from reloads it.
+built from reloads it, and ctrl-clicking a path opens the file it names.
 
 ## Tickers
 
@@ -208,9 +209,9 @@ straight through, which is how Desmos itself stores an image somebody dropped
 onto a graph.
 
 Png, jpg, gif, webp, svg, bmp, ico, apng and avif are read; anything else is an
-error rather than a file a browser is left to guess at. The editor underlines a
-picture that is not there, exactly as it does a missing import, and the preview
-reloads when one is saved.
+error rather than a file a browser is left to guess at. The editor treats a
+picture exactly as it does an import: it underlines one that is not there, opens
+the file on a ctrl-click, and reloads the preview when one is saved.
 
 ## Use it in your own app
 
