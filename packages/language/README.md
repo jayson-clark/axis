@@ -118,6 +118,7 @@ compiler all read from it, so a function is added in one place.
 | `getAxisCompletions(text, position)`                                                                           | Completions in context                                                            |
 | `missingImportDiagnostic(located)`                                                                             | The diagnostic for an import whose file is not there                              |
 | `findImportStatements` / `parseImportStatement` / `importTitle` / `withAxisExtension`                          | Reading `import` statements                                                       |
+| `parseMacroDefinition` / `findMacroDefinitions` / `defineMacro` / `expandMacros`                               | Reading and substituting `macro` definitions                                      |
 | `splitTopLevel` / `splitTrailingMetadata` / `foldMetadataBlocks` / `joinContinuedLines` / `expandBlockEntries` | The layout services the compiler shares, in the order it runs them                |
 | `AXIS_MANIFEST` and the `AXIS_*_NAMES` sets                                                                    | Every name the language knows                                                     |
 | `getFunctionLatex(name)` / `AXIS_LATEX_FOR_CONSTANT`                                                           | What the compiler emits for a name                                                |
