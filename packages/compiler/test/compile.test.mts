@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatAxisCode, validateAxis, withAxisExtension } from '@axis-dsl/language';
 import { compileAxis } from '../dist/index.js';
-import type { Expression, Folder, Note, Table } from '@axis-dsl/desmos';
+import type { Expression, Folder, GraphImage, Note, Table } from '@axis-dsl/desmos';
 
 const compile = (source: string) => compileAxis(source).expressions;
 const only = <T,>(source: string) => compile(source)[0] as T;
@@ -26,6 +26,54 @@ describe('expressions', () => {
     test('gives every expression a distinct id', () => {
         const ids = compile('y = x\nz = 1\nw = 2').map(e => e.id);
         assert.equal(new Set(ids).size, 3);
+    });
+});
+
+describe('images', () => {
+    test('compiles the statement into the image it places', () => {
+        const image = only<GraphImage>(
+            'image "https://example.com/a.png" # name: "A", center: (1, 2), width: 4, height: 3',
+        );
+        assert.equal(image.type, 'image');
+        assert.equal(image.image_url, 'https://example.com/a.png');
+        assert.equal(image.name, 'A');
+        assert.equal(image.center, '\\left(1,2\\right)');
+        assert.equal(image.width, '4');
+        assert.equal(image.height, '3');
+    });
+
+    test('converts every placement property, which Desmos holds as latex', () => {
+        // None of them need be a literal: an image can be sized by a slider and
+        // centred on a point the graph works out.
+        const image = only<GraphImage>(
+            'image "a.png" # center: (x0, y0), width: 10 * s, angle: -pi / 200, opacity: 0.5',
+        );
+        assert.equal(image.center, '\\left(x_{0},y_{0}\\right)');
+        assert.equal(image.width, '10\\cdot s');
+        assert.equal(image.angle, '-\\frac{\\pi}{200}');
+        assert.equal(image.opacity, '0.5');
+    });
+
+    test('carries the flags an image shares with every other statement', () => {
+        const image = only<GraphImage>('image "a.png" # foreground: true, hidden');
+        assert.equal(image.foreground, true);
+        assert.equal(image.hidden, true);
+    });
+});
+
+describe('the blank row', () => {
+    test('compiles a line that is metadata and nothing else', () => {
+        // Desmos lets a graph keep an empty row for spacing. It has a colour
+        // and no expression, and a line of metadata alone is how Axis says so.
+        const [first, blank, last] = compile('y = x\n# color: #c74440\nz = 1') as Expression[];
+        assert.equal(first.latex, 'y=x');
+        assert.equal(blank.latex, undefined);
+        assert.equal(blank.color, '#c74440');
+        assert.equal(last.latex, 'z=1');
+    });
+
+    test('leaves a hash that is not metadata alone', () => {
+        assert.equal(only<Expression>('y = x # ff0000').latex, 'y=x#f_{f0000}');
     });
 });
 
@@ -91,6 +139,118 @@ describe('config', () => {
     });
 });
 
+describe('the ticker', () => {
+    test('compiles the statement into the ticker the state carries', () => {
+        const { ticker } = compileAxis('a = 0\nticker a -> a + 1 # minStep: 50, playing: true');
+        assert.deepEqual(ticker, {
+            handlerLatex: 'a\\to a+1',
+            minStepLatex: '50',
+            playing: true,
+        });
+    });
+
+    test('emits no expression for it - a ticker is not in the list', () => {
+        assert.deepEqual(compile('ticker a -> a + 1'), []);
+    });
+
+    test('switches actions on, since `auto` cannot see a ticker', () => {
+        assert.deepEqual(compileAxis('ticker a -> a + 1').settings, { actions: true });
+        assert.deepEqual(
+            compileAxis('config {\n    actions: false\n}\nticker a -> a + 1').settings,
+            { actions: false },
+        );
+    });
+
+    test('leaves the ticker undefined for a script that has none', () => {
+        assert.equal(compileAxis('y = x').ticker, undefined);
+        assert.equal(compileAxis('ticker').ticker, undefined);
+    });
+
+    test('a variable called ticker is still a variable', () => {
+        const expression = only<Expression>('ticker = 3');
+        assert.equal(expression.latex, 't_{icker}=3');
+    });
+
+    test('the entry script wins over an imported ticker', () => {
+        const { ticker } = compileAxis('import "lib"\nticker b -> b + 1', {
+            resolveImport: () => ({ path: 'lib', source: 'ticker a -> a + 1' }),
+        });
+        assert.equal(ticker?.handlerLatex, 'b\\to b+1');
+    });
+
+    test('an imported ticker applies when the entry script has none', () => {
+        const { ticker } = compileAxis('import "lib"', {
+            resolveImport: () => ({ path: 'lib', source: 'ticker a -> a + 1' }),
+        });
+        assert.equal(ticker?.handlerLatex, 'a\\to a+1');
+    });
+});
+
+describe('a metadata block', () => {
+    test('reads as the run it is the other spelling of', () => {
+        const run = compileAxis('y = x # color: #c74440, lineWidth: 3, lineStyle: DASHED');
+        const block = compileAxis(
+            'y = x #{\n    color: #c74440\n    lineWidth: 3\n    lineStyle: DASHED\n}',
+        );
+        assert.deepEqual(block, run);
+    });
+
+    test('takes a comma between two properties on one line', () => {
+        assert.deepEqual(
+            compileAxis('y = x #{ color: red, lineWidth: 3 }'),
+            compileAxis('y = x # color: red, lineWidth: 3'),
+        );
+    });
+
+    test('keeps a `{…}` value whole across the lines around it', () => {
+        const slider = only<Expression>(
+            'a = 1 #{\n    sliderBounds: {min: 0, max: 5, step: 0.5}\n    playing: true\n}',
+        );
+
+        assert.deepEqual(slider.slider, {
+            min: '0',
+            max: '5',
+            hardMin: true,
+            hardMax: true,
+            step: '0.5',
+            isPlaying: true,
+        });
+    });
+
+    test('annotates a folder from inside its brace', () => {
+        const [folder] = compileAxis('folder "A" { #{\n    collapsed: true\n}\n    y = x\n}')
+            .expressions as [Folder];
+
+        assert.equal(folder.title, 'A');
+        assert.equal(folder.collapsed, true);
+    });
+
+    test('annotates a table column like any other entry', () => {
+        const [table] = compileAxis(
+            'table {\n    x = [1, 2]\n    y = [3, 4] #{\n        color: #388c46\n    }\n}',
+        ).expressions as [Table];
+
+        assert.equal(table.columns[1].color, '#388c46');
+    });
+
+    test('opens the blank row where it annotates nothing', () => {
+        // Properties and no expression is the row Desmos keeps for spacing.
+        const blank = only<Expression>('#{\n    color: #c74440\n}');
+
+        assert.equal(blank.latex, undefined);
+        assert.equal(blank.color, '#c74440');
+    });
+
+    test('carries the ticker’s own properties', () => {
+        const { ticker } = compileAxis(
+            'ticker a -> a + 1 #{\n    minStep: 50\n    playing: true\n}',
+        );
+
+        assert.equal(ticker?.minStepLatex, '50');
+        assert.equal(ticker?.playing, true);
+    });
+});
+
 describe('metadata', () => {
     test('applies styling properties', () => {
         const expression = only<Expression>('y = x # color: #c74440, lineStyle: DASHED');
@@ -121,8 +281,11 @@ describe('metadata', () => {
     });
 
     test('honours clickable: false', () => {
+        // Desmos says "switched off" by leaving `enabled` off rather than by
+        // storing `false`, so the action stays and the flag simply is not there.
         const expression = only<Expression>('p = (1,2) # onClick: a -> a + 1, clickable: false');
-        assert.equal(expression.clickableInfo?.enabled, false);
+        assert.equal(expression.clickableInfo?.enabled, undefined);
+        assert.equal(expression.clickableInfo?.latex, 'a\\to a+1');
     });
 
     test('parses sliderBounds into the slider the graph state carries', () => {
@@ -143,6 +306,38 @@ describe('metadata', () => {
         const expression = only<Expression>('a = 1 # playing: true');
         assert.deepEqual(expression.slider, { isPlaying: true });
     });
+
+    test('a property the script never set is left off the expression entirely', () => {
+        // Not `undefined` under the key: Desmos reads the key as present and
+        // decides nothing for itself, so a point handed `dragMode: undefined`
+        // arrives frozen rather than draggable.
+        const expression = only<Expression>('(1, 2)');
+        assert.deepEqual(Object.keys(expression), ['type', 'id', 'latex']);
+
+        for (const source of [
+            '(1, 2)',
+            '"a note"',
+            'folder "F" {\n    y = x\n}',
+            'table {\n    x = [1, 2]\n}',
+        ]) {
+            for (const compiled of compile(source)) {
+                const undefinedKeys = Object.entries(compiled)
+                    .filter(([, value]) => value === undefined)
+                    .map(([key]) => key);
+                assert.deepEqual(undefinedKeys, [], `${source} left ${undefinedKeys} undefined`);
+            }
+        }
+    });
+
+    test('a table column leaves its unset properties off too', () => {
+        const [column] = only<Table>('table {\n    x = [1, 2]\n}').columns;
+        assert.deepEqual(
+            Object.entries(column)
+                .filter(([, value]) => value === undefined)
+                .map(([key]) => key),
+            [],
+        );
+    });
 });
 
 describe('layout', () => {
@@ -152,10 +347,26 @@ describe('layout', () => {
         assert.deepEqual(inline, expanded);
     });
 
+    test('a block separates its entries by their newlines, as the top level does', () => {
+        const separated = compileAxis('folder "A" {\n    y = x,\n    z = 1\n}');
+        assert.deepEqual(compileAxis('folder "A" {\n    y = x\n    z = 1\n}'), separated);
+    });
+
+    test('a table and a config block do the same', () => {
+        assert.deepEqual(
+            compileAxis('table {\n    x = [1, 2]\n    y = [3, 4]\n}'),
+            compileAxis('table {\n    x = [1, 2],\n    y = [3, 4]\n}'),
+        );
+        assert.deepEqual(
+            compileAxis('config {\n    showGrid: false\n    degreeMode: true\n}'),
+            compileAxis('config {\n    showGrid: false,\n    degreeMode: true\n}'),
+        );
+    });
+
     test('joins a statement split across an open bracket', () => {
         const expression = only<Expression>('P = [\n    (0,0),\n    (4,0)\n]');
         // Desmos takes list brackets bare; only parens and braces are sized.
-        assert.equal(expression.latex, 'P=[\\left(0,0\\right),\\left(4,0\\right)]');
+        assert.equal(expression.latex, 'P=\\left[\\left(0,0\\right),\\left(4,0\\right)\\right]');
     });
 });
 

@@ -2,8 +2,10 @@
 // Desmos API constants
 // ═════════════════════════════════════════════════════════════════════════════
 
-/** Version of the Desmos calculator API every host loads. */
-export const DESMOS_API_VERSION = 'v1.12';
+/**
+ * Version of the Desmos calculator API every host loads.
+ */
+export const DESMOS_API_VERSION = 'v1.13';
 
 /**
  * Origin the calculator is served from. A host that sandboxes the viewer has to

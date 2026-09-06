@@ -148,13 +148,71 @@ describe('imports', () => {
     });
 });
 
+describe('the ticker', () => {
+    test('accepts a ticker at the top level, with or without properties', () => {
+        assert.deepEqual(codes('ticker a -> a + 1'), []);
+        assert.deepEqual(codes('ticker a -> a + 1 # minStep: 50, playing: true, open: true'), []);
+    });
+
+    test('reports a ticker with no action to run', () => {
+        assert.deepEqual(codes('ticker'), ['empty-ticker']);
+    });
+
+    test('reports a ticker written inside a block, since the graph has one', () => {
+        assert.deepEqual(codes('folder "F" {\n    ticker a -> a + 1\n}'), ['ticker-placement']);
+    });
+
+    test('warns on an expression property written on a ticker, and the reverse', () => {
+        assert.deepEqual(codes('ticker a -> a + 1 # lineWidth: 3'), ['unknown-metadata-property']);
+        assert.deepEqual(codes('y = x # minStep: 50'), ['unknown-metadata-property']);
+    });
+
+    test('leaves a name that merely starts with the word alone', () => {
+        assert.deepEqual(codes('tickerRate = 3'), []);
+        assert.deepEqual(codes('ticker = 3'), []);
+    });
+});
+
 describe('entries', () => {
-    test('reports an entry that lost its comma', () => {
-        assert.deepEqual(codes('table {\n  x = [1]\n  y = [2]\n}'), ['missing-comma']);
+    test('separates two entries on two lines by the newline between them', () => {
+        assert.deepEqual(codes('table {\n  x = [1]\n  y = [2]\n}'), []);
+        assert.deepEqual(codes('folder "F" {\n  y = x\n  y = 2x\n}'), []);
+    });
+
+    test('reports two entries run together on one line', () => {
+        assert.deepEqual(codes('table { x = [1] y = [2] }'), ['missing-comma']);
     });
 
     test('accepts a block written inline', () => {
         assert.deepEqual(codes('table { x = [1, 2], y = [1, 4] }'), []);
+    });
+
+    test('takes a for binding as part of the entry, not a second one', () => {
+        // `for` and `with` bind names of their own, so the `=` after one is
+        // theirs - not a statement that has run into this one.
+        assert.deepEqual(codes('folder "F" {\n  y = 1,\n  x = a for a = [-10, 10]\n}'), []);
+        assert.deepEqual(codes('folder "F" {\n  y = 1,\n  z = n a with a = 2\n}'), []);
+    });
+
+    test('takes the newline after such a binding as the end of the entry', () => {
+        assert.deepEqual(codes('folder "F" {\n  x = a for a = [1, 2]\n  y = 3\n}'), []);
+    });
+
+    test('lets a statement carry on past the bracket it was wrapped across', () => {
+        // The comma belongs after the `for`, which ends the entry - not after
+        // the `)`, which only ends the call the entry was written across.
+        const wrapped =
+            'folder "F" {\n  polygon(\n    (1, 2),\n    (3, 4)\n  )for a = [1, 2],\n  y = x\n}';
+        assert.deepEqual(codes(wrapped), []);
+    });
+
+    test('reports a wrapped entry that really is missing its comma', () => {
+        const wrapped = 'folder "F" {\n  polygon(\n    (1, 2),\n    (3, 4)\n  ) y = x\n}';
+        assert.deepEqual(codes(wrapped), ['missing-comma']);
+    });
+
+    test('still separates the entries of an ordinary bracket by commas', () => {
+        assert.deepEqual(codes('P = [\n  (0, 0)\n  (4, 0)\n]'), ['missing-comma']);
     });
 
     test('reports a config entry that is not `key: value`', () => {

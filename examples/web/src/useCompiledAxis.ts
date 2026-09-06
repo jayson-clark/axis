@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { compileAxis } from '@axis-dsl/compiler';
-import { CalculatorOptions, DesmosExpression } from '@axis-dsl/desmos';
+import { CalculatorOptions, DesmosExpression, GraphSettings, TickerState } from '@axis-dsl/desmos';
 
 export interface CompiledAxis {
     expressions: DesmosExpression[];
     settings?: CalculatorOptions;
+    /** The viewport and `squareAxes`, which the viewer applies as graph state. */
+    graph?: GraphSettings;
+    /** The graph's ticker, which the viewer applies the same way. */
+    ticker?: TickerState;
     /** Message from the last failed compile, or null. */
     error: string | null;
     /** True between a source edit and the debounced compile that follows it. */
@@ -24,6 +28,8 @@ export function useCompiledAxis(source: string): CompiledAxis {
     const [result, setResult] = useState<Omit<CompiledAxis, 'isStale'>>(() => ({
         expressions: [],
         settings: undefined,
+        graph: undefined,
+        ticker: undefined,
         error: null,
     }));
     const [isStale, setIsStale] = useState(true);
@@ -36,6 +42,8 @@ export function useCompiledAxis(source: string): CompiledAxis {
                 setResult({
                     expressions: compiled.expressions,
                     settings: compiled.settings,
+                    graph: compiled.graph,
+                    ticker: compiled.ticker,
                     error: null,
                 });
             } catch (error) {

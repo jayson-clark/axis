@@ -2,10 +2,11 @@
 // Formatter - editor-agnostic
 // ═════════════════════════════════════════════════════════════════════════════
 
-import { insertMissingSeparators } from './blocks';
+import { insertMissingSeparators, metadataBlockLines, removeRedundantSeparators } from './blocks';
 import { bracketDelta, leadingClosers } from './brackets';
 import { splitTopLevel, splitTrailingMetadata } from './metadata';
 import { matchingBracket, OPENERS, scanCode } from './scan';
+import { parseTickerStatement } from './ticker';
 import { AxisFormattingOptions } from './types';
 
 /**
@@ -15,6 +16,9 @@ import { AxisFormattingOptions } from './types';
  * turns wrapping off for a caller that wants the old line-for-line behaviour.
  */
 const DEFAULT_MAX_LINE_LENGTH = 100;
+
+/** A block keyword and the name it may carry, as written before the block's `{`. */
+const BLOCK_HEADER = /(?:^|\s)(?:folder\s+"(?:[^"\\]|\\[^])*"|table|config)\s*$/;
 
 /**
  * Re-indent and normalise spacing across a whole document, separate the entries
@@ -35,14 +39,20 @@ export function formatAxisCodeWithIndent(
     options: AxisFormattingOptions,
     initialIndent: number,
 ): string {
-    // Entries inside a bracket are comma separated, so formatting puts back the
-    // separators that were left out rather than leaving the script broken.
-    const lines = insertMissingSeparators(text.split('\n'));
+    // A block's entries are separated by their newlines and, where two share a
+    // line, by a comma. Formatting settles on that one spelling: it puts back
+    // the comma an entry needs rather than leaving the script broken, and takes
+    // out the one at the end of a line, which the newline has already done.
+    const lines = removeRedundantSeparators(insertMissingSeparators(text.split('\n')));
+    // Inside a `#{ … }` block a line is a property, and is spaced as one - the
+    // expression rules would rewrite the text of a label rather than its
+    // layout, turning `"x-y plane"` into `"x - y plane"`.
+    const inMetadata = metadataBlockLines(lines);
     const formatted: string[] = [];
     let indentLevel = initialIndent;
     const indentStr = options.insertSpaces ? ' '.repeat(options.tabSize) : '\t';
 
-    for (const rawLine of lines) {
+    for (const [index, rawLine] of lines.entries()) {
         const trimmed = rawLine.trim();
 
         // Preserve blank lines, minus any trailing whitespace.
@@ -57,7 +67,9 @@ export function formatAxisCodeWithIndent(
         const closers = leadingClosers(trimmed);
         const indent = Math.max(initialIndent, indentLevel - closers);
 
-        for (const line of wrapLine(formatLineContent(trimmed), indent, indentStr, options)) {
+        const content = inMetadata[index] ? formatEntries(trimmed) : formatLineContent(trimmed);
+
+        for (const line of wrapLine(content, indent, indentStr, options)) {
             formatted.push(line.trimEnd());
         }
 
@@ -118,10 +130,29 @@ function wrapLine(
         return [line];
     }
 
-    // Trailing `# key: value` metadata rides on the closing line whole: the
-    // compiler only reads metadata that reaches it on one line, so a wrapped
-    // property list would quietly become an expression of its own.
     const { code, metadata } = splitStatementMetadata(content);
+
+    // A statement short enough on its own is usually made long by what
+    // annotates it, and a `#{ … }` block is where a property list too long for
+    // the line goes: one property to a line, separated by their newlines.
+    if (metadata !== undefined) {
+        const properties = splitTopLevel(metadata, ',')
+            .map(entry => entry.trim())
+            .filter(entry => entry !== '');
+
+        if (properties.length > 1) {
+            const wrapped = [
+                ...wrapLine(`${code} #{`, indent, indentStr, options),
+                ...properties.flatMap(property =>
+                    wrapLine(property, indent + 1, indentStr, options),
+                ),
+                `${indentStr.repeat(indent)}}`,
+            ];
+
+            return longestLength(wrapped) < line.length ? wrapped : [line];
+        }
+    }
+
     const group = overflowingGroup(code, indentStr.length * indent, width);
 
     if (!group) {
@@ -132,11 +163,18 @@ function wrapLine(
         .map(entry => entry.trim())
         .filter(entry => entry !== '');
 
+    // Broken across lines, a block's entries are separated by those newlines
+    // and take no comma; the entries of a list, a call or a piecewise are
+    // separated by commas wherever they are written, and keep them.
+    const separator = BLOCK_HEADER.test(code.slice(0, group.open)) ? '' : ',';
+
+    // A single property rides on the closing line whole; there is nothing to
+    // separate it from, so a block of its own would only cost two lines.
     const wrapped = [
         indentStr.repeat(indent) + code.slice(0, group.open + 1),
         ...entries.flatMap((entry, index) =>
             wrapLine(
-                index < entries.length - 1 ? `${entry},` : entry,
+                index < entries.length - 1 ? `${entry}${separator}` : entry,
                 indent + 1,
                 indentStr,
                 options,
@@ -246,6 +284,14 @@ function formatLineContent(line: string): string {
         return line;
     }
 
+    // A ticker is a keyword and then an expression, so only the expression is
+    // spaced - running the whole line through would read `ticker a` as two
+    // names multiplied together and close the gap between them.
+    const ticker = parseTickerStatement(line);
+    if (ticker) {
+        return ticker.handler ? `ticker ${formatLineContent(ticker.handler)}` : line;
+    }
+
     // Trailing `# key: value` metadata formats differently from the expression
     // it annotates. Where one ends and the other begins is splitTrailingMetadata's
     // decision, the same one the compiler makes - so a `#` that opens no
@@ -255,11 +301,22 @@ function formatLineContent(line: string): string {
         return formatExpression(line);
     }
 
-    const entries = metadata
+    return `${formatExpression(code)} # ${formatEntries(metadata)}`;
+}
+
+/**
+ * Space a `key: value` run, whether it was written after a `#` or on a line of
+ * its own inside a `#{ … }` block.
+ *
+ * Only the punctuation between the entries is touched. A property's value is
+ * left as it was written, since what looks like an operator inside one may be
+ * text - the `-` of a label, the `:` of a note.
+ */
+function formatEntries(text: string): string {
+    return text
         .replace(/\s*:\s*/g, ': ')
         .replace(/\s*,\s*/g, ', ')
         .trim();
-    return `${formatExpression(code)} # ${entries}`;
 }
 
 /**

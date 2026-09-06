@@ -5,8 +5,8 @@
 "Points and polygons"
 
 folder "Single points" {
-    A = (-4, 2) # color: #c74440, pointSize: 15, label: "A", showLabel: true,
-    B = (0, 5) # color: #2d70b3, pointSize: 15, label: "B", showLabel: true,
+    A = (-4, 2) # color: #c74440, pointSize: 15, label: "A", showLabel: true
+    B = (0, 5) # color: #2d70b3, pointSize: 15, label: "B", showLabel: true
     C = (4, 1) # color: #388c46, pointSize: 15, label: "C", showLabel: true
 }
 
@@ -14,25 +14,25 @@ folder "Single points" {
 polygon(A, B, C) # color: #6042a6, fill: true, fillOpacity: 0.2, lineWidth: 3
 
 folder "Geometry helpers" {
-    "distance and midpoint read two points.",
-    side = distance(A, B) # hidden,
-    M = midpoint(A, C) # color: #fa7e19, pointSize: 15, label: "midpoint", showLabel: true,
-    "The median from B to that midpoint.",
+    "distance and midpoint read two points."
+    side = distance(A, B) # hidden
+    M = midpoint(A, C) # color: #fa7e19, pointSize: 15, label: "midpoint", showLabel: true
+    "The median from B to that midpoint."
     Q = [B, M] # color: #fa7e19, points: false, lineStyle: DASHED
 }
 
 folder "A polygon from a list" {
-    "Building the list first keeps the shape editable in one place.",
-    S = [(-6, -2), (-2, -2), (-2, -6), (-6, -6)] # hidden,
+    "Building the list first keeps the shape editable in one place."
+    S = [(-6, -2), (-2, -2), (-2, -6), (-6, -6)] # hidden
     polygon(S) # color: #c74440, fill: true, fillOpacity: 0.35
 }
 
 folder "Point coordinates" {
-    "A point's parts are read with .x and .y",
-    D = (3, -4) # color: #2d70b3, pointSize: 15, dragMode: XY,
-    "Drag D - these follow it.",
-    (D.x, 0) # color: #2d70b3, pointStyle: OPEN, pointSize: 12,
-    (0, D.y) # color: #2d70b3, pointStyle: OPEN, pointSize: 12,
-    y = D.y # color: #2d70b3, lineOpacity: 0.3, lineStyle: DOTTED,
+    "A point's parts are read with .x and .y"
+    D = (3, -4) # color: #2d70b3, pointSize: 15, dragMode: XY
+    "Drag D - these follow it."
+    (D.x, 0) # color: #2d70b3, pointStyle: OPEN, pointSize: 12
+    (0, D.y) # color: #2d70b3, pointStyle: OPEN, pointSize: 12
+    y = D.y # color: #2d70b3, lineOpacity: 0.3, lineStyle: DOTTED
     x = D.x # color: #2d70b3, lineOpacity: 0.3, lineStyle: DOTTED
 }

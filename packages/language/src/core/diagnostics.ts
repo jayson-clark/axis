@@ -7,7 +7,11 @@
 // misspelled property names). Anything that only Desmos can judge - whether an
 // expression evaluates, whether a variable is defined - is left alone.
 
-import { AXIS_CONFIG_PROPERTY_NAMES, AXIS_METADATA_PROPERTY_NAMES } from '../language-manifest';
+import {
+    AXIS_CONFIG_PROPERTY_NAMES,
+    AXIS_METADATA_PROPERTY_NAMES,
+    AXIS_TICKER_PROPERTY_NAMES,
+} from '../language-manifest';
 import {
     BLOCK_KEYWORDS,
     BlockFrame,
@@ -17,6 +21,7 @@ import {
     scanBlockLine,
 } from './blocks';
 import { IMPORT_KEYWORD, parseImportStatement, type LocatedImport } from './imports';
+import { parseTickerStatement, TICKER_KEYWORD } from './ticker';
 import { splitTopLevelParts, splitTrailingMetadata } from './metadata';
 import {
     CLOSER_FOR,
@@ -44,6 +49,8 @@ export type AxisDiagnosticCode =
     | 'import-not-found'
     | 'nested-folder'
     | 'config-placement'
+    | 'ticker-placement'
+    | 'empty-ticker'
     | 'duplicate-config'
     | 'entry-syntax'
     | 'missing-value'
@@ -124,7 +131,10 @@ export function validateAxis(text: string): AxisDiagnostic[] {
         }
 
         if (scan.metadata) {
-            checkMetadata(scan.metadata, i, report);
+            // Which properties are legal depends on what is being annotated: a
+            // ticker takes `minStep` and nothing an expression takes, and an
+            // expression takes the reverse.
+            checkMetadata(scan.metadata, i, TICKER_KEYWORD.test(scan.code), report);
         }
 
         applyBrackets(scan, i, brackets, report);
@@ -236,14 +246,20 @@ function scanLine(text: string): ScannedLine {
         return { code: '', codeStart: 0, brackets: [], unterminatedStringAt: quoteStart };
     }
 
+    // A `#{` opens a block, whose properties are checked one at a time off the
+    // segments they become - each on the line it was written on, which a run
+    // read off a single line could never give them. Here it is only structure:
+    // its braces pair up like any others, and nothing on the line is metadata.
+    const metadataBlock = hashStart !== -1 && text[hashStart + 1] === '{';
+
     // A `#` only opens metadata when what follows reads as properties; anything
     // else - a stray hex colour, a `#` used as a comment - is left in place.
     let metadata: MetadataSpan | undefined;
     const trailing =
-        hashStart === -1
+        hashStart === -1 || metadataBlock
             ? ''
             : text.slice(hashStart + 1, commentStart === -1 ? undefined : commentStart);
-    if (hashStart !== -1 && (trailing.includes(':') || FLAG_PROPERTIES.has(trailing.trim()))) {
+    if (trailing.includes(':') || FLAG_PROPERTIES.has(trailing.trim())) {
         const leading = trailing.length - trailing.trimStart().length;
         metadata = { text: trailing.trim(), start: hashStart + 1 + leading };
     }
@@ -259,8 +275,9 @@ function scanLine(text: string): ScannedLine {
     const codeStart = region.length - region.trimStart().length;
     const code = region.trim();
 
-    // A line whose first character is `#` is a comment, not a statement.
-    if (code.startsWith('#')) {
+    // A line whose first character is `#` is a comment, not a statement - but a
+    // `#{` is the brace that opens a block, and has to be counted as one.
+    if (code.startsWith('#') && !metadataBlock) {
         return { code: '', codeStart, brackets: [], metadata };
     }
 
@@ -337,9 +354,24 @@ function entryLabel(kind: BlockKind): string {
             return 'Table';
         case 'folder':
             return 'Folder';
+        case 'metadata':
+            return 'Metadata';
         default:
             return 'List';
     }
+}
+
+/**
+ * What to say about a separator that is missing.
+ *
+ * Inside a block the newline is the separator, so a comma is only wanted where
+ * one was not taken; inside an ordinary bracket the comma is the only separator
+ * there is.
+ */
+function separatorAdvice(kind: BlockKind): string {
+    return kind === 'list'
+        ? 'List entries are separated by commas'
+        : `Two ${entryLabel(kind).toLowerCase()} entries on one line are separated by a comma`;
 }
 
 /**
@@ -354,6 +386,14 @@ function checkSegments(segments: BlockSegment[], report: Report): void {
     let configBlocks = 0;
 
     for (const segment of segments.filter(entry => !entry.comment)) {
+        // A `#{` header is the statement it annotates with the brace on the
+        // end, so it is checked as one - the brace itself has no spelling to
+        // get wrong.
+        if (segment.kind === 'header' && segment.block?.kind === 'metadata') {
+            checkEntry({ ...segment, text: segment.text.slice(0, -2).trimEnd() }, report);
+            continue;
+        }
+
         if (segment.kind === 'header' && segment.block) {
             checkHeader(segment, segment.block, report);
             if (segment.block.kind === 'config' && ++configBlocks > 1) {
@@ -380,7 +420,7 @@ function checkSegments(segments: BlockSegment[], report: Report): void {
         report(
             'error',
             'missing-comma',
-            `${entryLabel(segment.parent.kind)} entries are separated by commas - add a \`,\` after this one.`,
+            `${separatorAdvice(segment.parent.kind)} - add a \`,\` after this one.`,
             segment.line,
             Math.max(end - 1, segment.start),
             end,
@@ -489,6 +529,11 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         return;
     }
 
+    if (TICKER_KEYWORD.test(code)) {
+        checkTicker(code, segment, report);
+        return;
+    }
+
     const keyword = BLOCK_KEYWORDS.exec(code)?.[1];
     if (keyword) {
         report(
@@ -522,6 +567,24 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         return;
     }
 
+    // A `#{ … }` entry is a property, and is held to the same rules as the one
+    // written after a `#` - which of the two sets it comes from depends on what
+    // the block was opened on, the ticker taking properties of its own.
+    if (segment.parent.kind === 'metadata') {
+        const onTicker = TICKER_KEYWORD.test(segment.parent.header ?? '');
+        checkEntries(
+            code,
+            segment.line,
+            segment.start,
+            onTicker ? TICKER_PROPERTIES : METADATA_PROPERTIES,
+            onTicker ? 'Ticker' : 'Metadata',
+            !onTicker,
+            'unknown-metadata-property',
+            report,
+        );
+        return;
+    }
+
     // Two statements with no comma between them read as one entry: `x = [1, 2]
     // y = [3, 4]` is a single column until the comma is put back.
     const second = findSecondStatement(code);
@@ -529,10 +592,47 @@ function checkEntry(segment: BlockSegment, report: Report): void {
         report(
             'error',
             'missing-comma',
-            `${entryLabel(segment.parent.kind)} entries are separated by commas - add a \`,\` before this one.`,
+            `${separatorAdvice(segment.parent.kind)} - add a \`,\` before this one.`,
             segment.line,
             segment.start + second,
             segment.start + code.length,
+        );
+    }
+}
+
+/**
+ * Check a `ticker` statement: that it has an action to run, and that it is
+ * written where the graph's own ticker belongs.
+ *
+ * A graph has exactly one, kept beside the expression list rather than in it,
+ * so a ticker inside a folder is not a ticker for that folder - it is the same
+ * one graph's ticker, written somewhere misleading.
+ */
+function checkTicker(code: string, segment: BlockSegment, report: Report): void {
+    const { line, start } = segment;
+    const end = start + code.length;
+    const handler = parseTickerStatement(code)?.handler;
+
+    if (!handler) {
+        report(
+            'error',
+            'empty-ticker',
+            'A ticker is written as `ticker a -> a + 1` - give it an action to run.',
+            line,
+            start,
+            end,
+        );
+        return;
+    }
+
+    if (segment.parent) {
+        report(
+            'error',
+            'ticker-placement',
+            'A ticker belongs to the whole graph, so it is written at the top level, outside every folder and table.',
+            line,
+            start,
+            end,
         );
     }
 }
@@ -662,15 +762,21 @@ function checkEntries(
 
 const CONFIG_PROPERTIES = new Set(AXIS_CONFIG_PROPERTY_NAMES);
 const METADATA_PROPERTIES = new Set(AXIS_METADATA_PROPERTY_NAMES);
+const TICKER_PROPERTIES = new Set(AXIS_TICKER_PROPERTY_NAMES);
 
-function checkMetadata(metadata: MetadataSpan, line: number, report: Report): void {
+function checkMetadata(
+    metadata: MetadataSpan,
+    line: number,
+    onTicker: boolean,
+    report: Report,
+): void {
     checkEntries(
         metadata.text,
         line,
         metadata.start,
-        METADATA_PROPERTIES,
-        'Metadata',
-        true,
+        onTicker ? TICKER_PROPERTIES : METADATA_PROPERTIES,
+        onTicker ? 'Ticker' : 'Metadata',
+        !onTicker,
         'unknown-metadata-property',
         report,
     );
@@ -685,6 +791,10 @@ function checkMetadata(metadata: MetadataSpan, line: number, report: Report): vo
  *
  * Only assignments are looked for: they are what a table column or a defined
  * value is written as, and so are what a missing comma runs together.
+ *
+ * A `for` or a `with` binds names of its own - `x = a for a = [-10, 10]` - and
+ * every `=` after one belongs to it rather than to a statement that has run
+ * into this one, so the search stops where the bindings start.
  */
 function findSecondStatement(text: string): number {
     let seen = 0;
@@ -693,6 +803,9 @@ function findSecondStatement(text: string): number {
     scanCode(
         text,
         (char, index, depth) => {
+            if (depth <= 0 && /[a-zA-Z]/.test(char) && opensBindings(text, index)) {
+                return true;
+            }
             if (
                 char === '=' &&
                 depth <= 0 &&
@@ -708,6 +821,14 @@ function findSecondStatement(text: string): number {
     );
 
     return start;
+}
+
+/** Whether the word at `index` is a `for` or a `with` taking bindings. */
+function opensBindings(text: string, index: number): boolean {
+    return (
+        /^(?:for|with)(?![a-zA-Z0-9_])/.test(text.slice(index)) &&
+        !/[a-zA-Z0-9_]/.test(text[index - 1] ?? '')
+    );
 }
 
 /** Walk back from an `=` over the name - `x`, or `f(t)` - being defined. */

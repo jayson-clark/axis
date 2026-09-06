@@ -10,7 +10,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { AXIS_METADATA_PROPERTY_NAMES } from '@axis-dsl/language';
-import type { Expression, Folder } from '@axis-dsl/desmos';
+import type { Expression, Folder, GraphImage } from '@axis-dsl/desmos';
 import { compileAxis } from '@axis-dsl/compiler';
 import { skip, useCalculator } from './support.mts';
 
@@ -26,15 +26,36 @@ interface PropertyCase {
     source: string;
     expected: Record<string, unknown>;
     at?: number;
+    /**
+     * Set for a property Desmos writes into a state and then refuses to read
+     * back out of one. `expected` is what the applied graph holds instead, so
+     * the surprise is pinned rather than skipped.
+     */
+    dropped?: true;
 }
+
+/** A 1x1 transparent GIF, quoted as the `image` statement takes it. */
+const IMAGE = '"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"';
 
 const PROPERTIES: Record<string, PropertyCase> = {
     color: { source: 'y = x # color: #ff0000', expected: { color: '#ff0000' } },
+    colorLatex: {
+        source: 'C = rgb(255, 0, 0)\ny = x # colorLatex: C',
+        expected: { colorLatex: 'C' },
+    },
     lineStyle: { source: 'y = x # lineStyle: DASHED', expected: { lineStyle: 'DASHED' } },
     lineWidth: { source: 'y = x # lineWidth: 5', expected: { lineWidth: '5' } },
     lineOpacity: { source: 'y = x # lineOpacity: 0.3', expected: { lineOpacity: '0.3' } },
     pointStyle: { source: '(1, 2) # pointStyle: OPEN', expected: { pointStyle: 'OPEN' } },
     pointSize: { source: '(1, 2) # pointSize: 20', expected: { pointSize: '20' } },
+    // Only a *draggable* point keeps this. Desmos drops it from a point whose
+    // coordinates are literals, since such a point can never be moved — which
+    // is why the case defines the coordinates as free variables first.
+    movablePointSize: {
+        source: 'a = 1\nb = 2\n(a, b) # movablePointSize: 20',
+        expected: { movablePointSize: '20' },
+        at: 2,
+    },
     pointOpacity: { source: '(1, 2) # pointOpacity: 0.4', expected: { pointOpacity: '0.4' } },
     fillOpacity: { source: 'y < x # fillOpacity: 0.7', expected: { fillOpacity: '0.7' } },
     hidden: { source: 'y = x # hidden: true', expected: { hidden: true } },
@@ -46,6 +67,10 @@ const PROPERTIES: Record<string, PropertyCase> = {
     showLabel: {
         source: '(1, 2) # label: "P", showLabel: true',
         expected: { label: 'P', showLabel: true },
+    },
+    suppressTextOutline: {
+        source: '(1, 2) # label: "P", showLabel: true, suppressTextOutline: true',
+        expected: { suppressTextOutline: true },
     },
     labelSize: {
         source: '(1, 2) # label: "P", labelSize: 2',
@@ -85,6 +110,70 @@ const PROPERTIES: Record<string, PropertyCase> = {
         source: 'a = 5 # sliderBounds: {min: 1, max: 9}, playing: true',
         expected: { slider: { min: '1', max: '9', hardMin: true, hardMax: true, isPlaying: true } },
     },
+    loopMode: {
+        source: 'a = 5 # sliderBounds: {min: 1, max: 9}, playing: true, loopMode: LOOP_FORWARD',
+        expected: {
+            slider: {
+                min: '1',
+                max: '9',
+                hardMin: true,
+                hardMax: true,
+                isPlaying: true,
+                loopMode: 'LOOP_FORWARD',
+            },
+        },
+    },
+    playDirection: {
+        source: 'a = 5 # sliderBounds: {min: 1, max: 9}, playDirection: -1',
+        expected: {
+            slider: { min: '1', max: '9', hardMin: true, hardMax: true, playDirection: -1 },
+        },
+    },
+    // Desmos writes this into a graph it saves and drops it from one it is
+    // given, playing or not - so a script can carry the speed a graph was
+    // saved with, and no more. The compiler still emits it, which is what
+    // keeps a decompiled graph the graph it was read from.
+    animationPeriod: {
+        source: 'a = 5 # sliderBounds: {min: 1, max: 9}, playing: true, animationPeriod: 4000',
+        expected: {
+            slider: { min: '1', max: '9', hardMin: true, hardMax: true, isPlaying: true },
+        },
+        dropped: true,
+    },
+    pointOutline: {
+        source: '(1, 2) # pointOutline: true',
+        expected: { pointOutline: true },
+    },
+    // Desmos keeps the same bounds twice, so one property in the script sets
+    // both keys; `parametricDomain` is the second of them written on its own.
+    domain: {
+        source: '(cos(t), sin(t)) # domain: {min: 0, max: 2pi}',
+        expected: {
+            domain: { min: '0', max: '2\\pi' },
+            parametricDomain: { min: '0', max: '2\\pi' },
+        },
+    },
+    parametricDomain: {
+        source: '(cos(t), sin(t)) # domain: {min: 0, max: 2pi}, parametricDomain: {min: 0.5, max: 2pi}',
+        expected: { parametricDomain: { min: '0.5', max: '2\\pi' } },
+    },
+    polarDomain: {
+        source: 'config {\n    polarMode: true\n}\nr = theta # polarDomain: {min: 0, max: 2pi}',
+        expected: { polarDomain: { min: '0', max: '2\\pi' } },
+    },
+    name: { source: `image ${IMAGE} # name: "A"`, expected: { name: 'A' } },
+    center: {
+        source: `image ${IMAGE} # center: (1, 2)`,
+        expected: { center: '\\left(1,2\\right)' },
+    },
+    width: { source: `image ${IMAGE} # width: 4`, expected: { width: '4' } },
+    height: { source: `image ${IMAGE} # height: 3`, expected: { height: '3' } },
+    angle: {
+        source: `image ${IMAGE} # angle: -pi / 200`,
+        expected: { angle: '-\\frac{\\pi}{200}' },
+    },
+    opacity: { source: `image ${IMAGE} # opacity: 0.5`, expected: { opacity: '0.5' } },
+    foreground: { source: `image ${IMAGE} # foreground: true`, expected: { foreground: true } },
     collapsed: {
         source: 'folder "F" { # collapsed: true\ny = x\n}',
         expected: { collapsed: true },
@@ -102,8 +191,8 @@ describe('expression metadata', { skip }, () => {
         assert.deepEqual(missing, [], 'metadata properties with no test');
     });
 
-    for (const [property, { source, expected, at }] of Object.entries(PROPERTIES)) {
-        test(`${property} reaches the calculator`, async () => {
+    for (const [property, { source, expected, at, dropped }] of Object.entries(PROPERTIES)) {
+        test(`${property} ${dropped ? 'is dropped by the calculator' : 'reaches the calculator'}`, async () => {
             const compiled = compileAxis(source).expressions;
             const target = compiled.at(at ?? -1);
             assert.ok(target?.id, `${property} compiled to nothing to look for`);
@@ -111,29 +200,66 @@ describe('expression metadata', { skip }, () => {
             await calculator().load(source);
             const list = (await calculator().getState()).expressions?.list ?? [];
             const applied = list.find(expression => expression.id === target.id) as Expression &
-                Folder;
+                Folder &
+                GraphImage;
             assert.ok(applied, `${property}'s expression is not in the graph at all`);
 
             const actual = Object.fromEntries(
                 Object.keys(expected).map(key => [key, applied[key as keyof typeof applied]]),
             );
 
-            assert.deepEqual(withoutPlayDirection(actual), expected);
+            assert.deepEqual(withoutPlayDirection(actual, expected), expected);
         });
     }
+
+    test('a draggable point is drawn the way the script asked, not Desmos’ way', async () => {
+        // Desmos draws a point it decides is movable with a style and a size of
+        // its own: the author's style goes into a stash, and `pointSize` is
+        // ignored in favour of `movablePointSize`. So a big square point
+        // silently arrives as a small round one the moment its coordinates turn
+        // out to be draggable — which is what makes this worth pinning.
+        //
+        // Neither is anything a script should have to know. Axis applies every
+        // graph with `doNotMigrateMovablePointStyle` for the style, and
+        // compiles `pointSize` into both sizes; the script below says neither.
+        await calculator().load('a = 1\nb = 2\n(a, b) # pointStyle: SQUARE, pointSize: 30');
+        const list = (await calculator().getState()).expressions?.list ?? [];
+        const point = list.find(entry => (entry as Expression).latex?.includes('a,b')) as Record<
+            string,
+            unknown
+        >;
+
+        assert.ok(point, 'the point is not in the graph at all');
+        // The style comes back under the stashed key: that is simply where a
+        // movable point's style lives, and undoing that is an importer's job.
+        assert.equal(point.__stashed_V12PointStyle ?? point.pointStyle, 'SQUARE');
+        // Desmos drops this from a point it does not consider movable, so it
+        // surviving is also the assertion that the point still is one.
+        assert.equal(point.movablePointSize, '30');
+    });
 });
 
 /**
- * Drop the one slider key Desmos keeps for itself.
+ * Drop a `playDirection` the graph grew rather than the script asked for.
  *
- * `playDirection` appears the moment a playing slider turns around at an end,
- * so whether it is on the state depends on how long the graph has been open -
- * and it is not something Axis ever writes. Every other key is under test.
+ * Desmos adds one the moment a playing slider turns around at an end, so
+ * whether it is on the state depends on how long the graph has been open. A
+ * case that sets the direction itself expects it and keeps it; every other key
+ * is under test either way.
  */
-function withoutPlayDirection(state: Record<string, unknown>): Record<string, unknown> {
+function withoutPlayDirection(
+    state: Record<string, unknown>,
+    expected: Record<string, unknown>,
+): Record<string, unknown> {
     const slider = state.slider;
+    const wanted = expected.slider;
 
-    if (slider === null || typeof slider !== 'object' || !('playDirection' in slider)) {
+    if (
+        slider === null ||
+        typeof slider !== 'object' ||
+        !('playDirection' in slider) ||
+        (typeof wanted === 'object' && wanted !== null && 'playDirection' in wanted)
+    ) {
         return state;
     }
 
@@ -186,6 +312,18 @@ describe('metadata Desmos acts on', { skip }, () => {
         assert.ok(await calculator().click({ x: 1, y: 2 }), 'the point was off screen');
 
         assert.equal((await calculator().evaluate('a')).numericValue, 1);
+    });
+
+    test('a point the script says nothing about is still Desmos\u2019 to drag', async () => {
+        // A property the script never wrote has to reach Desmos as a missing
+        // key, not as an undefined one: `dragMode: undefined` reads as present,
+        // and Desmos stops deciding for itself - the point arrives frozen where
+        // `AUTO` would have let it be dragged along its slider. `getState` shows
+        // nothing of this either way; `getExpressions` is where the default is.
+        await calculator().load('a = 1 # sliderBounds: {min: 0, max: 5}\n(a, 2)');
+        const [, point] = await calculator().getExpressions();
+
+        assert.equal((point as Expression).dragMode, 'AUTO');
     });
 
     test('a secret folder hides its contents from the state by default', async () => {

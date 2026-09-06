@@ -99,6 +99,25 @@ export function convertFromLatex(latex: string): string {
     while (index < latex.length) {
         const rest = latex.slice(index);
 
+        // A bar holding another bar. Axis reads a bar as an opener or a closer
+        // from what precedes it, which recovers the nesting in every case but
+        // one - `||x|-1|`, where a bar follows a bar. So the bars are written
+        // and then checked, exactly as a name is: where they do not compile
+        // back to what they were read from, `abs` says the same thing and nests
+        // unambiguously.
+        if (rest.startsWith('\\left|')) {
+            const bars = readBars(latex, index);
+            if (bars) {
+                const body = convertFromLatex(bars.body);
+                const written = `|${body}|`;
+                emit(
+                    pairsTheSame(written, latex.slice(index, bars.end)) ? written : `abs(${body})`,
+                );
+                index = bars.end;
+                continue;
+            }
+        }
+
         // `\left(` and its family, back to the bare bracket they size.
         const delimiter = /^\\(?:left|right)(\\[{}]|[([|)\].])/.exec(rest);
         if (delimiter) {
@@ -157,10 +176,22 @@ export function convertFromLatex(latex: string): string {
         if (rest.startsWith('^{')) {
             const group = readGroup(latex, index + 1);
             if (group) {
-                output += `^(${convertFromLatex(group.body)})`;
+                output += `^${bracketed(convertFromLatex(group.body))}`;
                 index = group.end;
                 continue;
             }
+        }
+
+        // Desmos' explicit spaces. `\ ` and `\space` are visual only - they
+        // separate what is written without changing what it means - and Axis
+        // has no syntax for either. Passed through, the backslash reaches the
+        // compiler, which escapes it back out as `\\`: not a space, and not
+        // valid latex. A plain space says the same thing and survives.
+        const spacing = /^\\(?: |space(?![a-zA-Z]))/.exec(rest);
+        if (spacing) {
+            output += ' ';
+            index += spacing[0].length;
+            continue;
         }
 
         const command = /^\\[a-zA-Z]+/.exec(rest);
@@ -168,6 +199,15 @@ export function convertFromLatex(latex: string): string {
             const written = readCommand(latex, index, command[0]);
             emit(written.text);
             index = written.end;
+            if (FUNCTION_FOR_COMMAND.has(command[0]) && /^[a-zA-Z0-9]/.test(latex.slice(index))) {
+                // `\cos2\pi t` is the function and then what it takes. Written
+                // closed up they would be the single name `cos2pi`, so the
+                // space the compiler dropped goes back - the same repair the
+                // multi-letter functions get above. `emit` alone does not cover
+                // it: it separates a letter from a letter, and the digit that
+                // opens `2\pi` is what runs into the name here.
+                output += ' ';
+            }
             continue;
         }
 
@@ -185,11 +225,66 @@ export function convertFromLatex(latex: string): string {
             continue;
         }
 
+        // Any other group Desmos hung off a subscript, which is how the bounds
+        // of a `\sum` or `\prod` are written. The names above have already had
+        // their turn, so what is left here is not a name - and brackets are the
+        // only grouping Axis has to put it in.
+        if (rest.startsWith('_{')) {
+            const group = readGroup(latex, index + 1);
+            if (group) {
+                output += `_${bracketed(convertFromLatex(group.body))}`;
+                index = group.end;
+                continue;
+            }
+        }
+
+        // A plain letter, which in latex stands on its own: `yn` is `y` times
+        // `n`, where the same two letters written closed up in Axis are the
+        // single name `y_{n}`. `emit` puts the space back where they meet.
+        if (/[a-zA-Z]/.test(latex[index])) {
+            emit(latex[index]);
+            index += 1;
+            continue;
+        }
+
         output += latex[index];
         index += 1;
     }
 
     return output;
+}
+
+/**
+ * `text` in the brackets that group it, unless it is one group already.
+ *
+ * `x^{\left(n-1\right)}` is a group holding a bracketed expression, and
+ * writing both would give `x^((n-1))` - brackets Desmos then draws.
+ */
+function bracketed(text: string): string {
+    return isOneGroup(text) ? text : `(${text})`;
+}
+
+/** Whether `text` is a single bracketed group, brackets included. */
+function isOneGroup(text: string): boolean {
+    if (!text.startsWith('(') || !text.endsWith(')')) {
+        return false;
+    }
+
+    let depth = 0;
+    for (let i = 0; i < text.length; i++) {
+        if (text[i] === '(') {
+            depth++;
+        } else if (text[i] === ')') {
+            depth--;
+            // Closed before the end, so the opening bracket is not the one that
+            // closes at the end: `(a)+(b)` is two groups, not one.
+            if (depth === 0 && i < text.length - 1) {
+                return false;
+            }
+        }
+    }
+
+    return depth === 0;
 }
 
 /**
@@ -238,6 +333,20 @@ function readCommand(latex: string, index: number, command: string): { text: str
 }
 
 /**
+ * Whether `code` compiles to bars paired exactly as `latex` pairs them.
+ *
+ * Only the bars: every other delimiter is sized or not according to how the
+ * expression was written, and `\left[1...n\right]` means what `[1...n]` means.
+ * A bar is the one delimiter whose `\left` or `\right` says which end of a pair
+ * it is, so that is the difference this looks for and the rest is normalised
+ * away.
+ */
+function pairsTheSame(code: string, latex: string): boolean {
+    const bars = (text: string) => text.replace(/\\(?:left|right)(?!\|)/g, '');
+    return bars(convertToLatex(code)) === bars(latex);
+}
+
+/**
  * A name split across a subscript, closed back up - but only if it compiles
  * back to what it was read from.
  *
@@ -274,10 +383,46 @@ function formatFraction(
     const bare = (part: string) => /^[a-zA-Z0-9]+$/.test(part);
 
     const top = bare(numerator) && !afterName ? numerator : `(${numerator})`;
+
+    // A bare denominator only stays bare when nothing runs into it. A letter or
+    // digit would join it as one name; a `.` would take the accessor that
+    // belongs to the whole fraction - `\frac{a+b}{2}.x` is the x of the
+    // fraction, and `(a+b)/2.x` divides by `2.x` instead.
     const bottom =
-        bare(denominator) && !/^[a-zA-Z0-9]/.test(rest) ? denominator : `(${denominator})`;
+        bare(denominator) && !/^[a-zA-Z0-9.]/.test(rest) ? denominator : `(${denominator})`;
 
     return `${top}/${bottom}`;
+}
+
+/**
+ * The body and extent of the `\left| … \right|` opening at `index`.
+ *
+ * Depth counts every `\left` and `\right` whatever they delimit, so a bracket
+ * or a nested bar inside is stepped over whole.
+ */
+function readBars(latex: string, index: number): { body: string; end: number } | undefined {
+    const start = index + '\\left|'.length;
+    let depth = 1;
+    let cursor = start;
+
+    while (cursor < latex.length) {
+        if (latex.startsWith('\\left', cursor)) {
+            depth++;
+            cursor += '\\left'.length;
+        } else if (latex.startsWith('\\right', cursor)) {
+            depth--;
+            if (depth === 0) {
+                return latex[cursor + '\\right'.length] === '|'
+                    ? { body: latex.slice(start, cursor), end: cursor + '\\right|'.length }
+                    : undefined;
+            }
+            cursor += '\\right'.length;
+        } else {
+            cursor++;
+        }
+    }
+
+    return undefined;
 }
 
 /** The two groups of a `\frac`, if both are there. */

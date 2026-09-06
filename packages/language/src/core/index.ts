@@ -30,6 +30,9 @@ export {
 } from './imports';
 export type { ImportStatement, LocatedImport } from './imports';
 
+export { parseTickerStatement, TICKER_KEYWORD } from './ticker';
+export type { TickerStatement } from './ticker';
+
 export { createDebouncer } from './debounce';
 export type { Debouncer } from './debounce';
 
@@ -39,6 +42,7 @@ export type { AxisDiagnostic, AxisDiagnosticCode, AxisDiagnosticSeverity } from 
 export { formatAxisCode, formatAxisCodeWithIndent, indentLevelOf } from './formatter';
 
 export { splitTopLevel, splitTopLevelParts, splitTrailingMetadata } from './metadata';
+export { escapeString, unescapeString } from './strings';
 export type { SplitLine, TopLevelPart } from './metadata';
 
 // The layout services the compiler leans on to read a script the same way an
@@ -47,8 +51,11 @@ export { bracketDelta, joinContinuedLines, leadingClosers } from './brackets';
 export {
     BLOCK_KEYWORDS,
     expandBlockEntries,
+    foldMetadataBlocks,
     insertMissingSeparators,
+    metadataBlockLines,
     missingSeparators,
+    removeRedundantSeparators,
     scanBlockLine,
 } from './blocks';
 export type { BlockFrame, BlockKind, BlockSegment, BlockSegmentKind } from './blocks';

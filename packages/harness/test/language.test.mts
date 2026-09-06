@@ -59,6 +59,7 @@ const CALLS: Record<string, string> = {
     // statistics — over a list
     total: 'total([1, 2, 3])',
     length: 'length([1, 2, 3])',
+    count: 'count([1, 2, 3])',
     mean: 'mean([1, 2, 3])',
     median: 'median([1, 2, 3])',
     min: 'min([1, 2, 3])',
@@ -92,6 +93,10 @@ const CALLS: Record<string, string> = {
     nCr: 'nCr(5, 2)',
     nPr: 'nPr(5, 2)',
     factorial: 'factorial(5)',
+
+    // audio — a frequency in hertz and a volume of 0 to 1. Nothing is heard in
+    // a headless browser, but Desmos still says whether it knows the name.
+    tone: 'tone(440, 0.5)',
 };
 
 /**
@@ -248,6 +253,10 @@ const OPERATOR_USES: Record<string, string> = {
     width: 'a = width',
     height: 'a = height',
     for: 'S = [i ^ 2 for i = [1, ..., 10]]',
+    with: 'a = n ^ 2 with n = 3',
+    // `index` only exists where Desmos is walking a list one element at a time,
+    // which is a clickable action on a list of points and nowhere else.
+    index: 'P = [(1, 1), (2, 2)] # onClick: n -> index\nn = 0',
 };
 
 describe('every bare operator the language offers', { skip }, () => {
@@ -285,6 +294,17 @@ describe('every bare operator the language offers', { skip }, () => {
         assert.deepEqual(await calculator().getErrors(), []);
         const area = (await calculator().evaluate('c')).numericValue;
         assert.ok(area > 0 && Number.isFinite(area), `width * height came out as ${area}`);
+    });
+
+    test('with names a value for the expression in front of it', async () => {
+        // Left to the subscript rule this would be `w_{ith}`, an undefined
+        // variable multiplying whatever follows it.
+        assert.equal(convertToLatex('a = n ^ 2 with n = 3'), 'a=n^2\\operatorname{with}n=3');
+
+        await calculator().load('a = n ^ 2 with n = 3');
+
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((await calculator().evaluate('a')).numericValue, 9);
     });
 
     test('a name that merely opens with an operator is still a variable', async () => {

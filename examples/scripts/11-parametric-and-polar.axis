@@ -12,30 +12,30 @@ config {
 "Parametric curves"
 
 folder "Parametric" {
-    "The unit circle.",
-    (cos(t), sin(t)) # color: #c74440, lineWidth: 3,
-    "An ellipse: different radii per axis.",
-    (3cos(t), 2sin(t)) # color: #2d70b3, lineWidth: 3,
-    "An Archimedean spiral - t runs further than one turn.",
-    (0.3t * cos(t), 0.3t * sin(t)) # color: #388c46, lineWidth: 2,
-    "A Lissajous figure.",
+    "The unit circle."
+    (cos(t), sin(t)) # color: #c74440, lineWidth: 3
+    "An ellipse: different radii per axis."
+    (3cos(t), 2sin(t)) # color: #2d70b3, lineWidth: 3
+    "An Archimedean spiral - t runs further than one turn."
+    (0.3t * cos(t), 0.3t * sin(t)) # color: #388c46, lineWidth: 2
+    "A Lissajous figure."
     (2sin(3t), 2sin(4t)) # color: #6042a6, lineWidth: 2
 }
 
 folder "Polar" {
-    "Turn on polarMode in config for polar grid lines.",
-    r = 3 # color: #c74440, lineWidth: 3,
-    "A four-petal rose.",
-    r = 3cos(2theta) # color: #2d70b3, lineWidth: 3,
-    "A cardioid.",
-    r = 1 + cos(theta) # color: #388c46, lineWidth: 3,
-    "A logarithmic spiral.",
+    "Turn on polarMode in config for polar grid lines."
+    r = 3 # color: #c74440, lineWidth: 3
+    "A four-petal rose."
+    r = 3cos(2theta) # color: #2d70b3, lineWidth: 3
+    "A cardioid."
+    r = 1 + cos(theta) # color: #388c46, lineWidth: 3
+    "A logarithmic spiral."
     r = exp(0.2theta) # color: #fa7e19, lineWidth: 2
 }
 
 folder "A point travelling a curve" {
-    s = 0 # sliderBounds: {min: 0, max: 6.28, step: 0.01}, playing: true,
-    (3cos(s), 2sin(s)) # color: #c74440, pointSize: 18,
-    "Its position vector.",
+    s = 0 # sliderBounds: {min: 0, max: 6.28, step: 0.01}, playing: true
+    (3cos(s), 2sin(s)) # color: #c74440, pointSize: 18
+    "Its position vector."
     V = [(0, 0), (3cos(s), 2sin(s))] # color: #c74440, points: false, lineStyle: DASHED
 }

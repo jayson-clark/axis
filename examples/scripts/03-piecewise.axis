@@ -30,7 +30,7 @@ wave(x) = {
 } # color: #c74440, lineWidth: 3
 
 folder "Absolute value, three ways" {
-    y = abs(x) # color: #c74440,
-    y = {x < 0: -x, x} # color: #2d70b3, lineStyle: DASHED,
+    y = abs(x) # color: #c74440
+    y = {x < 0: -x, x} # color: #2d70b3, lineStyle: DASHED
     y = sqrt(x ^ 2) # color: #388c46, lineStyle: DOTTED
 }

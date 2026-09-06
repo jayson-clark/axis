@@ -6,7 +6,7 @@ made of — with a VSCode extension that graphs it as you type.
 
 ```
 config {
-    showGrid: true,
+    showGrid: true
     degreeMode: false
 }
 
@@ -15,8 +15,22 @@ config {
 f(x) = x^2 - 4x + 3     # color: #c74440
 g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
 
+h(x) = e^(-x^2) #{
+    color: #388c46
+    lineStyle: DASHED
+    label: "a bell"
+}
+
 table { x = [1, 2, 3], y = [1, 4, 9] }
 ```
+
+A statement ends at the newline after it, inside a `folder`, a `table`, a
+`config` or a `#{ … }` block just as at the top level — a comma is only needed
+between two of them written on one line.
+
+`# key: value` styles the statement it trails, and `#{ … }` is the same
+properties with room to breathe: one to a line, for when there are more of them
+than fit comfortably behind a `#`.
 
 ## Features
 
@@ -92,6 +106,45 @@ imports itself, however indirectly, is an error rather than a hang.
 A preview watches everything the script imports, so saving any file the graph is
 built from reloads it.
 
+## Tickers
+
+A ticker runs one action over and over for as long as the graph is open — the
+way a graph animates something a slider cannot.
+
+```
+n = 0
+
+// Every 50ms, and running from the moment the graph opens.
+ticker n -> mod(n + 1, 60) # minStep: 50, playing: true
+```
+
+`minStep` is the shortest gap between two ticks, in milliseconds; leave it out
+and Desmos ticks once a frame. `playing` starts it on load, and `open` shows the
+ticker expanded in Desmos' expression list.
+
+A graph has exactly one ticker, and Desmos keeps it beside the expression list
+rather than in it — so the statement goes at the top level, outside every folder,
+and `compileAxis` hands it back as `ticker` rather than as an expression. It also
+switches `actions` on for you: Desmos decides that setting by looking at the
+expression list alone, so a graph whose only action is its ticker would otherwise
+never tick.
+
+## Images
+
+An image is a statement carrying the picture itself, styled the way everything
+else is — and every measurement is an expression, so an image can be centred on
+a point the graph works out and sized by a slider.
+
+```
+image "https://example.com/beach.jpg" # name: "Reference", center: (0, 1), width: 10, height: 6.7
+image "data:image/png;base64,iVBOR…"  # center: (x, y), angle: -pi / 200, opacity: 0.5, foreground: true
+```
+
+`name` is the caption the expression list shows, `foreground` draws the image
+over the graph rather than under it, and `hidden`, `secret`, `dragMode` and
+`onClick` mean what they do everywhere else. The URL may be a `data:` URI, which
+is how Desmos itself stores an image somebody dropped onto a graph.
+
 ## Use it in your own app
 
 ```sh
@@ -103,7 +156,7 @@ Compile anywhere — a build step, a server, a test:
 ```ts
 import { compileAxis } from '@axis-dsl/compiler';
 
-const { expressions, settings } = compileAxis(source);
+const { expressions, settings, graph, ticker } = compileAxis(source);
 ```
 
 Compilation is synchronous and touches no filesystem, so a script with imports
@@ -160,8 +213,14 @@ import { compileAxis } from '@axis-dsl/compiler';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 
 function Graph({ source }) {
-    const { expressions, settings } = compileAxis(source);
-    const transport = useLocalViewerHost({ apiKey: MY_DESMOS_KEY, expressions, settings });
+    const { expressions, settings, graph, ticker } = compileAxis(source);
+    const transport = useLocalViewerHost({
+        apiKey: MY_DESMOS_KEY,
+        expressions,
+        settings,
+        graph,
+        ticker,
+    });
 
     return <AxisViewer transport={transport} />;
 }
