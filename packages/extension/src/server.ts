@@ -2,7 +2,13 @@ import * as http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import * as vscode from 'vscode';
-import { compileAxis, createImportResolver, loadImports } from '@axis-dsl/compiler';
+import {
+    compileAxis,
+    createImageResolver,
+    createImportResolver,
+    loadImages,
+    loadImports,
+} from '@axis-dsl/compiler';
 import { AXIS_FILE_EXTENSION } from '@axis-dsl/language/vscode';
 import {
     PREVIEW_PATHS,
@@ -11,7 +17,7 @@ import {
     type ViewerMessage,
 } from '@axis-dsl/protocol';
 import { resolveDesmosApiKey } from './config';
-import { importHost } from './imports';
+import { imageHost, importHost } from './imports';
 
 /**
  * How long a change waits before recompiling. Not a typing debounce - the
@@ -88,10 +94,11 @@ interface Preview {
     clients: Set<http.ServerResponse>;
     subscriptions: vscode.Disposable[];
     /**
-     * A watcher per file the script imports, keyed by URI. The set is rebuilt
-     * after every compile, since an edit is what changes which files those are.
+     * A watcher per file the script reads - imported or drawn - keyed by URI.
+     * The set is rebuilt after every compile, since an edit is what changes
+     * which files those are.
      */
-    imports: Map<string, vscode.Disposable>;
+    dependencies: Map<string, vscode.Disposable>;
     timer?: ReturnType<typeof setTimeout>;
 }
 
@@ -363,7 +370,7 @@ export class PreviewServer implements vscode.Disposable {
             uri,
             clients: new Set(),
             subscriptions: [],
-            imports: new Map(),
+            dependencies: new Map(),
         };
         preview.subscriptions.push(this.watchFile(uri, preview));
 
@@ -406,30 +413,30 @@ export class PreviewServer implements vscode.Disposable {
     }
 
     /**
-     * Watch exactly the files `preview` currently imports.
+     * Watch exactly the files `preview` currently reads: what it imports, and
+     * the pictures it draws.
      *
-     * A script's imports are part of what it is, so saving one has to reload
-     * the graph just as saving the script does — and an import that is deleted
-     * from the script stops being watched, rather than waking the preview for
-     * the rest of the session.
+     * Both are part of what a script is, so saving one has to reload the graph
+     * just as saving the script does — and a file that is no longer named stops
+     * being watched, rather than waking the preview for the rest of the session.
      */
-    private watchImports(preview: Preview, imports: string[]): void {
-        const wanted = new Set(imports);
+    private watchDependencies(preview: Preview, dependencies: string[]): void {
+        const wanted = new Set(dependencies);
 
-        for (const [key, subscription] of preview.imports) {
+        for (const [key, subscription] of preview.dependencies) {
             if (!wanted.has(key)) {
                 subscription.dispose();
-                preview.imports.delete(key);
+                preview.dependencies.delete(key);
             }
         }
 
         for (const key of wanted) {
             // The script itself is already watched; a file that imports it back
             // does not need watching twice.
-            if (preview.imports.has(key) || key === preview.uri.toString()) {
+            if (preview.dependencies.has(key) || key === preview.uri.toString()) {
                 continue;
             }
-            preview.imports.set(key, this.watchFile(vscode.Uri.parse(key), preview));
+            preview.dependencies.set(key, this.watchFile(vscode.Uri.parse(key), preview));
         }
     }
 
@@ -451,17 +458,19 @@ export class PreviewServer implements vscode.Disposable {
             const bytes = await vscode.workspace.fs.readFile(uri);
             const source = new TextDecoder().decode(bytes);
 
-            // Imports are read up front so that compilation itself stays
-            // synchronous, which is what lets the compiler run unchanged in a
-            // browser that has no filesystem to read.
+            // Imports and images are read up front so that compilation itself
+            // stays synchronous, which is what lets the compiler run unchanged
+            // in a browser that has no filesystem to read.
             const path = uri.toString();
             const files = await loadImports({ path, source }, importHost);
-            const { expressions, settings, graph, ticker, imports } = compileAxis(source, {
+            const pictures = await loadImages({ path, source }, files, imageHost);
+            const { expressions, settings, graph, ticker, imports, images } = compileAxis(source, {
                 path,
                 resolveImport: createImportResolver(files, importHost.resolve),
+                resolveImage: createImageResolver(pictures, imageHost.resolve),
             });
 
-            this.watchImports(preview, imports);
+            this.watchDependencies(preview, [...imports, ...images]);
             this.broadcast(preview, {
                 command: 'setExpressions',
                 data: { expressions, settings, graph, ticker },
@@ -497,7 +506,7 @@ export class PreviewServer implements vscode.Disposable {
         this.previews.forEach(preview => {
             clearTimeout(preview.timer);
             preview.subscriptions.forEach(subscription => subscription.dispose());
-            preview.imports.forEach(subscription => subscription.dispose());
+            preview.dependencies.forEach(subscription => subscription.dispose());
             preview.clients.forEach(client => client.end());
         });
         this.previews.clear();
