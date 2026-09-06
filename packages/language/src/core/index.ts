@@ -33,6 +33,16 @@ export type { ImportStatement, LocatedImport } from './imports';
 export { parseTickerStatement, TICKER_KEYWORD } from './ticker';
 export type { TickerStatement } from './ticker';
 
+export {
+    defineMacro,
+    expandMacros,
+    findMacroDefinitions,
+    MACRO_KEYWORD,
+    MacroError,
+    parseMacroDefinition,
+} from './macros';
+export type { MacroDefinition, MacroTable } from './macros';
+
 export { createDebouncer } from './debounce';
 export type { Debouncer } from './debounce';
 
