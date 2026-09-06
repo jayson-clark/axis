@@ -22,6 +22,16 @@ export type {
 export { getAxisCompletions } from './completions';
 
 export {
+    AXIS_IMAGE_EXTENSIONS,
+    findImageStatements,
+    IMAGE_KEYWORD,
+    imageMediaType,
+    isImageUrl,
+    parseImageStatement,
+} from './images';
+export type { ImageStatement, LocatedImage } from './images';
+
+export {
     findImportStatements,
     importTitle,
     IMPORT_KEYWORD,
@@ -46,7 +56,7 @@ export type { MacroDefinition, MacroTable } from './macros';
 export { createDebouncer } from './debounce';
 export type { Debouncer } from './debounce';
 
-export { missingImportDiagnostic, validateAxis } from './diagnostics';
+export { missingImageDiagnostic, missingImportDiagnostic, validateAxis } from './diagnostics';
 export type { AxisDiagnostic, AxisDiagnosticCode, AxisDiagnosticSeverity } from './diagnostics';
 
 export { formatAxisCode, formatAxisCodeWithIndent, indentLevelOf } from './formatter';

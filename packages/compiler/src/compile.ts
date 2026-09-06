@@ -40,10 +40,13 @@ import {
     expandMacros,
     findMacroDefinitions,
     foldMetadataBlocks,
+    IMAGE_KEYWORD,
     IMPORT_KEYWORD,
     importTitle,
+    isImageUrl,
     joinContinuedLines,
     MacroDefinition,
+    parseImageStatement,
     parseImportStatement,
     parseMacroDefinition,
     parseTickerStatement,
@@ -51,6 +54,7 @@ import {
     splitTrailingMetadata,
     unescapeString,
 } from '@axis-dsl/language';
+import { ResolveImage } from './images';
 import { findImports, ResolveImport } from './imports';
 import { convertToLatex } from './latex';
 
@@ -87,6 +91,12 @@ export interface CompilationResult {
      * A host watching a script for changes has to watch these too.
      */
     imports: string[];
+    /**
+     * Every image file inlined into the graph, as the resolver named it. A
+     * picture is part of the script as much as an import is, so a host watching
+     * one watches these alongside them.
+     */
+    images: string[];
 }
 
 export interface CompileOptions {
@@ -101,6 +111,12 @@ export interface CompileOptions {
      * fails to compile rather than quietly dropping them.
      */
     resolveImport?: ResolveImport;
+    /**
+     * How `image "./beach.png"` finds its picture, which the compiler inlines
+     * as a `data:` URI. Only paths ask: an image that names a URL Desmos can
+     * load needs no resolver, so a script full of them compiles without one.
+     */
+    resolveImage?: ResolveImage;
 }
 
 /** A value as it is written after a `key:`, before any property claims it. */
@@ -185,6 +201,7 @@ interface FileScope {
 export function compileAxis(script: string, options: CompileOptions = {}): CompilationResult {
     const expressions: DesmosExpression[] = [];
     const imports: string[] = [];
+    const images: string[] = [];
     // Held apart rather than merged as they are found, so the entry script's
     // settings win over an imported file's wherever its config block is written.
     const importedConfigs: Record<string, unknown>[] = [];
@@ -381,12 +398,18 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
 
             // Images, whose one unquotable part - the URL - is the statement,
             // and everything else the metadata behind it
-            const imageMatch = /^image\s+"((?:[^"\\]|\\[^])*)"$/.exec(line);
-            if (imageMatch) {
+            if (IMAGE_KEYWORD.test(line)) {
+                const statement = parseImageStatement(line);
+                if (!statement) {
+                    throw new Error(
+                        `\`${line}\` is not a valid image - write it as \`image "./beach.png"\`.`,
+                    );
+                }
+
                 expressions.push(
                     buildImage(
                         nextId('image'),
-                        unescapeString(imageMatch[1]),
+                        resolveImageUrl(statement.url, scope.path),
                         currentFolderId,
                         metadata,
                     ),
@@ -465,6 +488,31 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     }
 
     /**
+     * The URL an image reaches Desmos as.
+     *
+     * A picture named by path is read at compile time and inlined, because a
+     * graph carries its images as URLs and a path is not one anybody else's
+     * browser can fetch. Anything already a URL - `https:`, `data:` - is left
+     * exactly as it was written.
+     */
+    function resolveImageUrl(url: string, from: string): string {
+        if (isImageUrl(url)) {
+            return url;
+        }
+
+        const resolved = options.resolveImage?.(url, from);
+        if (!resolved) {
+            throw new Error(`Cannot resolve image "${url}"${from ? ` from ${from}` : ''}.`);
+        }
+
+        if (!images.includes(resolved.path)) {
+            images.push(resolved.path);
+        }
+
+        return resolved.dataUri;
+    }
+
+    /**
      * Drop an imported file in, flattened into a folder of its own.
      *
      * An import that is already inside a folder joins that folder instead of
@@ -532,7 +580,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
     const layers = [...importedConfigs, ...rootConfigs];
     const { settings, graph } = splitConfig(Object.assign({}, ...layers), ticker !== undefined);
 
-    return { expressions, settings, graph, ticker, imports };
+    return { expressions, settings, graph, ticker, imports, images };
 }
 
 /**
