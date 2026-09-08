@@ -32,6 +32,11 @@ between two of them written on one line.
 properties with room to breathe: one to a line, for when there are more of them
 than fit comfortably behind a `#`.
 
+A compiled script is a finished graph rather than an editor, so Axis opens one
+without the chrome Desmos wraps around a graph at desmos.com: the expression
+list, the settings menu, the zoom buttons and the border are all off unless a
+`config` block asks for them back (`expressions: true`, and so on).
+
 ## Features
 
 - **Plain text graphs** — version them, diff them, review them

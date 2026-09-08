@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { compileAxis, createImportResolver, findImports, loadImports } from '../dist/index.js';
+import { AXIS_DEFAULT_CONFIG } from '@axis-dsl/language';
 import type { DesmosExpression, Expression, Folder, Note, Table } from '@axis-dsl/desmos';
 
 /** Posix-ish resolution: relative to the importing file, `.axis` implied. */
@@ -130,7 +131,11 @@ describe('imports', () => {
             '/a.axis': 'config {\n    degreeMode: true,\n    showGrid: false\n}',
         });
 
-        assert.deepEqual(result.settings, { degreeMode: false, showGrid: false });
+        assert.deepEqual(result.settings, {
+            ...AXIS_DEFAULT_CONFIG,
+            degreeMode: false,
+            showGrid: false,
+        });
     });
 
     test('numbers expressions across files without collision', () => {
