@@ -7,7 +7,8 @@
 // language behaviour is written once.
 
 /** Editor-agnostic completion category. Adapters map these to their own enums. */
-export type AxisCompletionKind = 'function' | 'constant' | 'keyword' | 'property' | 'variable';
+export type AxisCompletionKind =
+    'function' | 'constant' | 'keyword' | 'property' | 'variable' | 'file' | 'folder';
 
 export interface AxisCompletionItem {
     label: string;

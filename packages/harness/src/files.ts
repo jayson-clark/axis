@@ -8,7 +8,16 @@
 
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve as resolvePath } from 'node:path';
-import { ImportHost, ResolveImport, createImportResolver, loadImports } from '@axis-dsl/compiler';
+import {
+    ImageHost,
+    ImportHost,
+    ResolveImage,
+    ResolveImport,
+    createImageResolver,
+    createImportResolver,
+    loadImages,
+    loadImports,
+} from '@axis-dsl/compiler';
 import { withAxisExtension } from '@axis-dsl/language';
 
 /**
@@ -28,18 +37,44 @@ export function nodeImportHost(root: string = process.cwd()): ImportHost {
     };
 }
 
-/** A script and the resolver its imports need, ready to hand to the compiler. */
+/**
+ * Reads an image beside the file that draws it, the same way imports are read -
+ * a path is a path whichever statement writes it - but with no extension
+ * implied, since a picture is named in full.
+ */
+export function nodeImageHost(root: string = process.cwd()): ImageHost {
+    return {
+        resolve: (url, from) =>
+            url.startsWith('/') ? resolvePath(root, url.slice(1)) : resolvePath(dirname(from), url),
+        read: async path => new Uint8Array(await readFile(path)),
+    };
+}
+
+/** A script and the resolvers its imports and images need, ready for the compiler. */
 export interface LoadedScript {
     path: string;
     source: string;
     resolveImport: ResolveImport;
+    resolveImage: ResolveImage;
 }
 
-/** Read the script at `path` and every file it imports, transitively. */
+/**
+ * Read the script at `path`, every file it imports, transitively, and every
+ * image any of them draws.
+ */
 export async function readAxisFile(path: string, root?: string): Promise<LoadedScript> {
     const absolute = resolvePath(path);
-    const host = nodeImportHost(root ?? dirname(absolute));
+    const base = root ?? dirname(absolute);
+    const host = nodeImportHost(base);
+    const pictures = nodeImageHost(base);
     const source = await readFile(absolute, 'utf8');
     const files = await loadImports({ path: absolute, source }, host);
-    return { path: absolute, source, resolveImport: createImportResolver(files, host.resolve) };
+    const images = await loadImages({ path: absolute, source }, files, pictures);
+
+    return {
+        path: absolute,
+        source,
+        resolveImport: createImportResolver(files, host.resolve),
+        resolveImage: createImageResolver(images, pictures.resolve),
+    };
 }

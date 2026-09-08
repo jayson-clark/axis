@@ -1,0 +1,35 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Images - putting a picture on the graph
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// `image "…"` places a picture. What it names may be an address Desmos fetches,
+// a `data:` URI it reads on the spot, or - as here - a file beside this script,
+// named the way an import names one: relative to this file, or from the
+// workspace with a leading `/`.
+//
+// A file is read at compile time and travels with the graph as a data URI. A
+// path is only a path on the machine the script was written on; nobody else's
+// browser can fetch one, and a graph has to carry its pictures with it.
+
+config {
+    xmin: -8,
+    xmax: 8,
+    ymin: -5,
+    ymax: 5
+}
+
+"A picture placed on the graph, and the curve it was drawn from."
+
+// Every measurement is an expression rather than a number, so an image can be
+// centred on a point the graph works out and sized by whatever else it knows.
+w = 6 # sliderBounds: [2, 10]
+c = (-3, 2)
+
+image "./images/wave.png" # name: "Wave", center: c, width: w, height: w * 0.6
+
+// `opacity` fades it, `foreground` draws it over the graph rather than under
+// it, and `angle` turns it, anticlockwise, in radians.
+image "./images/wave.png" # center: (3, -2), width: 5, height: 3, angle: pi / 12, opacity: 0.4
+
+// The picture is a picture; the curve it came from is still an expression.
+y = 2 * sin(x) # color: #2d70b3, lineWidth: 3

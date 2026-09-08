@@ -22,7 +22,8 @@ Read in order, each file assumes only what came before it.
 | `16-imports.axis`               | `import "./file.axis"`, `as "Name"`, and how a file is flattened    |
 | `17-macros.axis`                | `macro NAME body`, `macro NAME(a, b) body`, and what substitutes    |
 
-The files under `lib/` are what `16-imports.axis` imports. They are ordinary
+The picture under `images/` is what `18-images.axis` draws. The files under
+`lib/` are what `16-imports.axis` imports. They are ordinary
 scripts — each one graphs on its own — that happen to be written to be reused.
 
 ## Showcases

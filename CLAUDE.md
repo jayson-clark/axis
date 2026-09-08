@@ -102,7 +102,7 @@ about what Desmos _does_ with the result goes in `packages/harness/test`:
 | `metadata.test.mts`  | every `# key: value` property, read back off the applied graph     |
 | `config.test.mts`    | every `config { … }` property, read back off `calculator.settings` |
 | `language.test.mts`  | every function and constant in the manifest, plus the operators    |
-| `graph.test.mts`     | folders, tables, notes, imports, and every example script          |
+| `graph.test.mts`     | folders, tables, notes, imports, images, and every example script  |
 | `ticker.test.mts`    | the `ticker` statement, and that a playing one actually ticks      |
 | `macros.test.mts`    | what a `macro` expands to, evaluated rather than just compiled     |
 | `decompile.test.mts` | decompiling the graph state a real calculator hands back           |
@@ -162,6 +162,16 @@ touched is the quick version.
   graph, so there is nothing for the decompiler to read back - which is why the
   round trip holds over a script full of them without the decompiler knowing the
   word.
+- **An image from a file is read before the compiler runs.** `image "./a.png"`
+  is resolved the way an import is - a host walks the graph with `loadImages`,
+  the compiler asks a synchronous `resolveImage` and inlines a `data:` URI - so
+  a new host has to do both walks, and a test that compiles a script drawing a
+  picture has to hand it a `resolveImage`. A URL or a `data:` URI is passed
+  through untouched and needs neither.
+- **A path is not an expression.** The formatter leaves the quoted argument of
+  `image`, `import` and the block headers alone, because spacing it would write
+  `./images/wave.png` as `. / images / wave.png`. Only the metadata behind the
+  `#` is spaced. That was a live bug until an example drew a picture.
 - **Desmos normalises what you give it.** It leaves a bound off the state when
   it matches its own default, and writes a switched-off clickable by omitting
   `enabled` rather than storing `false`. Assert against what it actually

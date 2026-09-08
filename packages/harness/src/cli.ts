@@ -13,8 +13,9 @@
 
 import { writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
+import { createImageResolver, loadImages } from '@axis-dsl/compiler';
 import { AxisCalculator, Inspection, InspectedExpression, withCalculator } from './calculator';
-import { readAxisFile } from './files';
+import { nodeImageHost, readAxisFile } from './files';
 
 interface Args {
     file?: string;
@@ -114,13 +115,36 @@ async function readStdin(): Promise<string> {
     return Buffer.concat(chunks).toString('utf8');
 }
 
-/** The script to run, however it was named, with its imports resolved. */
+/**
+ * A script with no file of its own still draws pictures that have one, so its
+ * images are read relative to the working directory.
+ */
+async function resolveLooseImages(source: string) {
+    const host = nodeImageHost();
+    return createImageResolver(
+        await loadImages({ path: '', source }, new Map(), host),
+        host.resolve,
+    );
+}
+
+/** The script to run, however it was named, with its imports and images resolved. */
 async function resolveScript(args: Args) {
     if (args.source !== undefined) {
-        return { name: '<inline>', source: args.source, resolveImport: undefined };
+        return {
+            name: '<inline>',
+            source: args.source,
+            resolveImport: undefined,
+            resolveImage: await resolveLooseImages(args.source),
+        };
     }
     if (args.file === undefined || args.file === '-') {
-        return { name: '<stdin>', source: await readStdin(), resolveImport: undefined };
+        const source = await readStdin();
+        return {
+            name: '<stdin>',
+            source,
+            resolveImport: undefined,
+            resolveImage: await resolveLooseImages(source),
+        };
     }
     const loaded = await readAxisFile(args.file);
     return {
@@ -128,6 +152,7 @@ async function resolveScript(args: Args) {
         source: loaded.source,
         path: loaded.path,
         resolveImport: loaded.resolveImport,
+        resolveImage: loaded.resolveImage,
     };
 }
 
@@ -212,6 +237,7 @@ async function main(): Promise<number> {
             await calculator.load(script.source, {
                 path: 'path' in script ? script.path : undefined,
                 resolveImport: script.resolveImport,
+                resolveImage: script.resolveImage,
             });
 
             const inspection = await calculator.inspect();

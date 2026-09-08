@@ -21,6 +21,19 @@ export type {
 
 export { getAxisCompletions } from './completions';
 
+export { axisPathCompletions, axisPathContext } from './paths';
+export type { AxisDirectoryEntry, AxisPathContext, AxisPathKind } from './paths';
+
+export {
+    AXIS_IMAGE_EXTENSIONS,
+    findImageStatements,
+    IMAGE_KEYWORD,
+    imageMediaType,
+    isImageUrl,
+    parseImageStatement,
+} from './images';
+export type { ImageStatement, LocatedImage } from './images';
+
 export {
     findImportStatements,
     importTitle,
@@ -29,6 +42,9 @@ export {
     withAxisExtension,
 } from './imports';
 export type { ImportStatement, LocatedImport } from './imports';
+
+export { findAxisLinks } from './links';
+export type { AxisLink, AxisLinkKind } from './links';
 
 export { parseTickerStatement, TICKER_KEYWORD } from './ticker';
 export type { TickerStatement } from './ticker';
@@ -46,7 +62,7 @@ export type { MacroDefinition, MacroTable } from './macros';
 export { createDebouncer } from './debounce';
 export type { Debouncer } from './debounce';
 
-export { missingImportDiagnostic, validateAxis } from './diagnostics';
+export { missingImageDiagnostic, missingImportDiagnostic, validateAxis } from './diagnostics';
 export type { AxisDiagnostic, AxisDiagnosticCode, AxisDiagnosticSeverity } from './diagnostics';
 
 export { formatAxisCode, formatAxisCodeWithIndent, indentLevelOf } from './formatter';

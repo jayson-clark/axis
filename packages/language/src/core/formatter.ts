@@ -6,6 +6,7 @@ import { insertMissingSeparators, metadataBlockLines, removeRedundantSeparators 
 import { bracketDelta, leadingClosers } from './brackets';
 import { splitTopLevel, splitTrailingMetadata } from './metadata';
 import { matchingBracket, OPENERS, scanCode } from './scan';
+import { IMAGE_KEYWORD } from './images';
 import { MacroError, parseMacroDefinition } from './macros';
 import { parseTickerStatement } from './ticker';
 import { AxisFormattingOptions } from './types';
@@ -273,16 +274,20 @@ function formatLineContent(line: string): string {
         return line;
     }
 
-    // Block headers and imports carry a quoted argument; leave their spacing
-    // alone, since a path is not an expression - `./a.axis` would come back
-    // with spaces around the `/`.
+    // Block headers, imports and images carry a quoted argument; leave the
+    // statement's own spacing alone, since a path is not an expression -
+    // `./a.axis` would come back with spaces around the `/`, and so would every
+    // URL an image names. What they carry behind a `#` is metadata like any
+    // other, and is spaced like it.
     if (
         line.startsWith('config') ||
         line.startsWith('folder') ||
         line.startsWith('table') ||
-        line.startsWith('import')
+        line.startsWith('import') ||
+        IMAGE_KEYWORD.test(line)
     ) {
-        return line;
+        const { code, metadata } = splitTrailingMetadata(line);
+        return metadata === undefined ? line : `${code} # ${formatEntries(metadata)}`;
     }
 
     // A ticker is a keyword and then an expression, so only the expression is
