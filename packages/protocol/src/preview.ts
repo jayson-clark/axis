@@ -27,4 +27,10 @@ export const PREVIEW_QUERY = {
     token: 'token',
     /** Which file this page is bound to, as a serialized URI. */
     file: 'file',
+    /**
+     * Whether the page shows the viewer's tabs and status line. Absent is off,
+     * which is the plain graph — the extension only sets it when the user has
+     * asked for the JSON.
+     */
+    debug: 'debug',
 } as const;

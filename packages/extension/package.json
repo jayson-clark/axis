@@ -87,6 +87,11 @@
                     "default": "ask",
                     "markdownDescription": "Where **Axis: Preview Graph** opens the graph. Pinning a choice in the prompt sets this; set it back to `ask` to be asked again."
                 },
+                "axis.preview.debug": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "Show the preview's **Graph** and **JSON** tabs and the path of the file on screen. Off, a preview is the graph and nothing else."
+                },
                 "axis.format.maxLineLength": {
                     "type": "number",
                     "default": 100,
