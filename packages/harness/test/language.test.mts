@@ -52,6 +52,7 @@ const CALLS: Record<string, string> = {
     ceil: 'ceil(1.2)',
     round: 'round(1.5)',
     sign: 'sign(-2)',
+    sgn: 'sgn(-2)',
     mod: 'mod(7, 3)',
     gcd: 'gcd(4, 6)',
     lcm: 'lcm(4, 6)',
@@ -76,9 +77,14 @@ const CALLS: Record<string, string> = {
     repeat: 'repeat(3, 5)',
     join: 'join([1, 2], [3, 4])',
     sort: 'sort([3, 1, 2])',
+    unique: 'unique([1, 2, 2, 3])',
+    shuffle: 'shuffle([1, 2, 3])',
 
     // geometry — points, not numbers
     polygon: 'polygon((0, 0), (1, 0), (1, 1))',
+    polygonGlider: 'polygonGlider(polygon((0, 0), (1, 0), (1, 1)), 0.5)',
+    polygonInteriorDirectedAngles:
+        'polygonInteriorDirectedAngles(polygon((0, 0), (1, 0), (1, 1)), 1)',
     distance: 'distance((0, 0), (3, 4))',
     midpoint: 'midpoint((0, 0), (2, 2))',
 

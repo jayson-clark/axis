@@ -221,6 +221,10 @@ export const AXIS_MANIFEST = {
         { name: 'ceil', detail: 'Ceiling function', snippet: 'ceil(${1:x})', category: 'math' },
         { name: 'round', detail: 'Round function', snippet: 'round(${1:x})', category: 'math' },
         { name: 'sign', detail: 'Sign function', snippet: 'sign(${1:x})', category: 'math' },
+        // Desmos accepts `sign` and writes `sgn` back, so both are names Axis
+        // has to know: the one an author types and the one a graph read off
+        // desmos.com arrives spelled with.
+        { name: 'sgn', detail: 'Sign function', snippet: 'sgn(${1:x})', category: 'math' },
         { name: 'mod', detail: 'Modulo', snippet: 'mod(${1:x}, ${2:y})', category: 'math' },
         {
             name: 'gcd',
@@ -338,12 +342,36 @@ export const AXIS_MANIFEST = {
             snippet: 'sort(${1:list})',
             category: 'list',
         },
+        {
+            name: 'unique',
+            detail: 'The distinct values of a list, in the order they first appear',
+            snippet: 'unique(${1:list})',
+            category: 'list',
+        },
+        {
+            name: 'shuffle',
+            detail: 'A list in random order',
+            snippet: 'shuffle(${1:list})',
+            category: 'list',
+        },
 
         // Geometry — take points, not numbers
         {
             name: 'polygon',
             detail: 'Polygon from points or a point list',
             snippet: 'polygon(${1:points})',
+            category: 'geometry',
+        },
+        {
+            name: 'polygonGlider',
+            detail: "The point a fraction of the way around a polygon's perimeter",
+            snippet: 'polygonGlider(${1:polygon}, ${2:t})',
+            category: 'geometry',
+        },
+        {
+            name: 'polygonInteriorDirectedAngles',
+            detail: 'The signed interior angles of a polygon',
+            snippet: 'polygonInteriorDirectedAngles(${1:polygon}, ${2:n})',
             category: 'geometry',
         },
         {
@@ -880,7 +908,7 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'expressionsCollapsed',
-            detail: 'Collapse expressions list [default: false]',
+            detail: 'Collapse expressions list [default: true]',
             snippet: 'expressionsCollapsed: ${1|true,false|}',
             valueType: 'boolean',
         },
@@ -1026,7 +1054,7 @@ export const AXIS_MANIFEST = {
         // Behaviour toggles
         {
             name: 'expressions',
-            detail: 'Show the expressions list [default: false]',
+            detail: 'Show the expressions list [default: true]',
             snippet: 'expressions: ${1|true,false|}',
             valueType: 'boolean',
         },
@@ -1375,15 +1403,18 @@ export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes', 'userLockedViewport'] as
  * The calculator options Axis applies when a script does not say otherwise.
  *
  * Desmos's own defaults are those of the full editor at desmos.com - the
- * expression list, the settings menu, the zoom buttons and a border around the
- * lot. A compiled Axis script is a *finished* graph rather than something to be
- * edited in place, so it wants the picture and nothing else; anything a script
- * writes in its own `config { … }` still wins, so `expressions: true` brings
- * the list back.
+ * expression list open beside the graph, the settings menu, the zoom buttons
+ * and a border around the lot. A compiled Axis script is a *finished* graph
+ * rather than something to be edited in place, so it wants the picture: the
+ * chrome is off and the expression list starts collapsed, there to be opened
+ * by anyone who wants to read the maths but not in the way of the graph.
+ * Anything a script writes in its own `config { … }` still wins, so
+ * `expressionsCollapsed: false` opens the list on load.
  */
 export const AXIS_DEFAULT_CONFIG: Readonly<Record<string, boolean>> = {
     border: false,
-    expressions: false,
+    expressions: true,
+    expressionsCollapsed: true,
     settingsMenu: false,
     zoomButtons: false,
 };

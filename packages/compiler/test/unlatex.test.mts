@@ -63,8 +63,37 @@ describe('division', () => {
         assert.equal(convertFromLatex('\\frac{a}{b}c'), 'a/(b)c');
     });
 
+    test('brackets a denominator a command follows, which Axis writes as a name', () => {
+        // `\\frac{\\pi}{2}\\operatorname{floor}(x)` is a fraction times a floor, but
+        // the floor loses its backslash on the way to Axis and `pi/2floor(x)`
+        // divides by the whole of `2floor(x)` - a different number, and one
+        // Desmos accepts without a word. The decision is made on what the tail
+        // converts to, not on the LaTeX it arrives as.
+        assert.equal(
+            convertFromLatex('\\frac{\\pi}{2}\\operatorname{floor}\\left(x\\right)'),
+            'pi/(2)floor(x)',
+        );
+        assert.equal(convertFromLatex('\\frac{a}{b}\\sqrt{x}'), 'a/(b)sqrt(x)');
+        assert.equal(convertFromLatex('\\frac{a}{b}\\pi'), 'a/(b)pi');
+
+        // A command that converts to something a name cannot run into leaves
+        // the denominator alone.
+        assert.equal(convertFromLatex('\\frac{a}{b}\\cdot c'), 'a/b*c');
+    });
+
     test('reads a fraction inside a fraction', () => {
         assert.equal(convertFromLatex('\\frac{\\frac{a}{b}}{2}'), '(a/b)/2');
+    });
+
+    test('drops the space a function command keeps to hold itself apart', () => {
+        // Desmos writes `\\max \\left(…\\right)` for a name typed into its editor.
+        // The space is the backslash's, not the expression's, and reading it
+        // back as one leaves `max (a,b)` where the graph said `max(a,b)`.
+        assert.equal(convertFromLatex('\\max \\left(a,b\\right)'), 'max(a,b)');
+
+        // Where a letter or digit really does follow, the space goes back.
+        assert.equal(convertFromLatex('\\cos x'), 'cos x');
+        assert.equal(convertFromLatex('\\cos 2x'), 'cos 2x');
     });
 });
 

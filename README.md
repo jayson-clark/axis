@@ -33,9 +33,11 @@ properties with room to breathe: one to a line, for when there are more of them
 than fit comfortably behind a `#`.
 
 A compiled script is a finished graph rather than an editor, so Axis opens one
-without the chrome Desmos wraps around a graph at desmos.com: the expression
-list, the settings menu, the zoom buttons and the border are all off unless a
-`config` block asks for them back (`expressions: true`, and so on).
+without the chrome Desmos wraps around a graph at desmos.com: the settings
+menu, the zoom buttons and the border are all off unless a `config` block asks
+for them back (`zoomButtons: true`, and so on), and the expression list starts
+collapsed — there to be opened, but out of the way until it is
+(`expressionsCollapsed: false` opens it on load).
 
 ## Features
 
