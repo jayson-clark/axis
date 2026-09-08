@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+    AXIS_DEFAULT_CONFIG,
     formatAxisCode,
     imageMediaType,
     validateAxis,
@@ -134,11 +135,16 @@ describe('tables', () => {
 describe('config', () => {
     test('collects the config block into settings', () => {
         const { settings } = compileAxis('config {\n    showGrid: true,\n    fontSize: 16\n}');
-        assert.deepEqual(settings, { showGrid: true, fontSize: 16 });
+        assert.deepEqual(settings, { ...AXIS_DEFAULT_CONFIG, showGrid: true, fontSize: 16 });
     });
 
-    test('leaves settings undefined when there is no config block', () => {
-        assert.equal(compileAxis('y = x').settings, undefined);
+    test('applies the Axis defaults to a script with no config block', () => {
+        assert.deepEqual(compileAxis('y = x').settings, AXIS_DEFAULT_CONFIG);
+    });
+
+    test('lets a config block override an Axis default', () => {
+        const { settings } = compileAxis('config {\n    expressions: true\n}');
+        assert.equal(settings?.expressions, true);
     });
 
     test('does not emit an expression for the config block', () => {
@@ -161,10 +167,13 @@ describe('the ticker', () => {
     });
 
     test('switches actions on, since `auto` cannot see a ticker', () => {
-        assert.deepEqual(compileAxis('ticker a -> a + 1').settings, { actions: true });
+        assert.deepEqual(compileAxis('ticker a -> a + 1').settings, {
+            ...AXIS_DEFAULT_CONFIG,
+            actions: true,
+        });
         assert.deepEqual(
             compileAxis('config {\n    actions: false\n}\nticker a -> a + 1').settings,
-            { actions: false },
+            { ...AXIS_DEFAULT_CONFIG, actions: false },
         );
     });
 
