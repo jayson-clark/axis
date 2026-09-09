@@ -6,6 +6,7 @@ import {
     DesmosExpression,
     GraphSettings,
     GraphState,
+    GraphStateFlags,
     TickerState,
 } from '@axis-dsl/desmos';
 import { useDesmos } from './useDesmos.js';
@@ -34,6 +35,13 @@ export interface DesmosGraphProps {
      * keeps them in the graph state: `updateSettings` would ignore them.
      */
     graph?: GraphSettings;
+    /**
+     * `includeFunctionParametersInRandomSeed` and anything else Desmos reads
+     * off the top of a graph state. Separate from `graph` because that is a
+     * different place in the same state, and putting one of these inside it is
+     * ignored as quietly as `updateSettings` would ignore it.
+     */
+    state?: GraphStateFlags;
     /**
      * The graph's ticker. Separate for the same reason: Desmos keeps it beside
      * the expression list rather than in it.
@@ -66,10 +74,14 @@ const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
 function graphState(
     expressions: DesmosExpression[],
     graph: GraphSettings | undefined,
+    state: GraphStateFlags | undefined,
     ticker: TickerState | undefined,
 ): GraphState {
     return {
         version: 11,
+        // The top-level state flags, which are neither calculator options nor
+        // part of `graph`: Desmos reads them here and only here.
+        ...state,
         // `# pointStyle: SQUARE` means that style, on a draggable point as much
         // as a fixed one. Without this, Desmos substitutes its own style for
         // any point it decides is movable and stashes the author's away — so a
@@ -114,6 +126,7 @@ export function DesmosGraph({
     expressions,
     settings,
     graph,
+    state: stateFlags,
     ticker,
     loadingFallback,
     renderError,
@@ -160,7 +173,7 @@ export function DesmosGraph({
             return;
         }
 
-        const state = graphState(expressions, graph, ticker);
+        const state = graphState(expressions, graph, stateFlags, ticker);
 
         // Every compile hands us fresh object identities, so compare contents:
         // re-applying an identical state would churn the calculator for nothing.
@@ -206,7 +219,7 @@ export function DesmosGraph({
         // MathQuill focuses itself a tick after the list is rebuilt.
         const frame = requestAnimationFrame(restore);
         return () => cancelAnimationFrame(frame);
-    }, [status, expressions, settings, graph, ticker]);
+    }, [status, expressions, settings, graph, stateFlags, ticker]);
 
     if (status === 'error' && error) {
         return <>{renderError ? renderError(error) : <div style={{ padding: 20 }}>{error}</div>}</>;

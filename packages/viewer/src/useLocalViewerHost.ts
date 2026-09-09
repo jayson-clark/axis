@@ -3,6 +3,7 @@ import type {
     CalculatorOptions,
     DesmosExpression,
     GraphSettings,
+    GraphStateFlags,
     TickerState,
 } from '@axis-dsl/desmos';
 import {
@@ -18,6 +19,8 @@ export interface LocalViewerHost {
     settings?: CalculatorOptions;
     /** The viewport and `squareAxes`, applied through the calculator's state. */
     graph?: GraphSettings;
+    /** The flags Desmos reads off the top of the state, applied the same way. */
+    state?: GraphStateFlags;
     /** The graph's ticker, applied the same way. */
     ticker?: TickerState;
     /** Shown in the tab strip. */
@@ -30,7 +33,10 @@ export interface LocalViewerHost {
 }
 
 /** The half of a host's state that describes the graph rather than the page. */
-type CompiledGraph = Pick<LocalViewerHost, 'expressions' | 'settings' | 'graph' | 'ticker'>;
+type CompiledGraph = Pick<
+    LocalViewerHost,
+    'expressions' | 'settings' | 'graph' | 'state' | 'ticker'
+>;
 
 /**
  * The compiled graph, as the one message that carries it.
@@ -46,9 +52,10 @@ function expressionsMessage({
     expressions,
     settings,
     graph,
+    state,
     ticker,
 }: CompiledGraph): ViewerMessage {
-    return { command: 'setExpressions', data: { expressions, settings, graph, ticker } };
+    return { command: 'setExpressions', data: { expressions, settings, graph, state, ticker } };
 }
 
 function pushAll(host: HostTransport, state: LocalViewerHost) {
@@ -91,7 +98,7 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
         return created;
     });
 
-    const { apiKey, expressions, settings, graph, ticker, status } = state;
+    const { apiKey, expressions, settings, graph, state: stateFlags, ticker, status } = state;
     const canSetApiKey = Boolean(state.onRequestApiKey);
 
     useEffect(() => {
@@ -104,8 +111,10 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
     }, [channel, apiKey, canSetApiKey]);
 
     useEffect(() => {
-        channel.host.send(expressionsMessage({ expressions, settings, graph, ticker }));
-    }, [channel, expressions, settings, graph, ticker]);
+        channel.host.send(
+            expressionsMessage({ expressions, settings, graph, state: stateFlags, ticker }),
+        );
+    }, [channel, expressions, settings, graph, stateFlags, ticker]);
 
     useEffect(() => {
         channel.host.send({ command: 'setStatus', data: { status: status ?? null } });

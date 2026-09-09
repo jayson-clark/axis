@@ -470,16 +470,19 @@ export class PreviewServer implements vscode.Disposable {
             const path = uri.toString();
             const files = await loadImports({ path, source }, importHost);
             const pictures = await loadImages({ path, source }, files, imageHost);
-            const { expressions, settings, graph, ticker, imports, images } = compileAxis(source, {
-                path,
-                resolveImport: createImportResolver(files, importHost.resolve),
-                resolveImage: createImageResolver(pictures, imageHost.resolve),
-            });
+            const { expressions, settings, graph, state, ticker, imports, images } = compileAxis(
+                source,
+                {
+                    path,
+                    resolveImport: createImportResolver(files, importHost.resolve),
+                    resolveImage: createImageResolver(pictures, imageHost.resolve),
+                },
+            );
 
             this.watchDependencies(preview, [...imports, ...images]);
             this.broadcast(preview, {
                 command: 'setExpressions',
-                data: { expressions, settings, graph, ticker },
+                data: { expressions, settings, graph, state, ticker },
             });
             this.broadcast(preview, {
                 command: 'setStatus',

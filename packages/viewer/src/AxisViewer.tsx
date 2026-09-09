@@ -156,6 +156,7 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
         expressions,
         settings,
         graph,
+        state,
         ticker,
         status,
         connection,
@@ -178,6 +179,7 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
         { id: 'compiled', label: 'Compiled', get: () => expressions },
         { id: 'settings', label: 'Settings', get: () => settings ?? null },
         { id: 'graph', label: 'Viewport', get: () => graph ?? null },
+        { id: 'state', label: 'State flags', get: () => state ?? null },
         { id: 'ticker', label: 'Ticker', get: () => ticker ?? null },
         {
             id: 'getExpressions',
@@ -245,6 +247,7 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
                     expressions={expressions}
                     settings={settings}
                     graph={graph}
+                    state={state}
                     ticker={ticker}
                     renderError={message => (
                         <div
