@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/protocol",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "The message protocol every host uses to drive the Axis viewer, and the transports that carry it",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
