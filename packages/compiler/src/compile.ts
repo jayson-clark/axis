@@ -24,6 +24,7 @@ import {
     Folder,
     GraphImage,
     GraphSettings,
+    GraphStateFlags,
     Note,
     SliderBounds,
     SliderState,
@@ -34,7 +35,9 @@ import {
 import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     AXIS_DEFAULT_CONFIG,
+    AXIS_DEFAULT_STATE,
     AXIS_GRAPH_PROPERTY_NAMES,
+    AXIS_STATE_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
     defineMacro,
     expandBlockEntries,
@@ -79,6 +82,17 @@ export interface CompilationResult {
      * apply both halves.
      */
     graph?: GraphSettings;
+    /**
+     * The config keys Desmos reads off the top of a graph state rather than out
+     * of its `graph` object — currently just
+     * `includeFunctionParametersInRandomSeed`.
+     *
+     * A third bucket beside {@link settings} and {@link graph} because Desmos
+     * has a third place to put a setting, and this one is the fussiest: the key
+     * is read as `setState` applies it and is ignored, without complaint,
+     * anywhere else. A host applies this alongside the other two.
+     */
+    state?: GraphStateFlags;
     /**
      * The `ticker` statement, if the script or anything it imports has one.
      *
@@ -579,9 +593,12 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
 
     const ticker = rootTicker ?? importedTicker;
     const layers = [...importedConfigs, ...rootConfigs];
-    const { settings, graph } = splitConfig(Object.assign({}, ...layers), ticker !== undefined);
+    const { settings, graph, state } = splitConfig(
+        Object.assign({}, ...layers),
+        ticker !== undefined,
+    );
 
-    return { expressions, settings, graph, ticker, imports, images };
+    return { expressions, settings, graph, state, ticker, imports, images };
 }
 
 /**
@@ -643,10 +660,13 @@ function splitConfig(
 ): {
     settings?: CalculatorOptions;
     graph?: GraphSettings;
+    state?: GraphStateFlags;
 } {
     // Axis's own defaults sit under whatever the script wrote, so a config
-    // block that names one of them still has the last word.
+    // block that names one of them still has the last word. Each bucket has
+    // its own defaults, since a default goes wherever its key does.
     const settings: Record<string, unknown> = { ...AXIS_DEFAULT_CONFIG };
+    const state: GraphStateFlags = { ...AXIS_DEFAULT_STATE };
 
     // `actions` defaults to `auto`, which means "on if the graph uses actions" -
     // and Desmos decides that by looking at the expression list alone. A ticker
@@ -663,7 +683,12 @@ function splitConfig(
     const graph: GraphSettings = {};
 
     for (const [key, value] of Object.entries(config)) {
-        if ((AXIS_VIEWPORT_PROPERTY_NAMES as readonly string[]).includes(key)) {
+        if ((AXIS_STATE_PROPERTY_NAMES as readonly string[]).includes(key)) {
+            // Written before the graph keys because the state flags sit beside
+            // `graph` rather than inside it: routed there they would be applied
+            // and silently do nothing.
+            (state as Record<string, unknown>)[key] = value;
+        } else if ((AXIS_VIEWPORT_PROPERTY_NAMES as readonly string[]).includes(key)) {
             // A viewport edge is a number even when the config block spelled it
             // as a string, since the state will not take `"0"` for one.
             const bound = typeof value === 'number' ? value : Number(value);
@@ -684,6 +709,7 @@ function splitConfig(
     return {
         settings: Object.keys(settings).length > 0 ? (settings as CalculatorOptions) : undefined,
         graph: Object.keys(graph).length > 0 ? graph : undefined,
+        state: Object.keys(state).length > 0 ? state : undefined,
     };
 }
 

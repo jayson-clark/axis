@@ -1039,6 +1039,12 @@ export const AXIS_MANIFEST = {
             valueType: 'string',
         },
         {
+            name: 'includeFunctionParametersInRandomSeed',
+            detail: "Vary random() by a function's arguments [default: true]",
+            snippet: 'includeFunctionParametersInRandomSeed: ${1|true,false|}',
+            valueType: 'boolean',
+        },
+        {
             name: 'fontSize',
             detail: 'Base font size [default: 16]',
             snippet: 'fontSize: ${1:16}',
@@ -1398,6 +1404,32 @@ export const AXIS_VIEWPORT_PROPERTY_NAMES = ['xmin', 'xmax', 'ymin', 'ymax'] as 
 
 /** Graph-state config keys that are not part of the viewport rectangle. */
 export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes', 'userLockedViewport'] as const;
+
+/**
+ * The config keys Desmos reads off the *top* of a graph state, outside `graph`.
+ *
+ * A narrower case than {@link AXIS_GRAPH_PROPERTY_NAMES}: those go into the
+ * state's `graph` object, these sit beside it. Desmos accepts them nowhere else
+ * — not through `updateSettings`, not as a calculator option, not inside
+ * `graph` — and ignores them in silence when they are put in the wrong place,
+ * so a host that renders a compilation has to apply this third part too.
+ */
+export const AXIS_STATE_PROPERTY_NAMES = ['includeFunctionParametersInRandomSeed'] as const;
+
+/**
+ * The {@link AXIS_STATE_PROPERTY_NAMES} defaults, for a script that says
+ * nothing. Separate from {@link AXIS_DEFAULT_CONFIG} because these go somewhere
+ * else entirely — that one is calculator options, this one is graph state.
+ *
+ * Desmos reads a state with no `includeFunctionParametersInRandomSeed` as the
+ * legacy randomization behaviour, under which `random()` and `shuffle` inside a
+ * function return the same draw for every argument. A graph made at desmos.com
+ * today is migrated off that, so a script written today starts off it too — and
+ * a legacy graph being decompiled has to say `false` to keep what it had.
+ */
+export const AXIS_DEFAULT_STATE: Readonly<Record<string, boolean>> = {
+    includeFunctionParametersInRandomSeed: true,
+};
 
 /**
  * The calculator options Axis applies when a script does not say otherwise.

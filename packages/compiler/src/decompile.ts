@@ -34,6 +34,7 @@ import {
     Expression,
     GraphImage,
     GraphSettings,
+    GraphStateFlags,
     TableColumn,
     TickerState,
 } from '@axis-dsl/desmos';
@@ -41,6 +42,7 @@ import {
     AXIS_ALWAYS_STRING_PROPERTIES,
     AXIS_CONFIG_PROPERTY_NAMES,
     AXIS_DEFAULT_CONFIG,
+    AXIS_DEFAULT_STATE,
     bracketDelta,
     escapeString,
     formatAxisCode,
@@ -60,6 +62,19 @@ export interface DecompileInput {
      * through unchanged.
      */
     graph?: GraphSettings;
+    /**
+     * The config keys a state off desmos.com keeps at its top level rather than
+     * under `graph` — currently just `includeFunctionParametersInRandomSeed`,
+     * which is also the shape {@link compileAxis} hands back.
+     *
+     * Absence is meaningful here in a way it is not for the other two halves:
+     * Desmos reads a missing `includeFunctionParametersInRandomSeed` as the
+     * legacy randomization behaviour, while Axis defaults it on. So a caller
+     * decompiling a legacy state has to pass the flag as an explicit `false`
+     * rather than leave it out, or the script it gets back will randomize
+     * differently from the graph it came from.
+     */
+    state?: GraphStateFlags;
     /**
      * The graph's ticker, which a state off desmos.com keeps under
      * `expressions.ticker` — beside the list rather than in it, so it has to be
@@ -124,7 +139,15 @@ export function decompileAxis(input: DecompileInput, options: DecompileOptions =
     const document = new Document();
     const actions = actionNames(input.expressions);
 
-    document.add(decompileConfig(input.settings, input.graph, input.ticker !== undefined, indent));
+    document.add(
+        decompileConfig(
+            input.settings,
+            input.graph,
+            input.state,
+            input.ticker !== undefined,
+            indent,
+        ),
+    );
     document.add(decompileTicker(input.ticker), true);
 
     // A folder's contents are wherever the expression list happens to keep
@@ -567,16 +590,17 @@ function decompileTicker(ticker: TickerState | undefined): string[] {
 function decompileConfig(
     settings: CalculatorOptions | undefined,
     graph: GraphSettings | undefined,
+    state: GraphStateFlags | undefined,
     hasTicker: boolean,
     indent: string,
 ): string[] {
-    if (!settings && !graph) {
+    if (!settings && !graph && !state) {
         return [];
     }
 
     // Manifest order first, so the block reads the way the language documents
     // it; anything else the graph carries follows in the order it is held.
-    const record = { ...settings, ...flattenGraph(graph) } as Record<string, unknown>;
+    const record = { ...settings, ...flattenGraph(graph), ...state } as Record<string, unknown>;
 
     // The inverse of the compiler switching actions on for a ticker: written
     // back, it would grow a config block the author never wrote, and the
@@ -587,8 +611,11 @@ function decompileConfig(
 
     // Likewise for the options Axis switches off on its own: a script that says
     // nothing compiles to them, so writing them back would put four lines the
-    // author never wrote at the top of every decompiled graph.
-    for (const [key, value] of Object.entries(AXIS_DEFAULT_CONFIG)) {
+    // author never wrote at the top of every decompiled graph. The state flags
+    // are stripped the same way, but only against their own defaults —
+    // `includeFunctionParametersInRandomSeed: false` is never noise, since it
+    // is the one way a script says it wants the legacy behaviour.
+    for (const [key, value] of Object.entries({ ...AXIS_DEFAULT_CONFIG, ...AXIS_DEFAULT_STATE })) {
         if (record[key] === value) {
             delete record[key];
         }
