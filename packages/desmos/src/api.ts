@@ -90,7 +90,32 @@ export interface GraphSettings {
     userLockedViewport?: boolean;
 }
 
-export interface GraphState {
+/**
+ * The settings Desmos keeps at the very top of a graph state, outside both
+ * `graph` and the calculator options.
+ *
+ * A third place for a setting to live sounds like one too many, but Desmos
+ * really does have three, and this one is the strictest of them: these keys are
+ * read off the state as `setState` applies it and nowhere else. Neither
+ * `updateSettings` nor a `Desmos.GraphingCalculator` option nor a key tucked
+ * inside `graph` has any effect — each is accepted in silence and ignored.
+ */
+export interface GraphStateFlags {
+    /**
+     * Mix a function's arguments into the seed of a bare `random()` inside its
+     * definition, so `h(1)` and `h(2)` draw differently.
+     *
+     * False, and absent, are Desmos' "legacy randomization behavior": every
+     * call to the function returns the identical draw no matter its arguments.
+     * The editor offers a button to migrate a graph off it, and that button
+     * writes exactly this key.
+     *
+     * @see https://help.desmos.com/hc/en-us/articles/25261997911181-Random
+     */
+    includeFunctionParametersInRandomSeed?: boolean;
+}
+
+export interface GraphState extends GraphStateFlags {
     version: number;
     graph?: GraphSettings & { [key: string]: unknown };
     expressions?: { list?: ExpressionState[]; ticker?: TickerState };
