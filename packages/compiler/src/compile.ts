@@ -40,20 +40,22 @@ import {
     AXIS_STATE_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
     defineMacro,
-    expandBlockEntries,
+    expandBlockSourceEntries,
     expandMacros,
     findMacroDefinitions,
-    foldMetadataBlocks,
+    foldMetadataLines,
     IMAGE_KEYWORD,
     IMPORT_KEYWORD,
     importTitle,
     isImageUrl,
-    joinContinuedLines,
+    joinContinuedSourceLines,
     MacroDefinition,
     parseImageStatement,
     parseImportStatement,
     parseMacroDefinition,
     parseTickerStatement,
+    SourceLine,
+    sourceLines,
     splitTopLevel,
     splitTrailingMetadata,
     unescapeString,
@@ -112,6 +114,58 @@ export interface CompilationResult {
      * one watches these alongside them.
      */
     images: string[];
+    /**
+     * Where each expression was written, keyed by the id it was given.
+     *
+     * Every expression in {@link expressions} has an entry, imported ones
+     * included - an import is compiled like any other file, so its statements
+     * are traced back to the file they were actually written in rather than to
+     * the `import` line that pulled them in.
+     */
+    sourceMap: Map<string, StatementOrigin>;
+    /**
+     * Where the entry script's own `config { … }` block is written, if it has
+     * one. An imported file's config block is not it: the entry's is the one
+     * that wins, so it is the one a change to the graph's settings belongs in.
+     *
+     * Absent for a script with no config block at all, which is the signal to a
+     * host writing settings back that it has to open one.
+     */
+    configOrigin?: StatementOrigin;
+}
+
+/**
+ * Where an expression was written: the file, and the lines of it the statement
+ * covers.
+ *
+ * The compiler's own record of what produced what, which is what lets a change
+ * made to the graph be written back to the one statement responsible for it
+ * rather than by regenerating the file - so the comments, the blank lines and
+ * the layout around that statement survive the edit.
+ *
+ * The span is zero-based and inclusive at both ends, and covers every line the
+ * statement was written across: a `#{ … }` block folded onto it, a list split
+ * over brackets, or just the one line it fits on.
+ */
+export interface StatementOrigin {
+    /** The file it was written in, as {@link CompileOptions.path} named it. */
+    path: string;
+    /** Zero-based index of the statement's first line. */
+    line: number;
+    /** Zero-based index of its last line, inclusive. */
+    endLine: number;
+    /**
+     * Whether this statement can be rewritten on its own.
+     *
+     * False where the span is not the statement's alone to replace: a macro
+     * expanded into it, so the text on those lines is not what the compiler
+     * read, or a block written inline put several statements on one line, so
+     * replacing the span would take the others with it. {@link reason} says
+     * which.
+     */
+    writable: boolean;
+    /** Why it is not writable, for a host that wants to say so. */
+    reason?: string;
 }
 
 export interface CompileOptions {
@@ -189,8 +243,8 @@ function defined<T extends object>(source: T): T {
  * bracket is folded back together, then a block written inline is spread back
  * out.
  */
-function flatten(source: string): string[] {
-    return expandBlockEntries(joinContinuedLines(foldMetadataBlocks(source)));
+function flatten(lines: readonly SourceLine[]): SourceLine[] {
+    return expandBlockSourceEntries(joinContinuedSourceLines(foldMetadataLines(lines)));
 }
 
 /**
@@ -228,6 +282,24 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
 
     let expressionCount = 0;
     const nextId = (prefix: string) => `${prefix}_${++expressionCount}`;
+
+    /**
+     * Where each expression came from, filled in as they are emitted.
+     *
+     * Kept beside the list rather than on the expressions themselves: an
+     * expression is handed to Desmos verbatim, and a key it does not know is a
+     * key it will hold onto and hand back, which would put compiler bookkeeping
+     * into every graph state the calculator saves.
+     */
+    const origins = new Map<string, StatementOrigin>();
+    /**
+     * Lines a macro was expanded on, by file. A statement standing on one is
+     * not the text the compiler read, so rewriting it would throw the macro
+     * away and write its expansion in - which is a different script.
+     */
+    const expanded = new Map<string, Set<number>>();
+    /** Where the entry script's `config { … }` block is written, if anywhere. */
+    let configOrigin: StatementOrigin | undefined;
 
     // The files being compiled, outermost first, so a cycle can be spotted -
     // the entry script included, since a file can import itself.
@@ -267,18 +339,49 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
      * leaving exactly one statement per line either way.
      */
     function emitFile(source: string, scope: FileScope): void {
-        const lines = flatten(substituteMacros(flatten(source)));
+        // Flattened twice, with the macros substituted in between: an expansion
+        // is source like any other and has to be settled as one. Both passes
+        // carry each line's span of the file along with it, which is what the
+        // source map is made of.
+        const lines = flatten(substituteMacros(flatten(sourceLines(source)), scope.path));
 
         let currentFolderId = scope.folderId;
-        let currentTable: { id: string; columns: TableColumn[] } | undefined;
-        let currentConfig: Record<string, unknown> | undefined;
+        let currentTable: { id: string; columns: TableColumn[]; from: SourceLine } | undefined;
+        let currentConfig: { entries: Record<string, unknown>; from: SourceLine } | undefined;
         let currentPiecewise:
-            { variableName: string; items: string[]; metadata: Metadata } | undefined;
+            | { variableName: string; items: string[]; metadata: Metadata; from: SourceLine }
+            | undefined;
         /** Set while inside a folder an import flattened away. */
         let droppedFolder = false;
+        /** The statement being read, which whatever it emits is traced back to. */
+        let at: SourceLine = { text: '', line: 0, endLine: 0 };
 
-        for (const rawLine of lines) {
-            let line = rawLine.replace(/\t/g, '    ').trim();
+        /**
+         * Trace `id` back to the statement that produced it, `from` overriding
+         * the current line for something opened earlier and closed here - a
+         * table or a piecewise spread over lines covers all of them.
+         */
+        const record = (id: string, from: SourceLine = at): string => {
+            const macros = expanded.get(scope.path);
+            const touched = macros
+                ? [...Array(at.endLine - from.line + 1).keys()].some(offset =>
+                      macros.has(from.line + offset),
+                  )
+                : false;
+
+            origins.set(id, {
+                path: scope.path,
+                line: from.line,
+                endLine: at.endLine,
+                writable: !touched,
+                ...(touched && { reason: 'a macro expands into this statement' }),
+            });
+            return id;
+        };
+
+        for (const source of lines) {
+            at = source;
+            let line = source.text.replace(/\t/g, '    ').trim();
 
             if (!line || line.startsWith('//')) {
                 continue;
@@ -300,7 +403,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                     droppedFolder = true;
                     continue;
                 }
-                currentFolderId = nextId('folder');
+                currentFolderId = record(nextId('folder'));
                 expressions.push({
                     type: 'folder',
                     id: currentFolderId,
@@ -325,7 +428,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                         : `\\left\\{${items}\\right\\}`;
                     expressions.push(
                         buildExpression(
-                            nextId('expr'),
+                            record(nextId('expr'), currentPiecewise.from),
                             latex,
                             currentFolderId,
                             // The closing line is where metadata lands when a
@@ -338,13 +441,24 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                     );
                     currentPiecewise = undefined;
                 } else if (currentConfig) {
-                    (scope.flatten ? importedConfigs : rootConfigs).push(currentConfig);
+                    (scope.flatten ? importedConfigs : rootConfigs).push(currentConfig.entries);
+                    // Only the entry's block is recorded: an imported one is
+                    // overridden by it, so writing a setting into it would be
+                    // writing where it does not take effect.
+                    if (!scope.flatten) {
+                        configOrigin = {
+                            path: scope.path,
+                            line: currentConfig.from.line,
+                            endLine: at.endLine,
+                            writable: true,
+                        };
+                    }
                     currentConfig = undefined;
                 } else if (currentTable) {
                     expressions.push(
                         defined({
                             type: 'table',
-                            id: currentTable.id,
+                            id: record(currentTable.id, currentTable.from),
                             columns: currentTable.columns,
                             folderId: currentFolderId,
                         } satisfies Table),
@@ -361,17 +475,17 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
             }
 
             if (/^config\b/.test(line)) {
-                currentConfig = {};
+                currentConfig = { entries: {}, from: at };
                 continue;
             }
 
             if (/^table\b/.test(line)) {
-                currentTable = { id: nextId('table'), columns: [] };
+                currentTable = { id: nextId('table'), columns: [], from: at };
                 continue;
             }
 
             if (currentConfig) {
-                applyConfigEntries(currentConfig, line);
+                applyConfigEntries(currentConfig.entries, line);
                 continue;
             }
 
@@ -423,7 +537,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
 
                 expressions.push(
                     buildImage(
-                        nextId('image'),
+                        record(nextId('image')),
                         resolveImageUrl(statement.url, scope.path),
                         currentFolderId,
                         metadata,
@@ -437,7 +551,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 expressions.push(
                     defined({
                         type: 'text',
-                        id: nextId('note'),
+                        id: record(nextId('note')),
                         text: unescapeString(line.slice(1, -1)),
                         folderId: currentFolderId,
                     } satisfies Note),
@@ -453,6 +567,7 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                     variableName: piecewiseStart ? piecewiseStart[1].trim() : '',
                     items: [],
                     metadata,
+                    from: at,
                 };
                 continue;
             }
@@ -462,7 +577,12 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
             // converts as one expression, since convertToLatex turns braces into
             // \left\{ \right\} itself.
             expressions.push(
-                buildExpression(nextId('expr'), convertToLatex(line), currentFolderId, metadata),
+                buildExpression(
+                    record(nextId('expr')),
+                    convertToLatex(line),
+                    currentFolderId,
+                    metadata,
+                ),
             );
         }
     }
@@ -477,16 +597,16 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
      * about. Flattening is idempotent, so the lines that held no macro at all
      * come out of the second pass exactly as they went in.
      */
-    function substituteMacros(lines: string[]): string {
-        const statements: string[] = [];
+    function substituteMacros(lines: readonly SourceLine[], path: string): SourceLine[] {
+        const statements: SourceLine[] = [];
 
-        for (const line of lines) {
-            const trimmed = line.trim();
+        for (const source of lines) {
+            const trimmed = source.text.trim();
 
             // A comment is text, and `parseMacroDefinition` would read a
             // commented-out definition as a live one.
             if (trimmed.startsWith('//')) {
-                statements.push(line);
+                statements.push(source);
                 continue;
             }
 
@@ -496,10 +616,27 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
                 continue;
             }
 
-            statements.push(expandMacros(line, macros));
+            const text = expandMacros(source.text, macros);
+
+            // A line an expansion touched is noted rather than forgotten. What
+            // reaches the compiler from here is the expansion, so the source
+            // map would otherwise point a rewrite at the `macro` call and
+            // replace it with what it stood for.
+            if (text !== source.text) {
+                let touched = expanded.get(path);
+                if (!touched) {
+                    touched = new Set();
+                    expanded.set(path, touched);
+                }
+                for (let line = source.line; line <= source.endLine; line++) {
+                    touched.add(line);
+                }
+            }
+
+            statements.push({ ...source, text });
         }
 
-        return statements.join('\n');
+        return statements;
     }
 
     /**
@@ -598,7 +735,48 @@ export function compileAxis(script: string, options: CompileOptions = {}): Compi
         ticker !== undefined,
     );
 
-    return { expressions, settings, graph, state, ticker, imports, images };
+    return {
+        expressions,
+        settings,
+        graph,
+        state,
+        ticker,
+        imports,
+        images,
+        sourceMap: markShared(origins),
+        configOrigin,
+    };
+}
+
+/**
+ * Flag every origin whose span it does not have to itself.
+ *
+ * A block written inline puts several statements on one line, and the layout
+ * passes hand all of them that line as their span - so replacing any one of
+ * them would replace the others with it. Writing a change back to such a
+ * statement is refused rather than attempted, and this is where that is
+ * noticed: after a file is compiled, when every statement it produced is known.
+ */
+function markShared(origins: Map<string, StatementOrigin>): Map<string, StatementOrigin> {
+    const counts = new Map<string, number>();
+
+    for (const origin of origins.values()) {
+        const span = `${origin.path}:${origin.line}:${origin.endLine}`;
+        counts.set(span, (counts.get(span) ?? 0) + 1);
+    }
+
+    for (const [id, origin] of origins) {
+        const span = `${origin.path}:${origin.line}:${origin.endLine}`;
+        if (origin.writable && (counts.get(span) ?? 0) > 1) {
+            origins.set(id, {
+                ...origin,
+                writable: false,
+                reason: 'several statements share this line',
+            });
+        }
+    }
+
+    return origins;
 }
 
 /**

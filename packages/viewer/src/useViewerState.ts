@@ -27,6 +27,11 @@ export interface ViewerState {
      * about, from a reconnection, where it means the graph has gone stale.
      */
     hasConnected: boolean;
+    /**
+     * Whether the host wants changes the user makes to the graph reported back.
+     * Off until a host says otherwise - see `setSync` in the protocol.
+     */
+    sync: boolean;
 }
 
 const INITIAL: ViewerState = {
@@ -40,6 +45,7 @@ const INITIAL: ViewerState = {
     status: null,
     connection: 'connecting',
     hasConnected: false,
+    sync: false,
 };
 
 /**
@@ -72,6 +78,9 @@ export function useViewerState(transport: ViewerTransport): ViewerState {
                     break;
                 case 'setStatus':
                     setState(current => ({ ...current, status: message.data.status }));
+                    break;
+                case 'setSync':
+                    setState(current => ({ ...current, sync: message.data.enabled }));
                     break;
             }
         });

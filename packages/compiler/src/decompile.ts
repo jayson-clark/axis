@@ -194,6 +194,72 @@ export function decompileAxis(input: DecompileInput, options: DecompileOptions =
 }
 
 /**
+ * One expression, as the Axis statement that builds it.
+ *
+ * The decompiler's unit of work, exposed because it is also the unit a change
+ * to a live graph arrives in: a dragged point is one expression the calculator
+ * hands back different from how it was given, and writing it back into a script
+ * means writing this one statement over the lines that produced it, leaving the
+ * comments and the layout around them alone.
+ *
+ * Returns the lines the statement takes, which is more than one only for a
+ * table. Empty for a folder, which is written by whatever holds its members.
+ */
+export function decompileExpression(
+    expression: DesmosExpression,
+    options: DecompileExpressionOptions = {},
+): string[] {
+    return decompileStatement(
+        expression,
+        options.indent ?? '    ',
+        new Set(options.actions ?? []),
+        options.separated ?? false,
+    );
+}
+
+export interface DecompileExpressionOptions extends DecompileOptions {
+    /**
+     * The names the graph defines as actions, which is what tells a run held
+     * together by top-level commas apart from a list of points - they take
+     * different brackets and mean different things. The whole graph's, not this
+     * expression's: a name is an action because of where it is defined.
+     */
+    actions?: readonly string[];
+    /**
+     * Whether the statement is going somewhere a comma separates one statement
+     * from the next - inside a `folder { … }` block - which is what decides
+     * whether a run held together by a top-level comma can be written bare.
+     */
+    separated?: boolean;
+}
+
+/** The names a graph defines as actions, for {@link decompileExpression}. */
+export function graphActionNames(expressions: readonly DesmosExpression[]): string[] {
+    return [...actionNames(expressions)];
+}
+
+/**
+ * The `config { … }` block a graph's settings decompile to, as its lines.
+ *
+ * Exposed for the same reason as {@link decompileExpression}: a setting changed
+ * on a live graph - the viewport panned, the grid switched off - is written
+ * back by replacing this one block rather than the file around it. Empty where
+ * the settings are all defaults, which is a script that needs no block at all.
+ */
+export function decompileSettings(
+    input: Pick<DecompileInput, 'settings' | 'graph' | 'state' | 'ticker'>,
+    options: DecompileOptions = {},
+): string[] {
+    return decompileConfig(
+        input.settings,
+        input.graph,
+        input.state,
+        input.ticker !== undefined,
+        options.indent ?? '    ',
+    );
+}
+
+/**
  * One expression, as the lines it is written on.
  *
  * `separated` says the statement is going somewhere a comma separates one

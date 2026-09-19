@@ -9,6 +9,7 @@ import {
     GraphStateFlags,
     TickerState,
 } from '@axis-dsl/desmos';
+import type { GraphReading } from '@axis-dsl/protocol';
 import { useDesmos } from './useDesmos.js';
 
 export interface DesmosGraphHandle {
@@ -47,6 +48,25 @@ export interface DesmosGraphProps {
      * the expression list rather than in it.
      */
     ticker?: TickerState;
+    /**
+     * Report changes the user makes to the graph by hand.
+     *
+     * `before` is the graph as the calculator handed it back immediately after
+     * this component last applied a state to it; `after` is the graph now. The
+     * difference between them is what the user did, and nothing else - which is
+     * why the baseline is read back off the calculator rather than taken from
+     * the props that produced it. Desmos normalises what it is given, so the
+     * two are not the same graph, and comparing against the props would report
+     * a change on every expression the moment one loaded.
+     *
+     * Left out, the calculator is not watched at all.
+     */
+    onGraphChanged?: (before: GraphReading, after: GraphReading) => void;
+    /**
+     * How long the graph has to be still before a change is reported, in
+     * milliseconds. A drag is hundreds of changes and only one edit.
+     */
+    changeDelay?: number;
     /** Rendered instead of the graph while the Desmos script is loading. */
     loadingFallback?: ReactNode;
     /** Rendered instead of the graph when the script or key fails. */
@@ -61,6 +81,40 @@ export interface DesmosGraphProps {
  * nothing about its viewport opens where every other one does.
  */
 const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
+
+/**
+ * How long the graph has to be still before a change is reported.
+ *
+ * Desmos fires `change` on every frame of a drag, and a point dragged across
+ * the graphpaper is one edit rather than three hundred. Long enough to let go
+ * of the mouse, short enough that the script catches up while you are still
+ * looking at what you did.
+ */
+const DEFAULT_CHANGE_DELAY = 400;
+
+/** A calculator's state, in the parts the rest of Axis keeps a graph in. */
+function reading(calculator: Calculator): GraphReading {
+    const state = calculator.getState();
+
+    const { includeFunctionParametersInRandomSeed } = state;
+    // A calculator with nothing in it yet answers with no expression list at
+    // all, which is a graph of none rather than a graph that cannot be read.
+    const held = state.expressions ?? { list: [] };
+
+    return {
+        expressions: held.list ?? [],
+        // `settings` is the live options object rather than part of the state:
+        // Desmos keeps the two apart, and so does everything reading this.
+        settings: { ...calculator.settings },
+        graph: state.graph,
+        // The flags Desmos reads off the top of a state rather than out of its
+        // `graph`, which is also where it writes them back.
+        ...(includeFunctionParametersInRandomSeed !== undefined && {
+            state: { includeFunctionParametersInRandomSeed },
+        }),
+        ticker: held.ticker,
+    };
+}
 
 /**
  * setState (rather than setExpressions) is what carries folder membership, so
@@ -128,6 +182,8 @@ export function DesmosGraph({
     graph,
     state: stateFlags,
     ticker,
+    onGraphChanged,
+    changeDelay = DEFAULT_CHANGE_DELAY,
     loadingFallback,
     renderError,
     className,
@@ -137,6 +193,14 @@ export function DesmosGraph({
     const calculatorRef = useRef<Calculator | null>(null);
     /** Serialized state+settings last pushed to the calculator. */
     const lastAppliedRef = useRef<string | null>(null);
+    /**
+     * The graph as the calculator held it the moment the last state finished
+     * being applied - what a change is a change from.
+     */
+    const baselineRef = useRef<GraphReading | null>(null);
+    /** Written during render, so the observer below always calls the current one. */
+    const onChanged = useRef(onGraphChanged);
+    onChanged.current = onGraphChanged;
     const { status, error } = useDesmos(apiKey);
 
     useImperativeHandle(
@@ -198,6 +262,10 @@ export function DesmosGraph({
             calculator.updateSettings(settings);
         }
 
+        // The baseline moves with the graph: from here on, a change is
+        // something the user did rather than something this effect did.
+        baselineRef.current = reading(calculator);
+
         if (!wasOutside) {
             return;
         }
@@ -220,6 +288,49 @@ export function DesmosGraph({
         const frame = requestAnimationFrame(restore);
         return () => cancelAnimationFrame(frame);
     }, [status, expressions, settings, graph, stateFlags, ticker]);
+
+    // Watching the calculator for what the user does to the graph directly.
+    //
+    // Desmos fires `change` for everything, its own `setState` included, so the
+    // baseline is what tells the two apart: the effect above moves it every
+    // time it applies a state, and anything still different from it afterwards
+    // is the user's doing. A report the host acts on comes back as a new
+    // compilation, a new state, and a new baseline - which is what closes the
+    // loop rather than leaving it ringing.
+    useEffect(() => {
+        const calculator = calculatorRef.current;
+        if (!calculator || !onGraphChanged) {
+            return;
+        }
+
+        let timer: number | undefined;
+
+        const settled = () => {
+            const before = baselineRef.current;
+            const after = reading(calculator);
+            if (!before || JSON.stringify(before) === JSON.stringify(after)) {
+                return;
+            }
+            onChanged.current?.(before, after);
+        };
+
+        // Namespaced, because `unobserveEvent('change')` takes every observer
+        // of it with it - including one a host attached to the same calculator
+        // through `getCalculator()`.
+        calculator.observeEvent('change.axisGraphSync', () => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(settled, changeDelay);
+        });
+
+        return () => {
+            window.clearTimeout(timer);
+            calculator.unobserveEvent('change.axisGraphSync');
+        };
+        // `status` is what says the calculator above exists; `onGraphChanged`
+        // is read for whether to watch at all, never to call - `onChanged`
+        // holds the current one, so a host passing a fresh closure every render
+        // does not re-subscribe on every render.
+    }, [status, Boolean(onGraphChanged), changeDelay]);
 
     if (status === 'error' && error) {
         return <>{renderError ? renderError(error) : <div style={{ padding: 20 }}>{error}</div>}</>;

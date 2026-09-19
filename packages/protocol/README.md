@@ -21,15 +21,37 @@ over an in-memory channel.
 type ViewerMessage =
   | { command: 'init'; data: { desmosApiKey: string; canSetApiKey?: boolean } }
   | { command: 'setExpressions'; data: { expressions: DesmosExpression[]; settings?: CalculatorOptions; graph?: GraphSettings } }
-  | { command: 'setStatus'; data: { status: string | null } };
+  | { command: 'setStatus'; data: { status: string | null } }
+  | { command: 'setSync'; data: { enabled: boolean } };
 
-type HostMessage = { command: 'ready' } | { command: 'requestApiKey' };
+type HostMessage =
+  | { command: 'ready' }
+  | { command: 'requestApiKey' }
+  | { command: 'graphChanged'; data: { before: GraphReading; after: GraphReading } };
 ```
 
 The viewer sends `ready` on mount; the host answers with `init` and the current
 expressions. `requestApiKey` is only ever sent to a host that set
 `canSetApiKey`, because only a host that has somewhere to put a key can act on
 it — the extension opens VSCode settings, a host with one baked in has nowhere.
+
+## The way back
+
+`setSync` turns the last pair on. With it enabled the viewer watches the
+calculator for what the user does to the graph by hand — a dragged point, a
+moved slider, a recolour — and reports it as `graphChanged`. A host with the
+script the graph was compiled from can then write the change into it, which is
+`writeBackGraph` in `@axis-dsl/compiler`.
+
+Off unless a host asks, because watching means reading a state off the
+calculator on every frame of every drag, and a host with nowhere to put the
+answer would only be paying for it.
+
+Both readings travel, and both are needed. `before` is the graph as the
+calculator handed it back immediately after the host's expressions were applied;
+`after` is the graph now. Comparing against what the host _sent_ would not do:
+Desmos normalises what it is given, so every expression would look changed the
+moment the graph loaded.
 
 ## In-process
 
@@ -90,6 +112,7 @@ port.
 | Export                                          |                                                                                  |
 | ----------------------------------------------- | -------------------------------------------------------------------------------- |
 | `ViewerMessage` / `HostMessage` / `AxisMessage` | The protocol                                                                     |
+| `GraphReading`                                  | A graph in the four parts Desmos keeps it in, as `graphChanged` carries it       |
 | `ViewerTransport` / `HostTransport`             | The two ends of a connection                                                     |
 | `createLocalChannel()`                          | An in-process channel; returns `{ host, viewer }`                                |
 | `createHttpTransport(options?)`                 | The SSE + POST transport, for a viewer served over HTTP                          |

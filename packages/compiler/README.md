@@ -186,6 +186,88 @@ the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
 `convertFromLatex` is the expression-level half of it, and the inverse of
 `convertToLatex`.
 
+## Writing a changed graph back
+
+A Desmos graph is not only something a script produces; it is something a person
+edits. Dragging a point moves it, dragging a slider re-numbers it, the colour
+picker recolours it — and every one of those is a change the script it came from
+now disagrees with.
+
+Decompiling the whole graph and writing that out would close the gap and would
+throw away everything a script has that a graph does not: the comments, the
+blank lines, the macros, the folders an import stands for. So `writeBackGraph`
+works a statement at a time, and returns the line ranges to replace:
+
+```ts
+import { applySourceEdits, compileAxis, writeBackGraph } from '@axis-dsl/compiler';
+
+const compiled = compileAxis(source, { path: 'main.axis' });
+
+// Applied to a calculator, then read straight back: Desmos normalises what it
+// is given, so the baseline has to be its answer rather than what it was sent.
+calculator.setState(/* … */);
+const before = reading(calculator);
+
+// …the user drags something…
+
+const { edits, skipped } = writeBackGraph(
+  compiled,
+  before,
+  reading(calculator),
+  new Map([['main.axis', source]]),
+);
+
+const updated = applySourceEdits(source, edits);
+```
+
+What makes it possible is the **source map**. `compileAxis` returns one:
+every expression id against the file and the lines the statement covers.
+
+```ts
+compiled.sourceMap.get('expr_2');
+// { path: 'main.axis', line: 6, endLine: 9, writable: true }
+```
+
+Ids are the other half. The compiler stamps each expression with one, `setState`
+keeps it and `getState` hands it back, so a point dragged halfway across the
+graph is still recognisably the statement it came from.
+
+**What cannot be written is reported rather than attempted.** Every refusal
+comes back in `skipped` with a reason:
+
+- a statement a **macro** expanded into — the text on those lines is not what
+  the compiler read, so rewriting it would replace the macro with its expansion
+- **several statements sharing one line**, which a block written inline is —
+  replacing the span would take the others with it
+- an **animating slider** or a **running ticker**, which is the graph working
+  rather than somebody changing it; left in, a file would rewrite itself for as
+  long as the tab was open
+- a folder an **import** stands for, which is no `folder` statement to rewrite
+- a **picture added in Desmos**, which arrives carrying its own bytes — a script
+  has no `image` statement meaning "these bytes", only ones that name a file or
+  a URL, so writing it out would put the whole picture into the source
+
+Two things it is careful about, both of which cost a script something real if
+they are got wrong:
+
+- **A property Desmos did not hand back is not a property that was removed.** A
+  slider written `{min: 0, max: 10}` comes back carrying only the min, because
+  10 is Desmos' own default. So a statement is rewritten from its own expression
+  with the change laid over it, never from the calculator's answer alone —
+  otherwise dragging that slider would delete `max: 10` from somebody's script.
+- **A picture's URL is not the picture's URL.** `image "./beach.png"` is read
+  off a disk and inlined as a `data:` URI before the graph exists, so the graph
+  carries the bytes and the path is gone. Dragging a picture is a real edit and
+  is written; the name it was written with comes back from the source, never
+  from the graph, or the filename would be replaced by a megabyte of base64.
+- **The viewport is only written for a script that framed itself.** Panning and
+  zooming are how anybody reads a graph. A script with no `xmin` in its config
+  does not grow four lines about one the first time somebody scrolls.
+
+The statement that does get rewritten keeps its indentation, its trailing
+comment, its `#{ … }` block if it had one, and the order its properties were
+written in.
+
 ## API
 
 | Export                                            |                                                                                      |
@@ -199,10 +281,19 @@ the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
 | `findImageFiles(source)`                          | Just the image paths one file draws, in order                                        |
 | `convertToLatex(expr)`                            | One Axis expression to the LaTeX Desmos expects                                      |
 | `decompileAxis(graph, options?)`                  | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source      |
+| `decompileExpression(expression, options?)`       | One expression as the statement that builds it — the decompiler's unit of work       |
+| `decompileSettings(graph, options?)`              | Just the `config { … }` block a graph's settings decompile to                        |
+| `graphActionNames(expressions)`                   | The names a graph defines as actions, which `decompileExpression` wants              |
+| `writeBackGraph(compiled, before, after, files)`  | What changed on a live graph, as edits to the statements that produced it            |
+| `diffGraphs(before, after)`                       | Just the changes between two readings of the same graph, by expression id            |
+| `applySourceEdits(source, edits)`                 | Applies one file's edits to its text                                                 |
 | `convertFromLatex(latex)`                         | One piece of Desmos LaTeX back into the Axis expression it compiles from             |
 | `DecompileInput` / `DecompileOptions`             | `{ expressions, settings? }` and `{ indent? }`                                       |
 | `CompileOptions`                                  | `{ path?, resolveImport?, resolveImage? }`                                           |
-| `CompilationResult`                               | `{ expressions, settings?, imports, images }`                                        |
+| `CompilationResult`                               | `{ expressions, settings?, imports, images, sourceMap, configOrigin? }`              |
+| `StatementOrigin`                                 | `{ path, line, endLine, writable, reason? }` — where one expression was written      |
+| `GraphSnapshot` / `GraphChange` / `SourceEdit`    | A reading of a graph, one change to it, and one replacement of a run of lines        |
+| `WriteBackOptions` / `WriteBackResult`            | `{ include?, entryPath?, indent? }` and `{ edits, skipped }`                         |
 | `ImportHost` / `ResolveImport` / `ResolvedImport` | The import resolver types                                                            |
 | `ImageHost` / `ResolveImage` / `ResolvedImage`    | The image resolver types                                                             |
 

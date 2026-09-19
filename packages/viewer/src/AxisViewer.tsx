@@ -161,6 +161,7 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
         status,
         connection,
         hasConnected,
+        sync,
     } = useViewerState(transport);
     const notice = connectionNotice(connection, hasConnected);
 
@@ -248,6 +249,18 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
                     settings={settings}
                     graph={graph}
                     state={state}
+                    // Only while the host has asked for it. A host with nowhere
+                    // to put a change should not be paying for one to be read
+                    // off the calculator on every frame of every drag.
+                    onGraphChanged={
+                        sync
+                            ? (before, after) =>
+                                  transport.send({
+                                      command: 'graphChanged',
+                                      data: { before, after },
+                                  })
+                            : undefined
+                    }
                     ticker={ticker}
                     renderError={message => (
                         <div
