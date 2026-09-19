@@ -8,6 +8,7 @@ import type {
 } from '@axis-dsl/desmos';
 import {
     createLocalChannel,
+    type GraphReading,
     type HostTransport,
     type ViewerMessage,
     type ViewerTransport,
@@ -30,6 +31,16 @@ export interface LocalViewerHost {
      * affordance at all, rather than leaving a button that does nothing.
      */
     onRequestApiKey?: () => void;
+    /**
+     * Report changes the user makes to the graph by hand — a dragged point, a
+     * moved slider, a recolour, a pan.
+     *
+     * Left out, the calculator is not watched: the viewer only starts looking
+     * when a host says it has somewhere to put the answer. `before` is the
+     * graph as the calculator held it when this host's expressions were last
+     * applied, `after` is the graph now.
+     */
+    onGraphChanged?: (before: GraphReading, after: GraphReading) => void;
 }
 
 /** The half of a host's state that describes the graph rather than the page. */
@@ -70,6 +81,7 @@ function pushAll(host: HostTransport, state: LocalViewerHost) {
     }
     host.send(expressionsMessage(state));
     host.send({ command: 'setStatus', data: { status: state.status ?? null } });
+    host.send({ command: 'setSync', data: { enabled: Boolean(state.onGraphChanged) } });
 }
 
 /**
@@ -93,6 +105,8 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
                 pushAll(created.host, latest.current);
             } else if (message.command === 'requestApiKey') {
                 latest.current.onRequestApiKey?.();
+            } else if (message.command === 'graphChanged') {
+                latest.current.onGraphChanged?.(message.data.before, message.data.after);
             }
         });
         return created;
@@ -100,6 +114,10 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
 
     const { apiKey, expressions, settings, graph, state: stateFlags, ticker, status } = state;
     const canSetApiKey = Boolean(state.onRequestApiKey);
+    // Whether a host is listening, not which function it is listening with: a
+    // host writing this inline gets a new closure every render, and resending
+    // `setSync` on each one would be a message per keystroke.
+    const wantsSync = Boolean(state.onGraphChanged);
 
     useEffect(() => {
         if (apiKey) {
@@ -119,6 +137,10 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
     useEffect(() => {
         channel.host.send({ command: 'setStatus', data: { status: status ?? null } });
     }, [channel, status]);
+
+    useEffect(() => {
+        channel.host.send({ command: 'setSync', data: { enabled: wantsSync } });
+    }, [channel, wantsSync]);
 
     return channel.viewer;
 }
