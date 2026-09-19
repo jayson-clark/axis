@@ -56,6 +56,37 @@ Pass `onRequestApiKey` to `useLocalViewerHost` and the viewer offers a "Set an
 API key" button that calls it. Leave it out and the button is not rendered at
 all, rather than leading nowhere.
 
+## Editing from the graph
+
+Pass `onGraphChanged` to `useLocalViewerHost` and the viewer watches the
+calculator for what the user does to the graph directly — dragging a point,
+moving a slider, recolouring something, panning — and hands back two readings:
+the graph as it was when your expressions were applied, and the graph now.
+
+```ts
+const transport = useLocalViewerHost({
+    apiKey,
+    expressions,
+    onGraphChanged: (before, after) => {
+        const { edits } = writeBackGraph(compiled, before, after, files);
+        // …apply them to the script the graph was compiled from
+    },
+});
+```
+
+Leave it out and the calculator is not watched at all — the viewer only starts
+looking when a host says it has somewhere to put the answer.
+
+The difference between the two readings is the user's doing and nothing else.
+The baseline is read back off the calculator rather than taken from the
+expressions that produced it, because Desmos normalises what it is given: a
+state compared against what was sent would report a change on every expression
+the moment the graph loaded. Reports are debounced, since a drag is hundreds of
+`change` events and one edit.
+
+`writeBackGraph` in `@axis-dsl/compiler` is what turns the pair into edits to
+the statements that produced them.
+
 A transport with a wire can also report whether it still has one, via
 `onConnectionChange`. When it drops, the viewer says so above the graph instead
 of leaving a stale one looking current — a first connection is silent, a
