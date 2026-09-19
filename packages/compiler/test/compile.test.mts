@@ -14,6 +14,20 @@ import { compileAxis } from '../dist/index.js';
 import type { Expression, Folder, GraphImage, Note, Table } from '@axis-dsl/desmos';
 
 const compile = (source: string) => compileAxis(source).expressions;
+
+/**
+ * A compilation without its source map: the graph it describes, and nothing
+ * about where it was written.
+ *
+ * What the tests below compare is that two layouts of the same script build the
+ * same graph. The source map is deliberately not part of that - it says which
+ * lines a statement was written on, so two layouts that agree on every
+ * expression still disagree here, and should.
+ */
+const graphOf = (result: ReturnType<typeof compileAxis>) => {
+    const { sourceMap, ...graph } = result;
+    return graph;
+};
 const only = <T,>(source: string) => compile(source)[0] as T;
 
 describe('expressions', () => {
@@ -296,13 +310,13 @@ describe('a metadata block', () => {
         const block = compileAxis(
             'y = x #{\n    color: #c74440\n    lineWidth: 3\n    lineStyle: DASHED\n}',
         );
-        assert.deepEqual(block, run);
+        assert.deepEqual(graphOf(block), graphOf(run));
     });
 
     test('takes a comma between two properties on one line', () => {
         assert.deepEqual(
-            compileAxis('y = x #{ color: red, lineWidth: 3 }'),
-            compileAxis('y = x # color: red, lineWidth: 3'),
+            graphOf(compileAxis('y = x #{ color: red, lineWidth: 3 }')),
+            graphOf(compileAxis('y = x # color: red, lineWidth: 3')),
         );
     });
 
@@ -448,22 +462,25 @@ describe('layout', () => {
     test('a script written inline compiles the same as one written out', () => {
         const inline = compileAxis('folder "A" { y = x, z = 1 }');
         const expanded = compileAxis('folder "A" {\n    y = x,\n    z = 1\n}');
-        assert.deepEqual(inline, expanded);
+        assert.deepEqual(graphOf(inline), graphOf(expanded));
     });
 
     test('a block separates its entries by their newlines, as the top level does', () => {
         const separated = compileAxis('folder "A" {\n    y = x,\n    z = 1\n}');
-        assert.deepEqual(compileAxis('folder "A" {\n    y = x\n    z = 1\n}'), separated);
+        assert.deepEqual(
+            graphOf(compileAxis('folder "A" {\n    y = x\n    z = 1\n}')),
+            graphOf(separated),
+        );
     });
 
     test('a table and a config block do the same', () => {
         assert.deepEqual(
-            compileAxis('table {\n    x = [1, 2]\n    y = [3, 4]\n}'),
-            compileAxis('table {\n    x = [1, 2],\n    y = [3, 4]\n}'),
+            graphOf(compileAxis('table {\n    x = [1, 2]\n    y = [3, 4]\n}')),
+            graphOf(compileAxis('table {\n    x = [1, 2],\n    y = [3, 4]\n}')),
         );
         assert.deepEqual(
-            compileAxis('config {\n    showGrid: false\n    degreeMode: true\n}'),
-            compileAxis('config {\n    showGrid: false,\n    degreeMode: true\n}'),
+            graphOf(compileAxis('config {\n    showGrid: false\n    degreeMode: true\n}')),
+            graphOf(compileAxis('config {\n    showGrid: false,\n    degreeMode: true\n}')),
         );
     });
 
@@ -517,8 +534,8 @@ describe('wrapping an example script', () => {
 
             assert.deepEqual(validateAxis(wrapped), [], `wrapping ${name} broke the script`);
             assert.deepEqual(
-                compileAxis(wrapped, { path, resolveImport, resolveImage }),
-                compileAxis(source, { path, resolveImport, resolveImage }),
+                graphOf(compileAxis(wrapped, { path, resolveImport, resolveImage })),
+                graphOf(compileAxis(source, { path, resolveImport, resolveImage })),
             );
             assert.equal(formatAxisCode(wrapped, NARROW), wrapped, 'wrapping is not idempotent');
         });
