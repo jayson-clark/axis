@@ -37,3 +37,26 @@ export interface AxisFormattingOptions {
      */
     maxLineLength?: number;
 }
+
+/**
+ * A line of a script, and the lines of the file it came from.
+ *
+ * The layout passes a script goes through before it is compiled -
+ * {@link foldMetadataBlocks}, {@link joinContinuedLines},
+ * {@link expandBlockEntries} - merge lines together and split them apart, so by
+ * the time the compiler sees a statement there is nothing left in it saying
+ * where it was written. Threading this through those passes is what lets a
+ * compiled expression be traced back to the text that produced it, which is
+ * what writing a change to a graph back into its source needs.
+ *
+ * The span is inclusive at both ends and zero-based, and a statement written on
+ * one line has `line === endLine`. Several statements can share a span: a block
+ * written inline is one line holding all of them.
+ */
+export interface SourceLine {
+    text: string;
+    /** Zero-based index of the first line of the file this came from. */
+    line: number;
+    /** Zero-based index of its last line, inclusive. */
+    endLine: number;
+}

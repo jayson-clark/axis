@@ -2,7 +2,9 @@
 // Bracket depth - editor-agnostic
 // ═════════════════════════════════════════════════════════════════════════════
 
+import { sourceLines } from './blocks';
 import { splitTrailingMetadata } from './metadata';
+import type { SourceLine } from './types';
 import { closersFor, OPENERS, scanCode } from './scan';
 
 /**
@@ -78,31 +80,45 @@ export function leadingClosers(line: string, openers: string = OPENERS): number 
  * end of input simply ends the statement.
  */
 export function joinContinuedLines(text: string): string[] {
-    const joined: string[] = [];
+    return joinContinuedSourceLines(sourceLines(text)).map(line => line.text);
+}
+
+/**
+ * {@link joinContinuedLines}, keeping each joined statement's span of the file.
+ *
+ * A statement split across brackets covers every line it was written across,
+ * from the one that opened the bracket to the one that closed it.
+ */
+export function joinContinuedSourceLines(lines: readonly SourceLine[]): SourceLine[] {
+    const joined: SourceLine[] = [];
     let pending: string | undefined;
     let pendingMetadata: string[] = [];
+    let pendingLine = 0;
+    let at = 0;
     let depth = 0;
 
-    const flush = () => {
+    const flush = (endLine: number) => {
         const metadata = pendingMetadata.length ? ` # ${pendingMetadata.join(', ')}` : '';
-        joined.push(pending + metadata);
+        joined.push({ text: pending + metadata, line: pendingLine, endLine });
         pending = undefined;
         pendingMetadata = [];
     };
 
-    for (const rawLine of text.split('\n')) {
+    for (const source of lines) {
         // Metadata is held back and re-attached once the statement closes, so
         // it can be written on any of the lines the statement spans and still
         // end up where the compiler looks for it.
-        const { code, metadata } = splitTrailingMetadata(rawLine.trim());
+        const { code, metadata } = splitTrailingMetadata(source.text.trim());
         const delta = bracketDelta(code, continuationBracketsFor(code));
+        at = source.endLine;
 
         if (pending === undefined) {
             if (delta <= 0) {
-                joined.push(rawLine);
+                joined.push(source);
                 continue;
             }
             pending = code;
+            pendingLine = source.line;
             depth = delta;
         } else {
             depth += delta;
@@ -116,12 +132,12 @@ export function joinContinuedLines(text: string): string[] {
         }
 
         if (depth <= 0) {
-            flush();
+            flush(source.endLine);
         }
     }
 
     if (pending !== undefined) {
-        flush();
+        flush(at);
     }
 
     return joined;

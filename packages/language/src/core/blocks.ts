@@ -21,6 +21,7 @@
 // comma.
 
 import { CLOSER_FOR, CLOSERS, endOfStringOrLine, matchingBracket, OPENERS, scanCode } from './scan';
+import type { SourceLine } from './types';
 
 /** `folder "Name"`, `table` or `config`, as written immediately before a `{`. */
 const BLOCK_HEADER = /^(?:folder\s+"(?:[^"\\]|\\[^])*"|table|config)$/;
@@ -435,12 +436,29 @@ export function insertMissingSeparators(lines: string[]): string[] {
  * between two properties would lose the separator this one puts in.
  */
 export function foldMetadataBlocks(text: string): string {
-    const folded: string[] = [];
+    return foldMetadataLines(sourceLines(text))
+        .map(line => line.text)
+        .join('\n');
+}
+
+/**
+ * {@link foldMetadataBlocks}, keeping each folded line's span of the file.
+ *
+ * A folded statement covers every line its block was written across, from the
+ * statement itself down to the `}` that closes it - which is the range a caller
+ * rewriting that statement has to replace.
+ */
+export function foldMetadataLines(lines: readonly SourceLine[]): SourceLine[] {
+    const folded: SourceLine[] = [];
     /** The statement the open block annotates, or undefined outside one. */
     let head: string | undefined;
+    /** The line `head` was written on, which the folded statement starts at. */
+    let headLine = 0;
     let entries: string[] = [];
     let buffer = '';
     let depth = 0;
+    /** The line last read, which a block still open when it ends closes on. */
+    let at = 0;
 
     const takeEntry = () => {
         if (buffer.trim()) {
@@ -450,25 +468,32 @@ export function foldMetadataBlocks(text: string): string {
     };
 
     /** Write the block back onto its statement, with `rest` following it. */
-    const closeBlock = (rest: string) => {
+    const closeBlock = (rest: string, endLine: number) => {
         takeEntry();
         const metadata = entries.length ? ` # ${entries.join(', ')}` : '';
         const line = `${head}${metadata}${rest}`.trimEnd();
-        folded.push(head ? line : line.trimStart());
+        folded.push({
+            text: head ? line : line.trimStart(),
+            line: headLine,
+            endLine,
+        });
         head = undefined;
         entries = [];
     };
 
-    for (const line of text.split('\n')) {
+    for (const source of lines) {
+        const line = source.text;
+        at = source.endLine;
         let i = 0;
 
         if (head === undefined) {
             const open = openingHash(line);
             if (open === -1) {
-                folded.push(line);
+                folded.push(source);
                 continue;
             }
             head = line.slice(0, open).trimEnd();
+            headLine = source.line;
             depth = 1;
             i = open + 2;
         }
@@ -514,16 +539,21 @@ export function foldMetadataBlocks(text: string): string {
             continue;
         }
 
-        closeBlock(line.slice(closed + 1));
+        closeBlock(line.slice(closed + 1), source.endLine);
     }
 
     // A block left open runs to the end of the file; the diagnostics report the
     // brace, and the properties it did hold are still read.
     if (head !== undefined) {
-        closeBlock('');
+        closeBlock('', at);
     }
 
-    return folded.join('\n');
+    return folded;
+}
+
+/** A file's text as the lines it is written on, each standing for itself. */
+export function sourceLines(text: string): SourceLine[] {
+    return text.split('\n').map((line, index) => ({ text: line, line: index, endLine: index }));
 }
 
 /** Column of the `#` of a `#{` that opens a metadata block on `line`, or -1. */
@@ -604,18 +634,34 @@ export function removeRedundantSeparators(lines: string[]): string[] {
  * properties the compiler has no statement to hang on.
  */
 export function expandBlockEntries(lines: string[]): string[] {
-    const stack: BlockFrame[] = [];
-    const expanded: string[] = [];
+    return expandBlockSourceEntries(
+        lines.map((text, index) => ({ text, line: index, endLine: index })),
+    ).map(line => line.text);
+}
 
-    lines.forEach((line, index) => {
-        const segments = scanBlockLine(line, index, stack);
+/**
+ * {@link expandBlockEntries}, keeping each statement's span of the file.
+ *
+ * This pass is the one that splits rather than merges, so several statements
+ * can come back carrying the same span - which is exactly what a block written
+ * inline is. A caller rewriting one of them has to notice: the span it would
+ * replace holds the others too.
+ */
+export function expandBlockSourceEntries(lines: readonly SourceLine[]): SourceLine[] {
+    const stack: BlockFrame[] = [];
+    const expanded: SourceLine[] = [];
+
+    lines.forEach((source, index) => {
+        const segments = scanBlockLine(source.text, index, stack);
         if (!segments.length) {
             // Blank lines carry no statement, but keeping them costs nothing
             // and leaves the output readable.
-            expanded.push(line);
+            expanded.push(source);
             return;
         }
-        segments.forEach(segment => expanded.push(segment.text));
+        segments.forEach(segment =>
+            expanded.push({ text: segment.text, line: source.line, endLine: source.endLine }),
+        );
     });
 
     return expanded;

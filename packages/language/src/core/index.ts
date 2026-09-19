@@ -17,6 +17,7 @@ export type {
     AxisCompletionKind,
     AxisFormattingOptions,
     AxisPosition,
+    SourceLine,
 } from './types';
 
 export { getAxisCompletions } from './completions';
@@ -73,15 +74,23 @@ export type { SplitLine, TopLevelPart } from './metadata';
 
 // The layout services the compiler leans on to read a script the same way an
 // editor does, whether a block was written inline or spread over lines.
-export { bracketDelta, joinContinuedLines, leadingClosers } from './brackets';
+export {
+    bracketDelta,
+    joinContinuedLines,
+    joinContinuedSourceLines,
+    leadingClosers,
+} from './brackets';
 export {
     BLOCK_KEYWORDS,
     expandBlockEntries,
+    expandBlockSourceEntries,
     foldMetadataBlocks,
+    foldMetadataLines,
     insertMissingSeparators,
     metadataBlockLines,
     missingSeparators,
     removeRedundantSeparators,
     scanBlockLine,
+    sourceLines,
 } from './blocks';
 export type { BlockFrame, BlockKind, BlockSegment, BlockSegmentKind } from './blocks';
