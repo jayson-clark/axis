@@ -136,7 +136,9 @@ describe('what Desmos writes', () => {
             ['\\sqrt[3]{x}', call('nthroot', 'x', 3)],
             ['\\sqrt{\\sin\\left(x\\right)}', call('sqrt', call('sin', 'x'))],
             ['\\sqrt2', call('sqrt', 2)],
-            ['s_{tep}\\left(x\\right)', call('step', 'x')],
+            // `step` is a keyword, so the name keeps its subscript apart.
+            ['s_{tep}\\left(x\\right)', call('s_tep', 'x')],
+            ['f_{or}', id('f_or')],
             ['w_{ave}\\left(x,2\\right)', call('wave', 'x', 2)],
             ['\\operatorname{random}\\left(\\right)', call('random')],
             ['\\operatorname{notAThing}\\left(x\\right)', call('notAThing', 'x')],
