@@ -16,11 +16,11 @@ npm install @axis-dsl/viewer react react-dom
 
 ```tsx
 import { useMemo } from 'react';
-import { compileAxis, toGraph } from '@axis-dsl/compiler';
+import { compileAxis } from '@axis-dsl/compiler';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 
 function Preview({ source }: { source: string }) {
-    const { state, options } = useMemo(() => toGraph(compileAxis(source)), [source]);
+    const { state, options } = useMemo(() => compileAxis(source), [source]);
     const transport = useLocalViewerHost({
         apiKey: MY_DESMOS_KEY,
         state,

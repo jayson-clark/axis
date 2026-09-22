@@ -3,8 +3,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // A point whose coordinates are written in terms of t is a parametric curve,
-// drawn over Desmos' own range of t unless a domain says how far it runs. An
-// equation in r and theta is polar.
+// drawn over Desmos' own range of t - 0 to 1 - unless a domain says how far it
+// runs. An equation in r and theta is polar.
 
 config {
     showGrid: true
@@ -13,14 +13,14 @@ config {
 "Parametric curves"
 
 folder "Parametric" {
-    "The unit circle."
-    (cos(t), sin(t)) @ color: RED, lineWidth: 3
+    "The unit circle, once round: t from 0 to tau."
+    (cos(t), sin(t)) @ color: RED, lineWidth: 3, domain: 0..tau
     "An ellipse: different radii per axis."
-    (3cos(t), 2sin(t)) @ color: BLUE, lineWidth: 3
+    (3cos(t), 2sin(t)) @ color: BLUE, lineWidth: 3, domain: 0..tau
     "An Archimedean spiral - its domain runs t through three whole turns."
     (0.3t * cos(t), 0.3t * sin(t)) @ color: GREEN, lineWidth: 2, domain: 0..6pi
     "A Lissajous figure."
-    (2sin(3t), 2sin(4t)) @ color: PURPLE, lineWidth: 2
+    (2sin(3t), 2sin(4t)) @ color: PURPLE, lineWidth: 2, domain: 0..tau
 }
 
 folder "Polar" {
@@ -38,5 +38,5 @@ folder "A point travelling a curve" {
     s = 0 @ slider: 0..2pi step 0.01, playing
     (3cos(s), 2sin(s)) @ color: RED, pointSize: 18
     "Its position vector."
-    V = [(0, 0), (3cos(s), 2sin(s))] @ color: RED, points: false, lineStyle: DASHED
+    V = [(0, 0), (3cos(s), 2sin(s))] @ color: RED, lines, points: false, lineStyle: DASHED
 }

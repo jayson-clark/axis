@@ -15,8 +15,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Expression, Folder } from '@axis-dsl/desmos';
 import { imageMediaType, withAxisExtension } from '@axis-dsl/language';
-import { compileAxis, decompileAxis } from '../dist/index.js';
-import type { CompileOptions } from '../dist/index.js';
+import { decompileAxis } from '../dist/index.js';
+// The v1 compiler, which the v1 decompiler is the inverse of until #23
+// replaces both. Reached into directly because it is no longer exported.
+import { compileAxis } from '../dist/legacy/compile.js';
+import type { CompileOptions } from '../dist/legacy/compile.js';
 
 /**
  * Decompile a script, having checked that what comes back compiles to the graph

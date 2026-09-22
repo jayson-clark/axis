@@ -262,6 +262,12 @@ export interface GraphImage {
     clickableInfo?: ClickableInfo;
     hidden?: boolean;
     secret?: boolean;
+    /**
+     * Whether the image can be dragged about the graphpaper. An image has this
+     * rather than a point's `dragMode`, which Desmos ignores on one.
+     */
+    draggable?: boolean;
+    /** @deprecated Ignored on an image by Desmos; see {@link draggable}. */
     dragMode?: DragMode | string;
 }
 

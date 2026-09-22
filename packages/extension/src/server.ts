@@ -8,7 +8,6 @@ import {
     createImportResolver,
     loadImages,
     loadImports,
-    toGraph,
 } from '@axis-dsl/compiler';
 import { AXIS_FILE_EXTENSION } from '@axis-dsl/language/vscode';
 import {
@@ -477,11 +476,18 @@ export class PreviewServer implements vscode.Disposable {
                 resolveImage: createImageResolver(pictures, imageHost.resolve),
             });
 
-            this.watchDependencies(preview, [...compilation.imports, ...compilation.images]);
-            this.broadcast(preview, { command: 'setGraph', data: toGraph(compilation) });
+            const { imports, images } = compilation.dependencies;
+            this.watchDependencies(preview, [...imports, ...images]);
+            // Applied whatever the compiler had to say: a script with a mistake
+            // in it still draws everything else, which is what keeps a preview
+            // useful while a line is half written.
+            this.broadcast(preview, {
+                command: 'setGraph',
+                data: { state: compilation.state, options: compilation.options },
+            });
             this.broadcast(preview, {
                 command: 'setStatus',
-                data: { status: basename(uri) },
+                data: { status: compileStatus(basename(uri), compilation.diagnostics, source) },
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -525,4 +531,26 @@ export class PreviewServer implements vscode.Disposable {
         this.stop();
         this.changeEmitter.dispose();
     }
+}
+
+/**
+ * The preview's status line: the file's name, or the first thing the compiler
+ * found wrong with it, where it is. The full list is the editor's to show.
+ */
+function compileStatus(
+    name: string,
+    diagnostics: ReturnType<typeof compileAxis>['diagnostics'],
+    source: string,
+): string {
+    const errors = diagnostics.filter(diagnostic => diagnostic.severity === 'error');
+    if (errors.length === 0) {
+        return name;
+    }
+    const [first] = errors;
+    const where =
+        first.path === undefined
+            ? `${name}:${source.slice(0, first.span.start).split('\n').length}`
+            : first.path;
+    const more = errors.length > 1 ? ` (and ${errors.length - 1} more)` : '';
+    return `${where}: ${first.message}${more}`;
 }

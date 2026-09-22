@@ -138,7 +138,7 @@ describe('the config block', { skip }, () => {
     for (const name of NOT_REFLECTED) {
         test(`${name} compiles, though Desmos does not report it back`, () => {
             const source = `config {\n    ${name}: ${valueFor(name)}\n}\ny = x`;
-            const settings = compileAxis(source).settings ?? {};
+            const settings = compileAxis(source).options;
 
             assert.equal(settings[name as keyof CalculatorOptions], valueFor(name));
         });
@@ -186,9 +186,9 @@ describe('randomization', { skip }, () => {
         // ignores it in all three.
         const compiled = compileAxis('y = x');
 
-        assert.deepEqual(compiled.settings, AXIS_DEFAULT_CONFIG);
-        assert.equal(compiled.graph, undefined);
-        assert.deepEqual(compiled.state, { includeFunctionParametersInRandomSeed: true });
+        assert.deepEqual(compiled.options, AXIS_DEFAULT_CONFIG);
+        assert.equal(compiled.state.graph?.includeFunctionParametersInRandomSeed, undefined);
+        assert.equal(compiled.state.includeFunctionParametersInRandomSeed, true);
     });
 
     test('it reaches the top of the graph state', async () => {
@@ -279,8 +279,9 @@ describe('the viewport', { skip }, () => {
         // to updateSettings is not an error, it is silence.
         const compiled = compileAxis('config {\n    xmin: 0,\n    squareAxes: false\n}\ny = x');
 
-        assert.deepEqual(compiled.settings, AXIS_DEFAULT_CONFIG);
-        assert.deepEqual(compiled.graph, { squareAxes: false, viewport: { xmin: 0 } });
+        assert.deepEqual(compiled.options, AXIS_DEFAULT_CONFIG);
+        assert.equal(compiled.state.graph?.squareAxes, false);
+        assert.equal(compiled.state.graph?.viewport?.xmin, 0);
     });
 
     test('nothing logged to the console', () => {
@@ -354,7 +355,7 @@ describe('config options Desmos acts on', { skip }, () => {
     });
 
     test('an imported config merges under the entry script’s', () => {
-        const { settings } = compileAxis('import "lib"\nconfig {\n    showGrid: true\n}', {
+        const { options: settings } = compileAxis('import "lib"\nconfig {\n    showGrid: true\n}', {
             path: '/graph.axis',
             resolveImport: () => ({
                 path: '/lib.axis',

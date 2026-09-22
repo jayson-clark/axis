@@ -138,7 +138,8 @@ ticker expanded in Desmos' expression list.
 
 A graph has exactly one ticker, and Desmos keeps it beside the expression list
 rather than in it — so the statement goes at the top level, outside every folder,
-and `compileAxis` hands it back as `ticker` rather than as an expression. It also
+and `compileAxis` hands it back as the state's `expressions.ticker` rather than
+as an expression. It also
 switches `actions` on for you: Desmos decides that setting by looking at the
 expression list alone, so a graph whose only action is its ticker would otherwise
 never tick.
@@ -235,9 +236,9 @@ npm install @axis-dsl/compiler @axis-dsl/language @axis-dsl/viewer monaco-editor
 Compile anywhere — a build step, a server, a test:
 
 ```ts
-import { compileAxis, toGraph } from '@axis-dsl/compiler';
+import { compileAxis } from '@axis-dsl/compiler';
 
-const { state, options } = toGraph(compileAxis(source));
+const { state, options, diagnostics } = compileAxis(source);
 
 calculator.setState(state);
 calculator.updateSettings(options);
@@ -245,7 +246,9 @@ calculator.updateSettings(options);
 
 That is the whole of applying a graph: `state` is everything `setState` takes —
 the expression list, the ticker, the viewport, the top-level flags — and
-`options` is everything `updateSettings` takes.
+`options` is everything `updateSettings` takes. `compileAxis` never throws on a
+script: whatever is wrong with one comes back in `diagnostics`, each with a
+stable `code` and a `span`, beside the graph the rest of it still makes.
 
 Compilation is synchronous and touches no filesystem, so a script with imports
 is handed a resolver. `loadImports` walks the graph first over whatever reading
@@ -299,11 +302,11 @@ The graph half is a component, since it owns a Desmos instance:
 
 ```tsx
 import { useMemo } from 'react';
-import { compileAxis, toGraph } from '@axis-dsl/compiler';
+import { compileAxis } from '@axis-dsl/compiler';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 
 function Graph({ source }) {
-    const { state, options } = useMemo(() => toGraph(compileAxis(source)), [source]);
+    const { state, options } = useMemo(() => compileAxis(source), [source]);
     const transport = useLocalViewerHost({ apiKey: MY_DESMOS_KEY, state, options });
 
     return <AxisViewer transport={transport} />;

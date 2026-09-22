@@ -230,10 +230,11 @@ describe('imports', { skip }, () => {
 
     test('an import inside a folder joins that folder rather than opening one', async () => {
         const source = 'folder "Host" {\nimport "lib"\n}';
-        const expressions = compileAxis(source, {
-            path: '/graph.axis',
-            resolveImport: () => ({ path: '/lib.axis', source: 'y = x' }),
-        }).expressions;
+        const expressions =
+            compileAxis(source, {
+                path: '/graph.axis',
+                resolveImport: () => ({ path: '/lib.axis', source: 'y = x' }),
+            }).state.expressions?.list ?? [];
         const folders = expressions.filter(expression => expression.type === 'folder') as Folder[];
 
         assert.equal(folders.length, 1);
@@ -330,7 +331,7 @@ describe('the graph as a whole', { skip }, () => {
 
     test('every expression gets an id Desmos keeps', async () => {
         const source = 'y = x\nfolder "F" {\ny = 2x\n}\ntable { x = [1], y = [2] }\n"note"';
-        const compiled = compileAxis(source).expressions;
+        const compiled = compileAxis(source).state.expressions?.list ?? [];
         await calculator().load(source);
         const list = (await calculator().getState()).expressions?.list ?? [];
 
