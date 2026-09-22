@@ -536,6 +536,17 @@ describe('colours (#2)', () => {
             '\\operatorname{hsv}\\left(h,1,1\\right)',
         );
     });
+
+    test('a palette name in the wrong case is left off, not drawn as r·e·d', () => {
+        const line = only<Expression>('y = x @ color: red');
+        assert.ok(!('colorLatex' in line));
+        assert.ok(!('color' in line));
+    });
+
+    test('unless the script defines that name, when it is the variable', () => {
+        const [, line] = listOf('red = rgb(255, 0, 0)\ny = x @ color: red') as Expression[];
+        assert.equal(line.colorLatex, 'r_{ed}');
+    });
 });
 
 describe('images', () => {

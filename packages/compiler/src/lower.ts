@@ -303,6 +303,13 @@ export function lowerProgram(
                 if (['Number', 'String', 'Sequence', 'Action', 'Comparison'].includes(node.kind)) {
                     return {};
                 }
+                // `red` is a palette name in the wrong case, which the checker
+                // reports - and as an expression it is r·e·d, three sliders
+                // nobody asked for. Left off like any other rejected value,
+                // unless the script defines the name, when it is a variable.
+                if (node.kind === 'Identifier' && isMiscasePalette(node.name, symbols)) {
+                    return {};
+                }
                 const written = latex(node, own.has(resolved.get(name)!));
                 return written === undefined ? {} : { colorLatex: written };
             },
@@ -995,6 +1002,16 @@ function splitConfig(
 /** An image's `dragMode` as the flag Desmos keeps for it: dragged, or left off. */
 function imageDraggable(mode: string | undefined): true | undefined {
     return mode !== undefined && mode !== 'NONE' ? true : undefined;
+}
+
+/** Whether `name` is a palette name in the wrong case that the script does not define. */
+function isMiscasePalette(name: string, symbols: Symbols): boolean {
+    const lower = name.toLowerCase();
+    return (
+        !AXIS_PALETTE_HEX.has(name) &&
+        [...AXIS_PALETTE_HEX.keys()].some(colour => colour.toLowerCase() === lower) &&
+        !symbols.variables.has(name)
+    );
 }
 
 /** `3`, `-0.5` as the number it is, or nothing for anything else. */
