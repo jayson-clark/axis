@@ -3,8 +3,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // dragMode says how a point may be moved. onClick attaches an action, written
-// `target -> new value`, that runs when the object is clicked. A ticker runs
-// one action over and over on its own, with no click at all.
+// `target -> new value`, that runs when the object is clicked. Several actions
+// separated by commas are a run, and happen together. A ticker runs one action,
+// or one run, over and over on its own, with no click at all.
 
 config {
     actions: true
@@ -14,47 +15,55 @@ config {
 
 folder "Dragging" {
     "dragMode: XY, X, Y or NONE."
-    A = (-4, 3) # color: #c74440, pointSize: 18, dragMode: XY, label: "free", showLabel: true
-    B = (0, 3) # color: #2d70b3, pointSize: 18, dragMode: X, label: "x only", showLabel: true
-    C = (4, 3) # color: #388c46, pointSize: 18, dragMode: Y, label: "y only", showLabel: true
-    D = (0, 0) # color: #6042a6, pointSize: 18, dragMode: NONE, label: "pinned", showLabel: true
+    A = (-4, 3) @ color: RED, pointSize: 18, dragMode: XY, label: "free", showLabel
+    B = (0, 3) @ color: BLUE, pointSize: 18, dragMode: X, label: "x only", showLabel
+    C = (4, 3) @ color: GREEN, pointSize: 18, dragMode: Y, label: "y only", showLabel
+    D = (0, 0) @ color: PURPLE, pointSize: 18, dragMode: NONE, label: "pinned", showLabel
 }
 
 folder "A counter" {
     "Click the point to step n along."
-    n = 0 # sliderBounds: {min: 0, max: 10, step: 1}
-    (n, -2) # color: #fa7e19, pointSize: 20, onClick: n -> n + 1, description: "Increase n by one"
+    n = 0 @ slider: 0..10 step 1
+    (n, -2) @ color: ORANGE, pointSize: 20, onClick: n -> n + 1, description: "Increase n by one"
     "And back to zero."
-    (0, -3) # color: #c74440, pointSize: 20, onClick: n -> 0, description: "Reset n"
+    (0, -3) @ color: RED, pointSize: 20, onClick: n -> 0, description: "Reset n"
 }
 
 folder "Clicking a shape" {
     "A whole polygon can carry an action."
-    polygon((-6, -5), (-3, -5), (-3, -8), (-6, -8)) #{
-        color: #2d70b3
-        fill: true
+    polygon((-6, -5), (-3, -5), (-3, -8), (-6, -8)) @{
+        color: BLUE
+        fill
         fillOpacity: 0.3
         onClick: n -> n + 2
         description: "Add two to n"
     }
     "Setting a point from an action moves it."
-    E = (2, -6) # color: #388c46, pointSize: 18
-    (5, -6) # color: #388c46, pointSize: 14, onClick: E -> (2, -6), description: "Send E home"
+    E = (2, -6) @ color: GREEN, pointSize: 18
+    (5, -6) @ color: GREEN, pointSize: 14, onClick: E -> (2, -6), description: "Send E home"
+    "A run does several things with one click. Given a name, it can be used anywhere an action can."
+    reset = E -> (2, -6), n -> 0
+    (5, -8) @ color: RED, pointSize: 14, onClick: reset, description: "Reset E and n"
 }
 
 folder "Switching an action off" {
     "clickable: false keeps the action but disables it - the same as unticking the box in Desmos."
-    (6, 2) # color: #6042a6, pointSize: 18, onClick: n -> 99, clickable: false
+    (6, 2) @ color: PURPLE, pointSize: 18, onClick: n -> 99, clickable: false
 }
 
 // The graph has one ticker, so it is written at the top level rather than in a
 // folder. minStep is the shortest gap between two ticks, in milliseconds;
-// playing starts it as soon as the graph opens.
-ticker T -> mod(T + 1, 60) # minStep: 50, playing: true, open: true
+// playing starts it as soon as the graph opens. Inside the handler dt is the
+// time since the last tick, also in milliseconds - which is not always minStep,
+// since a busy page ticks late.
+ticker T -> mod(T + 1, 60), clock -> mod(clock + dt, 3000) @ minStep: 50, playing, open
 
 folder "A ticker" {
-    "T counts itself up, one step every 50ms, and starts over at 60."
-    T = 0 # sliderBounds: {min: 0, max: 60, step: 1}
+    "T counts itself up, one step a tick, and starts over at 60."
+    T = 0 @ slider: 0..60 step 1
     "A point going round while it counts."
-    (7 + 1.5cos(T * pi / 30), 2 + 1.5sin(T * pi / 30)) # color: #fa7e19, pointSize: 20
+    (7 + 1.5cos(T * pi / 30), 2 + 1.5sin(T * pi / 30)) @ color: ORANGE, pointSize: 20
+    "clock adds up dt instead, so it keeps real time however late the ticks come: once round every three seconds."
+    clock = 0
+    (7 + 1.5cos(clock * tau / 3000), 2 + 1.5sin(clock * tau / 3000)) @ color: PURPLE, pointSize: 10
 }

@@ -4,7 +4,7 @@
 //
 // A folder groups the statements written inside it. Desmos supports one level,
 // so folders do not nest. Inside one a statement ends at its newline, exactly
-// as it does at the top level; a comma separates two written on one line.
+// as it does at the top level; a ; separates two written on one line.
 
 config {
     expressionsCollapsed: false
@@ -14,22 +14,27 @@ config {
 
 folder "Open by default" {
     "A note inside a folder is an entry like any other."
-    y = sin(x) # color: #c74440
-    y = cos(x) # color: #2d70b3
+    y = sin(x) @ color: RED
+    y = cos(x) @ color: BLUE
 }
 
-// collapsed on the header starts the folder shut.
-folder "Closed by default" { # collapsed: true
-    y = sin(2x) # color: #388c46
-    y = cos(2x) # color: #6042a6
+// Metadata written straight after the { is the folder's own: collapsed starts
+// it shut.
+folder "Closed by default" { @ collapsed
+    y = sin(2x) @ color: GREEN
+    y = cos(2x) @ color: PURPLE
 }
 
 // A folder can hold the working parts of a construction, hidden away.
-folder "Working values" { # collapsed: true
-    amp = 2 # sliderBounds: {min: 0, max: 5, step: 0.1}
-    freq = 3 # sliderBounds: {min: 1, max: 8, step: 1}
+folder "Working values" { @ collapsed
+    amp = 2 @ slider: 0..5 step 0.1
+    freq = 3 @ slider: 1..8 step 1
 }
 
 "Anything after the closing brace is back at the top level."
 
-y = amp * sin(freq * x) # color: #fa7e19, lineWidth: 3
+y = amp * sin(freq * x) @ color: ORANGE, lineWidth: 3
+
+// A folder needs no title: `folder { … }` groups without naming the group. Like
+// any block it may be written on one line, with a ; between its entries.
+folder { y = amp * cos(freq * x) @ color: BLUE; y = amp @ color: BLACK, lineStyle: DOTTED }

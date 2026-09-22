@@ -2,8 +2,8 @@
 // Sliders and animation
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// A definition with sliderBounds becomes a slider. Give it playing: true and
-// the graph animates as soon as it opens.
+// A definition given a slider range becomes a slider. Mark it playing and the
+// graph animates as soon as it opens.
 
 config {
     showGrid: true
@@ -11,24 +11,36 @@ config {
 
 "Sliders"
 
-// min and max are required; step is optional.
-a = 1 # sliderBounds: {min: -5, max: 5, step: 0.5}
-b = 0 # sliderBounds: {min: -3, max: 3, step: 0.1}
-c = 1 # sliderBounds: {min: 0.5, max: 4, step: 0.25}
+// A range is written low..high, with an optional step after it.
+a = 1 @ slider: -5..5 step 0.5
+b = 0 @ slider: -3..3 step 0.1
+c = 1 @ slider: 0.5..4 step 0.25
 
 "Drag a, b and c to reshape the parabola."
 
-y = a * (x - b) ^ 2 + c # color: #c74440, lineWidth: 3
+y = a * (x - b) ^ 2 + c @ color: RED, lineWidth: 3
 
 // The vertex, tracked as the sliders move.
-(b, c) # color: #c74440, pointSize: 15, label: "vertex", showLabel: true, labelOrientation: above
+(b, c) @ color: RED, pointSize: 15, label: "vertex", showLabel, labelOrientation: above
+
+folder "Ranges" {
+    "An end left off keeps Desmos' own default for it - here the top, 10."
+    p = 2 @ slider: 0.. step 1
+    "Both ends stop the slider by default. soft lets a value typed in go past them; soft min or soft max softens just the one."
+    q = 1 @ slider: -2..2 soft
+    k = 1 @ slider: 0..3 step 0.5 soft max
+    "Any end, and the step, may be an expression - so one slider can set the reach of another."
+    lim = 3 @ slider: 1..6 step 1
+    s = 1 @ slider: -lim..lim step lim / 10
+    y = p + q * sin(k * x) + s @ color: GREEN, lineOpacity: 0.6
+}
 
 folder "Animation" {
-    "playing: true starts the slider moving on load."
-    t = 0 # sliderBounds: {min: 0, max: 6.28, step: 0.02}, playing: true
+    "playing starts the slider moving on load."
+    t = 0 @ slider: 0..2pi step 0.02, playing
     "A point riding the wave."
-    (t, sin(t)) # color: #2d70b3, pointSize: 18
-    y = sin(x) # color: #2d70b3, lineOpacity: 0.4
+    (t, sin(t)) @ color: BLUE, pointSize: 18
+    y = sin(x) @ color: BLUE, lineOpacity: 0.4
     "A trailing chord back to the origin."
-    Q = [(0, 0), (t, sin(t))] # color: #fa7e19, points: false, lineStyle: DASHED
+    Q = [(0, 0), (t, sin(t))] @ color: ORANGE, points: false, lineStyle: DASHED
 }
