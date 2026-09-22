@@ -308,6 +308,18 @@ export class AxisCalculator {
         return this.page.evaluate(() => window.__axisHarness!.calculator.getState());
     }
 
+    /**
+     * The graph as the calculator holds it, in the two halves {@link setGraph}
+     * takes: the state, and a copy of the live options. This is the reading a
+     * viewer reports a change with, and what `writeBackGraph` compares.
+     */
+    async getGraph(): Promise<Pick<CompilationResult, 'state' | 'options'>> {
+        return this.page.evaluate(() => {
+            const { calculator } = window.__axisHarness!;
+            return { state: calculator.getState(), options: { ...calculator.settings } };
+        });
+    }
+
     async getExpressions(): Promise<ExpressionState[]> {
         return this.page.evaluate(() => window.__axisHarness!.calculator.getExpressions());
     }

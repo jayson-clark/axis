@@ -157,8 +157,8 @@ const transport = useLocalViewerHost({
     state,
     options,
     onGraphChanged: (before, after) => {
-        const { edits } = writeBackGraph(compiled, before, after, files);
-        // …apply them to the script the graph was compiled from
+        const { edits } = writeBackGraph(source, { before, after }, compiled);
+        setSource(applySourceEdits(source, edits));
     },
 });
 ```
@@ -173,10 +173,10 @@ against what was sent would report a change on every expression the moment the
 graph loaded. Reports are debounced, since a drag is hundreds of `change` events
 and one edit.
 
-A reading is a `GraphReading` — `{ expressions, settings?, graph?, state?,
-ticker? }`, the calculator's state taken apart — because that is what
-`writeBackGraph` in `@axis-dsl/compiler` compares, and it is what turns the pair
-into edits to the statements that produced them.
+A reading is a `GraphReading` — `{ state, options }`, `calculator.getState()`
+and a copy of `calculator.settings`, the same two halves a graph is applied as.
+That is what `writeBackGraph` in `@axis-dsl/compiler` compares, and it is what
+turns the pair into edits to the statements that produced them.
 
 ## Capturing an image
 
@@ -245,7 +245,7 @@ From `@axis-dsl/viewer/protocol`:
 | ----------------------------------------------- | -------------------------------------------------------------------------------- |
 | `ViewerMessage` / `HostMessage` / `AxisMessage` | The protocol                                                                     |
 | `ViewerGraph`                                   | `{ state: GraphState, options: CalculatorOptions }`, what `setGraph` carries     |
-| `GraphReading`                                  | A graph read back off the calculator in parts, as `graphChanged` carries it      |
+| `GraphReading`                                  | `{ state, options }` read back off the calculator, as `graphChanged` carries it  |
 | `ViewerTransport` / `HostTransport`             | The two ends of a connection                                                     |
 | `createLocalChannel()`                          | An in-process channel; returns `{ host, viewer }`                                |
 | `createHttpTransport(options?)`                 | The SSE + POST transport, for a viewer served over HTTP                          |

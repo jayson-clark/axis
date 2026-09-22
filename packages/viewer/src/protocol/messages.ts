@@ -7,14 +7,7 @@
 // HTTP event stream, the playground over an in-memory channel. One path means a
 // feature is built once and every host gets it.
 
-import type {
-    CalculatorOptions,
-    DesmosExpression,
-    GraphSettings,
-    GraphState,
-    GraphStateFlags,
-    TickerState,
-} from '@axis-dsl/desmos';
+import type { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
 
 /**
  * A graph as a host hands it over: the payload of `setGraph`, and what the
@@ -69,20 +62,18 @@ export type ViewerMessage =
     | { command: 'setSync'; data: { enabled: boolean } };
 
 /**
- * A graph as the calculator holds it, read back in parts: the expression list,
- * the calculator options, and the three things beside the list in its state.
+ * A graph as the calculator holds it: `calculator.getState()` and a copy of
+ * the live `calculator.settings` - the same two halves a {@link ViewerGraph}
+ * is applied as, read back the other way.
  *
- * The shape `writeBackGraph` in `@axis-dsl/compiler` reads, which is why it is
- * not a {@link ViewerGraph}: the write-back compares the two readings part by
- * part, and splitting a state up is the viewer's to do once rather than every
- * host's.
+ * The shape `writeBackGraph` in `@axis-dsl/compiler` reads. It is kept whole
+ * rather than split up, because what the state holds is exactly what the
+ * compiler lowered to - so the write-back can compare the two readings in the
+ * terms it wrote them in.
  */
 export interface GraphReading {
-    expressions: DesmosExpression[];
-    settings?: CalculatorOptions;
-    graph?: GraphSettings;
-    state?: GraphStateFlags;
-    ticker?: TickerState;
+    state: GraphState;
+    options: CalculatorOptions;
 }
 
 /** Viewer → host. */
