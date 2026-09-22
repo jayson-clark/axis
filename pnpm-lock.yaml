@@ -196,6 +196,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.4.0
+      monaco-editor:
+        specifier: 'catalog:'
+        version: 0.56.0
 
   packages/protocol:
     dependencies:
