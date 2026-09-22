@@ -24,9 +24,14 @@ export {
     decompileAxis,
     decompileExpression,
     decompileSettings,
-    graphActionNames,
+    decompileTicker,
 } from './decompile';
-export type { DecompileExpressionOptions, DecompileInput, DecompileOptions } from './decompile';
+export type {
+    DecompiledStatement,
+    DecompileExpressionOptions,
+    DecompileInput,
+    DecompileResult,
+} from './decompile';
 export { applySourceEdits, diffGraphs, writeBackGraph } from './writeback';
 export type {
     ChangeKind,

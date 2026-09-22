@@ -15,6 +15,7 @@ import {
     AXIS_LATEX_FOR_CONSTANT,
     AXIS_OPERATOR_NAMES,
     getFunctionLatex,
+    KEYWORDS,
 } from '@axis-dsl/syntax';
 
 /** Every built-in function, which a name becomes the command of rather than a variable. */
@@ -42,6 +43,13 @@ export const FUNCTION_FOR_COMMAND: ReadonlyMap<string, string> = new Map(
 export const CONSTANT_FOR_COMMAND: ReadonlyMap<string, string> = new Map(
     [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => [latex, name] as const),
 );
+
+/**
+ * The words a name read out of latex may not close up into: the keywords, which
+ * the lexer never reads as a name, and `true`/`false`, which the checker reads
+ * as booleans. `f_{or}` is a variable Desmos is happy with, and `for` is not.
+ */
+const RESERVED: ReadonlySet<string> = new Set<string>([...KEYWORDS, 'true', 'false']);
 
 /** An identifier as spec §2.2 lexes it: a name, and an explicit subscript. */
 const IDENTIFIER = /^([A-Za-z][A-Za-z0-9]*)(?:_([A-Za-z0-9]+))?$/;
@@ -99,7 +107,9 @@ export function identifierLatex(name: string): string {
  * how anybody would write `amp`; kept apart where closing up would change what
  * it names - `m_{ean}` is not `mean`, which is a function, and `p_{i2}` is not
  * `pi2`, which is π₂. A digit-only subscript on a single letter keeps its
- * underscore too, because `x_1` is how that is written everywhere.
+ * underscore too, because `x_1` is how that is written everywhere. So does a
+ * name that would close up into a keyword, `f_{or}` → `f_or`, since `for` is
+ * not a name at all.
  */
 export function nameFromLatex(head: string, subscript: string, latex: string): string {
     const apart = `${head}_${subscript}`;
@@ -108,5 +118,5 @@ export function nameFromLatex(head: string, subscript: string, latex: string): s
     }
 
     const joined = head + subscript;
-    return identifierLatex(joined) === latex ? joined : apart;
+    return identifierLatex(joined) === latex && !RESERVED.has(joined) ? joined : apart;
 }

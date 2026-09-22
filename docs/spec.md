@@ -704,3 +704,61 @@ they build with the same printer, so generated source looks typed by hand.
 - **Spelling** is the author's: enum values keep their case (§4.2), property
   order is as written, number literals keep their digits.
 - A file with a syntax error is returned exactly as it was.
+
+## 11. Decompiling
+
+`decompileAxis({ state, options? })` is the compiler run backwards: a graph
+state - what `compileAxis` hands a host, or what a calculator's `getState`
+hands back - into a script, as `{ source, statements, diagnostics }`. It builds
+the statements as tree nodes and prints them with the printer (§10), so the
+source is already formatted and parses without a word. The contract is the
+round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
+`state` and `options` as `compileAxis(s)`.
+
+- **Properties** are one `Property` each, in a fixed order: the slider and its
+  animation, the colour, the styling, the labels, the domains, the click. A
+  `true` boolean is a bare flag and a `false` one is written out.
+- **Colours**: a hex that is a palette colour is its name, unless the graph
+  defines that name itself; any other hex is a literal, in full and lower
+  case; `colorLatex` is the expression. A calculator keeps a cycled `color`
+  beside a `colorLatex`; the expression wins.
+- **Ranges**: `slider` is `lo..hi step s`, an end Desmos left off is left off,
+  and an end without its `hardMin`/`hardMax` is `soft` on that end. A domain
+  end that is `""` is left off.
+- **What lowering fills in is left out**: `movablePointSize` equal to
+  `pointSize`, `parametricDomain` equal to `domain`, a viewport edge of ±10,
+  an option or state flag equal to Axis' default, and `actions: true` beside a
+  ticker. A state without `includeFunctionParametersInRandomSeed` is the
+  legacy behaviour and is written `false`.
+- **What a calculator adds is read back**: a point style stashed under
+  `__stashed_V12PointStyle` is the `pointStyle`; the settings it mirrors into
+  `graph` are config, with `options` winning; its `randomSeed` is kept only for
+  a graph that calls `random` or `shuffle`.
+- **Structure**: folders gather their members wherever the list keeps them; a
+  folder with no title is `folder { … }`; a folder claiming to sit in another
+  is written beside it. Tables write each column's own metadata, trailing
+  blank cells trimmed. An image's `draggable` is `dragMode: XY`. The ticker is
+  written last. A blank row is not written.
+- **What a graph cannot say**: imports come back as the folders they were
+  flattened into, macros and styles as what they expanded to, and an inlined
+  picture as its `data:` URI.
+- **Statements read as statements**: `g=a-b\operatorname{with}a=2,b=1` is how
+  Desmos writes a definition whose value has bindings, and it is written
+  `gap = a - b with a = 2, b = 1` (§5.1), not `(gap = a - b) with …`. A latex
+  name that would close up into a keyword or `true`/`false` keeps its
+  subscript apart: `f_{or}` is `f_or`.
+- **What Axis cannot write** is reported, never thrown. Latex `parseLatex`
+  has no reading for (`\sum`, `\int`, …) leaves out the expression - or only
+  the property, if that is where it is - and a `// unsupported: <latex>`
+  comment stands where it would have been. Every one is a warning whose span
+  is that comment in `source`:
+
+| Code                | What                                                           |
+| ------------------- | -------------------------------------------------------------- |
+| `unsupported-latex` | latex the expression tree has no node for                      |
+| `unsupported-item`  | a list item Axis has no statement for, or an image with no URL |
+| `unsupported-value` | a colour or enum value Axis cannot write, or a blank cell      |
+
+`decompileExpression`, `decompileSettings` and `decompileTicker` hand back one
+item's node - a folder as its header, with an empty body - for write-back to
+print in place.
