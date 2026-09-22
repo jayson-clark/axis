@@ -557,3 +557,39 @@ interface CompilationResult {
 
 A host applies it with `calculator.setState(state)` and
 `calculator.updateSettings(options)` — nothing else.
+
+## 10. Formatting
+
+`format` (in `@axis-dsl/syntax`) prints a file back from its tree, so there is
+one way every script is laid out. The decompiler and write-back print the nodes
+they build with the same printer, so generated source looks typed by hand.
+
+- **Spacing.** One space either side of `+ - * / ^ = < <= > >= ->` and after
+  every comma and `:`. A sign sits against what it negates: `-x`, `2 - -3`,
+  `2 ^ -1`. A range is written tight, `-5..5 step 0.5`, and a list range
+  `[1...10]` - Desmos' `[1, ..., 10]` becomes that.
+- **Juxtaposition.** A number sits against the name or bracket it multiplies
+  (`2x`, `3cos(t)`, `2(x + 1)`, `2|x|`); anything else is spaced (`2pi x`,
+  `x y`, `sin(x) cos(x)`), and a restriction always is (`x ^ 2 {x > 0}`). A
+  name followed by a bracket would be a call (§5.3), so that product is written
+  `(x)(a + b)`.
+- **Brackets.** An author's brackets are kept. A tree built without any gets
+  exactly the ones §5.1 needs to read back as itself.
+- **Metadata** stays inline when it fits, and becomes a `@{ … }` block, one
+  property to a line, when it does not and there is more than one property.
+  Metadata written as a block stays one. A run whose bare names would read as
+  flags inline (`onClick: A, B`) is always written as a block.
+- **Blocks** written on one line stay on one line, entries separated by `; `,
+  while they fit; otherwise one entry to a line, indented one level (four
+  spaces by default). A folder's or a table's own metadata is written inline
+  on the line of its `{`.
+- **Wrapping.** A line longer than the width (100 by default) is broken at the
+  first bracket of several elements that runs past it, one element to a line.
+  A bracket the author opened onto a new line stays open.
+- **Comments and blank lines** are kept where they were: on a line of their
+  own, or after the entry whose line they end. A run of blank lines is one,
+  and none is kept at the start or end of a block. A statement with a comment
+  inside a bracket spread over lines is kept as written, re-indented.
+- **Spelling** is the author's: enum values keep their case (§4.2), property
+  order is as written, number literals keep their digits.
+- A file with a syntax error is returned exactly as it was.
