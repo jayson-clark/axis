@@ -362,5 +362,14 @@ export function getFoldingRanges(input: DocumentInput): FoldingRange[] {
     }
     endRun();
 
-    return ranges.sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine);
+    // A statement that ends in its own `@{ … }` block folds exactly as the block does.
+    const seen = new Set<string>();
+    return ranges
+        .sort((a, b) => a.startLine - b.startLine || b.endLine - a.endLine)
+        .filter(range => {
+            const key = `${range.startLine}:${range.endLine}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
 }

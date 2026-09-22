@@ -14,6 +14,7 @@ import {
     printStatement,
     type PropertyDefinition,
     type PropertyPlacement,
+    type Statement,
     type SyntaxTree,
 } from '@axis-dsl/syntax';
 import type { ImportedSymbol } from './program';
@@ -37,21 +38,25 @@ export function definitionText(tree: SyntaxTree, definition: SymbolDefinition): 
     if (definition.column) {
         return tree.source.slice(definition.column.span.start, definition.column.span.end);
     }
-    const statement = definition.statement;
+    return printDefinition(definition.statement, tree.source);
+}
+
+/**
+ * A defining statement, printed. With the source it was read from, so a style
+ * written on one line is shown on one line; an expression's metadata is left
+ * off, since it says nothing about what the name means.
+ */
+function printDefinition(statement: Statement, source: string): string {
     if (statement.kind === 'ExpressionStatement') {
-        return printStatement({ ...statement, metadata: null });
+        return printStatement({ ...statement, metadata: null }, { source });
     }
-    return printStatement(statement);
+    return printStatement(statement, { source });
 }
 
 /** An imported definition as Axis source, as {@link definitionText} writes a local one. */
 export function importedText(symbol: ImportedSymbol): string {
-    const statement = symbol.statement;
-    if (statement.kind === 'TableStatement') return symbol.name;
-    if (statement.kind === 'ExpressionStatement') {
-        return printStatement({ ...statement, metadata: null });
-    }
-    return printStatement(statement);
+    if (symbol.statement.kind === 'TableStatement') return symbol.name;
+    return printDefinition(symbol.statement, symbol.file.source);
 }
 
 /** The first line of a definition, cut short enough to sit beside a completion. */
