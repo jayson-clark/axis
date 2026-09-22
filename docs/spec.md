@@ -43,7 +43,8 @@ Source is UTF-16 text; every position in the implementation is a UTF-16 offset.
 ### 2.1 Trivia
 
 - **Whitespace**: spaces, tabs, `\r`.
-- **Comments**: `//` to the end of the line. There are no block comments.
+- **Comments**: `//` to the end of the line, not counting the `\r` of a
+  `\r\n` line ending. There are no block comments.
 - **Newlines** are _not_ trivia. A newline is a token, and it ends a statement
   (§3.1) — except inside an open `(`, `[` or expression `{` (§2.4), where the
   lexer still emits it but the parser skips it.
@@ -57,7 +58,7 @@ read becomes an `error` token and a diagnostic.
 | Token        | Examples                                                                    | Notes                                                                                |
 | ------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `number`     | `3`, `0.5`, `.5`, `1e-3`                                                    | No sign; `-` is an operator. `1e-3` is one token only when a digit follows `e`/`e-`. |
-| `identifier` | `x`, `amp`, `x_1`, `x_12`, `theta`                                          | `[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)?`                                               |
+| `identifier` | `x`, `amp`, `x_1`, `x_12`, `theta`                                          | `[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)*` (see below)                                   |
 | `string`     | `"a \"b\" c"`                                                               | Escapes: `\"`, `\\`, `\n`. Unterminated at end of line is an error.                  |
 | `color`      | `#c74440`, `#fff`                                                           | `#` followed by exactly 3 or 6 hex digits. Any other `#` is an error.                |
 | keywords     | `folder table config import image ticker style macro as for with step soft` | Reserved: never identifiers. `min`/`max` are contextual (§4.4), not keywords.        |
@@ -67,6 +68,25 @@ read becomes an `error` token and a diagnostic.
 
 `..` and `...` are distinct: `...` is Desmos' list range (`[1...10]`), `..` is
 the Axis range literal (§4.4).
+
+Details the table leaves open:
+
+- **A decimal point needs a digit after it.** `0.5` and `.5` are numbers, but a
+  number never takes a `.` that is not followed by a digit - so `0..5` is `0`
+  `..` `5`, `0..` is `0` `..`, `1...10` is `1` `...` `10`, and `1.` is `1` and
+  `.`.
+- **An identifier may carry more than one `_` part** (`LOOP_FORWARD_REVERSE`,
+  `above_left`), because Desmos spells some enum values that way and they have
+  to be writable (§4.2). In an expression a name has at most one subscript
+  (§2.3), and the checker reports `x_1_2`; the lexer reads it as one name so
+  the error is about the name, not about a stray `_`.
+- **A string escape other than `\"`, `\\` and `\n`** is an error
+  (`invalid-escape`) and stands for the character after the backslash.
+- **A bad colour** - `#` and anything but exactly 3 or 6 hex digits - is one
+  `error` token covering the `#` and every letter and digit after it
+  (`invalid-color`), so `#ff00` is one mistake rather than a colour and a name.
+- **A run of characters the lexer does not know** is one `error` token and one
+  `unexpected-character` diagnostic, not one per character.
 
 ### 2.3 Identifiers
 
@@ -131,19 +151,26 @@ Notes on each:
 - **`folder`** — the title is optional: `folder { … }` is an untitled folder.
   Folders do not nest (Desmos has one level), so a `folder` inside a `folder`
   is an error. A metadata clause **immediately after the `{`** (before the
-  first separator) annotates the folder itself.
+  first separator) annotates the folder itself. Metadata anywhere else that
+  trails nothing - on a line of its own - is an error (`misplaced-metadata`).
 - **`table`** — each entry is a column. `x = [1, 2, 3]` is a column with a
   header and values; a bare expression (`x ^ 2`) is a computed column. The
   same after-`{` rule gives the table metadata; a column's own metadata trails
-  it.
+  it. Only `header = [ … ]` splits into a header and values: anything else,
+  `x = 5` included, is a computed column as written, and the checker decides
+  whether it can be one. Table metadata takes column properties, which apply
+  to every column as defaults; a column's own metadata wins.
 - **`style`** — a named, reusable set of properties (§4.5). Top level only.
-- **`macro`** — §6. Top level only.
+- **`macro`** — §6. Top level only. The body is read as a statement's value
+  is (§5.5), so it may be an action run: `macro reset = a -> 0, b -> 0`.
 - **`import`** — §7.
 - **`image`** — the string is a path, an `http(s):` URL, or a `data:` URI.
 - **`ticker`** — the graph's ticker. Its handler is an action or an action run.
   Top level only; a graph has one. `dt` (milliseconds since the last tick) is
   available inside the handler.
-- **`note`** — a string on its own is a text note.
+- **`note`** — a string on its own is a text note. A string followed by
+  anything but metadata or the end of the statement starts an expression
+  instead.
 - **expression statement** — everything else: a definition (`f(x) = x^2`,
   `a = 1`), an equation or inequality (`y = x`, `y < x`), a point, a list, a
   bare expression, an action run.
@@ -173,8 +200,20 @@ separator or the end. Otherwise the comma belongs to the value. So:
 //        └──────── one value ───┘  └ property ┘
 ```
 
+The rule applies to every comma at the top of the value: those of an action
+run and those between `with`/`for` bindings alike. Inside a bracket a comma
+always belongs to the bracket.
+
 Inside `@{ … }` and in `config`/`style` blocks properties are separated by
-newlines or `;`, and commas are always part of the value.
+newlines or `;`, and commas are always part of the value - with one exception,
+since it can never be part of one: a comma followed by `identifier :` is
+reported as `comma-between-properties` and read as the separator it was meant
+as, so `config { a: 1, b: 2 }` still has both entries.
+
+The parser reads every property value the same way, whatever the property: an
+expression, which may be an action run, or a range. Whether that is the right
+kind of value for the property is the checker's business (§4.2), so
+`color: RED, 3` parses (as a run) and is then rejected.
 
 ### 4.2 Value types
 
@@ -183,14 +222,22 @@ Every property has a `valueType` in the manifest, and the checker enforces it:
 | `valueType`  | Accepts                                  | Lowered as                          |
 | ------------ | ---------------------------------------- | ----------------------------------- |
 | `expression` | any expression                           | latex (`lineWidth: a + 1` is legal) |
-| `number`     | a numeric literal, optionally negated    | a JSON number (config only)         |
+| `number`     | a numeric literal, optionally negated    | a JSON number                       |
 | `string`     | a string literal                         | the string                          |
 | `boolean`    | `true`, `false`, or bare                 | a boolean                           |
-| `enum`       | one of the manifest's listed identifiers | the identifier's text               |
+| `enum`       | one of the manifest's listed identifiers | the manifest's spelling of it       |
 | `color`      | §4.3                                     | `color` or `colorLatex`             |
 | `range`      | §4.4                                     | the Desmos bounds object            |
 | `action`     | an action or action run                  | latex                               |
 | `style`      | a style name                             | resolved away (§4.5)                |
+
+`number` is for what Desmos holds as a JSON number rather than latex: most
+`config` numbers, and a slider's `playDirection` and `animationPeriod`.
+
+**Enums are case-insensitive.** The manifest lists each value as Desmos spells
+it - `NONE`, `DASHED`, `LOOP_FORWARD`, but `above` and `linear` - and a value
+written in any case is lowered to that spelling: `dragMode: none` is `NONE`,
+`labelOrientation: ABOVE` is `above`.
 
 ### 4.3 Colours
 
@@ -204,6 +251,10 @@ Every property has a `valueType` in the manifest, and the checker enforces it:
 
 There is no separate `colorLatex` property.
 
+The `config` colours - `backgroundColor`, `textColor`, `accentColor` - are
+`color` too, but Desmos wants a hex string there, so they take only a hex
+literal or a palette name, never an expression.
+
 ### 4.4 Ranges
 
 ```ebnf
@@ -215,6 +266,10 @@ range = [ expression ] ".." [ expression ] [ "step" expression ] [ "soft" [ "min
 - Ends are **hard** by default (the slider will not go past them). `soft`
   makes both ends soft; `soft min` / `soft max` just the one.
 - `min` and `max` are contextual words here, not keywords.
+- `step` comes before `soft` when both are written.
+- A range is only ever a whole property value: `..` anywhere else is an
+  unexpected token. Its ends and step are read at the level of a comparison
+  (§5.1), so nothing looser - an action, a run, a `with` - can be one.
 
 Ranges are the value of `slider`, `domain`, `parametricDomain` and
 `polarDomain`.
@@ -247,6 +302,23 @@ Which properties are legal where is the manifest's business: expression
 metadata, folder metadata, table metadata, column metadata, image metadata,
 ticker metadata, import metadata and config entries each have their own list.
 A property in the wrong place is an error.
+
+| Placement  | Takes                                                                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| expression | every styling, slider, domain, click and label property; `use`                                                                                                  |
+| column     | `color`, `lineStyle`, `lineWidth`, `lineOpacity`, `pointStyle`, `pointSize`, `movablePointSize`, `pointOpacity`, `hidden`, `points`, `lines`, `dragMode`, `use` |
+| table      | exactly what a column takes, as defaults for every column                                                                                                       |
+| style      | anything an expression or a column takes, `slider` included                                                                                                     |
+| folder     | `collapsed`, `hidden`, `secret`                                                                                                                                 |
+| import     | `collapsed`, `hidden`, `secret`                                                                                                                                 |
+| image      | `name`, `center`, `width`, `height`, `angle`, `opacity`, `foreground`, `hidden`, `secret`, `dragMode`, `onClick`, `clickable`                                   |
+| ticker     | `minStep`, `playing`, `open`                                                                                                                                    |
+| note       | `secret`                                                                                                                                                        |
+| config     | the calculator settings, and nothing that goes anywhere else                                                                                                    |
+
+`playing` is two properties: a slider's on an expression, the ticker's own on a
+ticker. The manifest (`appliesTo`, `propertiesFor`, `findProperty`) is the
+authority; this table is its summary.
 
 ## 5. Expressions
 
@@ -281,22 +353,47 @@ x^10                      → x^{10}
 ```
 
 Implicit multiplication is juxtaposition of two operands with nothing between
-them: `2x`, `2pi x`, `3cos(t)`, `(a)(b)`, `x y`.
+them: `2x`, `2pi x`, `3cos(t)`, `(a)(b)`, `x y`. An operand that starts with a
+sign is never juxtaposed - `a -b` is a subtraction - and a `[` straight after
+an operand indexes it rather than multiplying it. Inside `| … |` a `|` closes
+the bar rather than opening a juxtaposed one.
+
+**A statement's `=` is the exception to the table.** In an expression
+statement, a macro body and a table column, `lhs = rhs` takes the rest of the
+statement as its right-hand side at the loosest level there is - an action, a
+run, a `with` or a `for`:
+
+```
+reset = E -> (2, -6), n -> 0   = reset = (E -> (2, -6), n -> 0)
+R = A, B                       = R = (A, B)
+f(x) = x n with n = 3          = f(x) = (x n with n = 3)
+```
+
+That is the only place `=` binds more loosely than `->` and `,`. A chain
+(`1 < x < 2`), or an `=` inside a bracket, keeps its place in the table:
+`(R = a -> 1)` is `((R = a) -> 1)`.
 
 ### 5.2 Atoms
 
-| Form                                  | Node                                         |
-| ------------------------------------- | -------------------------------------------- |
-| `3`, `0.5`                            | `Number`                                     |
-| `x`, `amp`, `theta`                   | `Identifier`                                 |
-| `"text"`                              | `String`                                     |
-| `#c74440`                             | `Color`                                      |
-| `(e)`                                 | `Paren`                                      |
-| `(a, b)`, `(a, b, c)`                 | `Tuple` (a point)                            |
-| `[a, b, c]`, `[1...10]`, `[1, 3...9]` | `List` (with `ListRange` elements for `...`) |
-| `[f(i) for i = [1...10]]`             | `List` holding a `For`                       |
-| `{c1: v1, c2: v2, v3}`, `{x > 0}`     | `Piecewise`                                  |
-| `\|e\|`                               | `Abs`                                        |
+| Form                                                  | Node                                         |
+| ----------------------------------------------------- | -------------------------------------------- |
+| `3`, `0.5`                                            | `Number`                                     |
+| `x`, `amp`, `theta`                                   | `Identifier`                                 |
+| `"text"`                                              | `String`                                     |
+| `#c74440`                                             | `Color`                                      |
+| `(e)`                                                 | `Paren`                                      |
+| `(a, b)`, `(a, b, c)`                                 | `Tuple` (a point)                            |
+| `[a, b, c]`, `[1...10]`, `[1, 3...9]`, `[1, ..., 10]` | `List` (with `ListRange` elements for `...`) |
+| `[f(i) for i = [1...10]]`                             | `List` holding a `For`                       |
+| `{c1: v1, c2: v2, v3}`, `{x > 0}`                     | `Piecewise`                                  |
+| `\|e\|`                                               | `Abs`                                        |
+
+Desmos' own spelling of a range with commas round the dots, `[1, ..., 10]` or
+`[1, 3, ..., 9]`, is read as the same `ListRange` as `[1...10]` and
+`[1, 3...9]`. A list spread over lines may end with a trailing comma, and so
+may a call's arguments; a trailing comma in plain parentheses, `(a,)`, makes a
+one-element `Tuple`. An index holds exactly one expression: `L[1, 2]` is an
+error.
 
 ### 5.3 Calls and products
 
@@ -341,7 +438,10 @@ bindings that extends to the end of the enclosing bracket or statement.
 ### 5.8 Piecewise
 
 `{condition: value, condition: value, otherwise}`; a branch without `: value`
-is a restriction (`{x > 0}`). A piecewise immediately after an expression is an
+is a restriction (`{x > 0}`). With more than one entry, a trailing entry
+without `: value` is the `otherwise` - so `{x > 0, x < 2}` reads as one
+restriction branch and an `otherwise` of `x < 2`, which emits exactly the same
+latex as two restrictions would. A piecewise immediately after an expression is an
 implicit product and reads as a domain restriction: `y = x^2 {x > 0}`.
 
 ## 6. Macros
@@ -393,6 +493,37 @@ Every problem is a diagnostic with a stable `code`, a severity, a message and
 a span. The parser, the checker and the compiler all produce the same type,
 and the compiler never throws on bad input: it returns every diagnostic it
 found alongside whatever graph it could still build.
+
+The lexer and parser report these codes. The parser never throws: it reports
+what it could not read, resynchronises at the next newline or `;` (or the `}`
+of the block it is in), and leaves an `ErrorStatement` or `ErrorExpression`
+where the unreadable text was. One problem is reported once, however many
+rules trip over it.
+
+| Code                       | What                                                                   |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `unexpected-character`     | a character no token starts with                                       |
+| `unterminated-string`      | a string still open at the end of its line                             |
+| `invalid-escape`           | a string escape other than `\"`, `\\`, `\n`                            |
+| `invalid-color`            | `#` without exactly 3 or 6 hex digits                                  |
+| `unexpected-token`         | a token no rule could use where it stands                              |
+| `expected-expression`      | an operand, element or value missing                                   |
+| `unclosed-bracket`         | a `(`, `[`, expression `{` or `\|` never closed                        |
+| `unclosed-block`           | a block `{` or `@{` never closed                                       |
+| `expected-block`           | a block keyword without its `{`                                        |
+| `expected-identifier`      | a style or macro name, a macro parameter, or a member name missing     |
+| `expected-string`          | an import path, `as` title or image source missing                     |
+| `expected-equals`          | a macro without its `=`                                                |
+| `expected-binding`         | `with` or `for` not followed by `name = value`                         |
+| `expected-property`        | metadata or a block entry that does not start with a property name     |
+| `expected-colon`           | a property name followed by something other than `:` or the next entry |
+| `expected-value`           | `key:` with nothing after it                                           |
+| `comma-between-properties` | block entries separated by a comma (§4.1)                              |
+| `misplaced-metadata`       | metadata trailing nothing                                              |
+
+An unclosed bracket costs one line rather than the file: brackets are paired
+before parsing starts, and inside one that is never closed newlines end the
+statement after all.
 
 Errors include, beyond syntax:
 
