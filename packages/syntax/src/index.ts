@@ -13,3 +13,12 @@ export { parse, parseExpression, type SyntaxTree } from './parser';
 export { lineIndex, type LineIndex, type Position } from './lines';
 export { debugTree } from './debug';
 export * from './manifest';
+export {
+    format,
+    printExpression,
+    printStatement,
+    sameTree,
+    stripParens,
+    type PrintOptions,
+    type StatementPrintOptions,
+} from './print';
