@@ -12,8 +12,12 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { applySourceEdits, compileAxis, diffGraphs, writeBackGraph } from '../dist/index.js';
-import type { CompilationResult, GraphSnapshot, SourceEdit } from '../dist/index.js';
+import { applySourceEdits, diffGraphs, writeBackGraph } from '../dist/index.js';
+import type { GraphSnapshot, SourceEdit } from '../dist/index.js';
+// The v1 compiler, which the v1 write-back reads a compilation of until #24
+// replaces both. Reached into directly because it is no longer exported.
+import { compileAxis } from '../dist/legacy/compile.js';
+import type { CompilationResult } from '../dist/legacy/compile.js';
 
 const PATH = 'main.axis';
 

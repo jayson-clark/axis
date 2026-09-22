@@ -1,7 +1,7 @@
 # @axis-dsl/compiler
 
-Compiles [Axis](https://github.com/jayson-clark/axis) source into the
-expressions, folders, tables and settings a Desmos graph is made of.
+Compiles [Axis](https://github.com/jayson-clark/axis) source into a Desmos
+graph: one graph state for `setState`, and the calculator options.
 
 ```sh
 npm install @axis-dsl/compiler
@@ -12,60 +12,68 @@ npm install @axis-dsl/compiler
 ```ts
 import { compileAxis } from '@axis-dsl/compiler';
 
-const { expressions, settings, graph } = compileAxis(`
+const { state, options, diagnostics } = compileAxis(`
 config { showGrid: true }
 
 "Basic functions"
 
-f(x) = x^2 - 4x + 3     # color: #c74440
-g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
+f(x) = x ^ 2 - 4x + 3 @ color: RED
+g(x) = sin(x) + cos(2x) @ color: #2d70b3, lineWidth: 2
 `);
-```
-
-`expressions` is a `DesmosExpression[]` and `settings` is the `config` block as
-`CalculatorOptions` — both typed by
-[`@axis-dsl/desmos`](https://www.npmjs.com/package/@axis-dsl/desmos).
-
-`graph` is the rest of the `config` block: the viewport (`xmin`, `xmax`, `ymin`,
-`ymax`) and `squareAxes`. They are separate because Desmos applies them
-separately — it keeps the viewport in a graph's **state**, not in its
-calculator's options, so `updateSettings({ xmin: 0 })` is not an error, it is
-silence. Anything that renders a compilation has to apply both halves.
-
-## Applying the result
-
-`toGraph` assembles a compilation into the two things a calculator takes, and
-applying it is two calls:
-
-```ts
-import { compileAxis, toGraph } from '@axis-dsl/compiler';
-
-const { state, options } = toGraph(compileAxis(source));
 
 calculator.setState(state);
 // updateSettings has to follow setState, which resets the calculator's settings.
 calculator.updateSettings(options);
 ```
 
-`state` is the whole graph state: the expression list, the ticker beside it,
-the viewport and `squareAxes`, and the top-level flags, with a viewport of
-±10 filled in for a script that names none. `toGraph` is temporary - the
-rewritten compiler returns `{ state, options }` from `compileAxis` itself - so a
-host that applies what it returns and nothing else will not change when it goes.
+`state` is the whole graph state, the payload of one `setState`: the expression
+list, the ticker beside it, the viewport and the rest of the `graph` settings,
+and the flags Desmos reads off the top of a state. `options` is the calculator
+options - the Axis defaults under whatever the script's `config` said. Both are
+typed by [`@axis-dsl/desmos`](https://www.npmjs.com/package/@axis-dsl/desmos),
+and applying them is the two calls above and nothing else: the state is
+complete, with a viewport of ±10 filled in for a script that names none.
+
+The viewport is why there are two halves. `xmin` and its siblings read like any
+other config key, but Desmos keeps them in a graph's **state**, not in its
+calculator's options, so `updateSettings({ xmin: 0 })` is not an error, it is
+silence. The compiler puts every key where Desmos will read it.
 
 Desmos has two shapes for an expression, and they are not interchangeable.
 `setExpression` takes the API's; `setState` takes the serialized graph state's,
-which is the only one that carries a folder — and folders are the reason Axis
+which is the only one that carries a folder - and folders are the reason Axis
 compiles to the state form throughout. `folderId`, `collapsed`, `clickableInfo`
 and `slider` all mean nothing to `setExpressions`, and mean nothing _quietly_:
 a property in the wrong shape is dropped rather than reported.
 
+## Diagnostics
+
+`compileAxis` never throws on a script. Everything wrong with one - from the
+parser, the checker or the compiler - comes back in `diagnostics`, beside the
+graph the rest of the script still makes, so a preview keeps drawing while a
+line is half written:
+
+```ts
+const { diagnostics } = compileAxis('y = sine(x) @ color: red');
+// [
+//   { code: 'unknown-function', severity: 'error', span: { start: 4, end: 8 }, message: … },
+//   { code: 'invalid-color', severity: 'error', span: { start: 21, end: 24 }, message: … },
+// ]
+```
+
+Each has a stable `code` to match on, and a `span` of UTF-16 offsets into the
+file it is about - the script, unless the diagnostic carries a `path`, in which
+case it is the imported file of that name. `docs/spec.md` §8 lists the codes.
+
+The passes are exported one by one too - `loadProgram`, `collectSymbols`,
+`checkProgram` - for a tool that wants to check a script without lowering it.
+
 ## Imports
 
 Compilation is synchronous and touches no filesystem, so a script with
-`import "./waves.axis"` in it is handed a resolver rather than a path to go
-reading. `loadImports` walks the import graph first over whatever reading a file
-means where you are — `node:fs`, a VSCode workspace, a `Map` in a test:
+`import "./waves"` in it is handed a resolver rather than a path to go reading.
+`loadImports` walks the import graph first over whatever reading a file means
+where you are - `node:fs`, a VSCode workspace, a `Map` in a test:
 
 ```ts
 import { compileAxis, createImportResolver, loadImports } from '@axis-dsl/compiler';
@@ -79,29 +87,31 @@ const host = {
 };
 
 const files = await loadImports({ path, source }, host);
-const { expressions, settings, imports } = compileAxis(source, {
+const { state, options, dependencies } = compileAxis(source, {
   path,
   resolveImport: createImportResolver(files, host.resolve),
 });
 ```
 
-The host owns `resolve` because only it knows what its paths mean — where a
+The host owns `resolve` because only it knows what its paths mean - where a
 leading `/` points, whether the `.axis` may be left off, what names a file.
-Whatever it returns is compared for equality to detect cycles and handed back in
-`imports`, so two specifiers naming the same file must resolve to the same
-string.
+Whatever it returns is compared for equality to detect cycles and to include a
+file imported twice only once, and is handed back in `dependencies.imports`, so
+two specifiers naming the same file must resolve to the same string.
 
-`imports` names every file that was read, transitively. That is the set to watch
-if the graph is live: a script is stale when anything it imports changes, not
-only when it does.
+`dependencies.imports` names every file that was read, transitively. That is the
+set to watch if the graph is live: a script is stale when anything it imports
+changes, not only when it does.
 
-A script that imports something and is given no resolver fails to compile,
-rather than quietly dropping the import and graphing less than was asked for.
+A file `loadImports` cannot read is left out rather than failing the walk, and
+an import that does not resolve - for want of the file or of a resolver - is an
+`unresolved-import` diagnostic against the statement, rather than a graph
+quietly smaller than was asked for.
 
 ## Images
 
 `image "./beach.png"` names a file the way an import does, and is reached the
-same way — through a resolver, because the compiler still touches no filesystem.
+same way - through a resolver, because the compiler still touches no filesystem.
 What it resolves to is a `data:` URI, which is inlined into the graph: Desmos
 stores an image as its URL, and a path on the machine the script was written on
 is not one anybody else's browser can fetch, so a graph has to carry its
@@ -118,21 +128,24 @@ const pictures = {
 // `files` is what loadImports handed back: an imported script draws its own
 // images, so one walk of the import graph serves both.
 const images = await loadImages({ path, source }, files, pictures);
-const { expressions, images: drawn } = compileAxis(source, {
+const { state, dependencies } = compileAxis(source, {
   path,
   resolveImage: createImageResolver(images, pictures.resolve),
 });
 ```
 
 The media type comes from the extension, and a file whose extension is not an
-image's is an error rather than a picture a browser has to guess at. `images`
-names every file that was inlined — the other half of the set to watch if the
-graph is live.
+image's is an `invalid-image` diagnostic rather than a picture a browser has to
+guess at. `dependencies.images` names every file that was inlined - the other
+half of the set to watch if the graph is live.
 
-An `image` that names something Desmos can already load — `https:`, `data:` —
+An `image` that names something Desmos can already load - `https:`, `data:` -
 reaches the graph exactly as it was written, and needs no resolver at all.
 
 ## Decompiling
+
+> The decompiler and the write-back below still speak Axis 1, and read the
+> graphs its compiler made. They move onto the v2 language in #23 and #24.
 
 The other direction: a graph back into the script that builds it.
 
@@ -275,28 +288,33 @@ written in.
 
 | Export                                            |                                                                                      |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `compileAxis(script, options?)`                   | The compiler. Returns `{ expressions, settings?, imports, images }`                  |
+| `compileAxis(script, options?)`                   | The compiler. Returns a `CompilationResult`                                          |
 | `loadImports(entry, host)`                        | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path  |
 | `createImportResolver(files, resolve)`            | Turns that `Map` into the synchronous `resolveImport` the compiler wants             |
 | `findImports(source)`                             | Just the specifiers one file imports, in order                                       |
 | `loadImages(entry, files, host)`                  | Reads every image file the script and its imports draw; returns a `Map` of data URIs |
 | `createImageResolver(images, resolve)`            | Turns that `Map` into the synchronous `resolveImage` the compiler wants              |
 | `findImageFiles(source)`                          | Just the image paths one file draws, in order                                        |
-| `toGraph(compilation)`                            | A compilation as `{ state, options }`, for `setState` and `updateSettings`           |
-| `convertToLatex(expr)`                            | One Axis expression to the LaTeX Desmos expects                                      |
+| `loadProgram(source, options?)`                   | The first pass: the script and everything it imports, parsed                         |
+| `collectSymbols(program)`                         | The second: every macro, style, function and variable the program defines            |
+| `checkProgram(program, symbols)`                  | The third: every semantic diagnostic                                                 |
+| `expandMacros(expression, macros)`                | One expression with its macros substituted, as trees                                 |
+| `resolveProperties(entries, styles)`              | One metadata clause with its styles applied                                          |
+| `definitionOf(expression)`                        | What a statement defines - a function, a variable - or nothing                       |
+| `emitLatex(expression)` / `parseLatex(latex)`     | One expression tree to Desmos latex, and back                                        |
+| `convertToLatex(expr)`                            | Axis 1's text-to-latex converter, kept for the v1 decompiler                         |
 | `decompileAxis(graph, options?)`                  | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source      |
-| `decompileExpression(expression, options?)`       | One expression as the statement that builds it — the decompiler's unit of work       |
+| `decompileExpression(expression, options?)`       | One expression as the statement that builds it - the decompiler's unit of work       |
 | `decompileSettings(graph, options?)`              | Just the `config { … }` block a graph's settings decompile to                        |
 | `graphActionNames(expressions)`                   | The names a graph defines as actions, which `decompileExpression` wants              |
 | `writeBackGraph(compiled, before, after, files)`  | What changed on a live graph, as edits to the statements that produced it            |
 | `diffGraphs(before, after)`                       | Just the changes between two readings of the same graph, by expression id            |
 | `applySourceEdits(source, edits)`                 | Applies one file's edits to its text                                                 |
-| `convertFromLatex(latex)`                         | One piece of Desmos LaTeX back into the Axis expression it compiles from             |
+| `convertFromLatex(latex)`                         | One piece of Desmos LaTeX back into the Axis 1 expression it compiles from           |
 | `DecompileInput` / `DecompileOptions`             | `{ expressions, settings? }` and `{ indent? }`                                       |
 | `CompileOptions`                                  | `{ path?, resolveImport?, resolveImage? }`                                           |
-| `CompilationResult`                               | `{ expressions, settings?, imports, images, sourceMap, configOrigin? }`              |
-| `CompiledGraph`                                   | `{ state: GraphState, options: CalculatorOptions }`, what `toGraph` returns          |
-| `StatementOrigin`                                 | `{ path, line, endLine, writable, reason? }` — where one expression was written      |
+| `CompilationResult`                               | `{ state, options, diagnostics, sourceMap, configOrigin?, dependencies }`            |
+| `StatementOrigin`                                 | `{ path, line, endLine, span, writable, reason? }` - where one item was written      |
 | `GraphSnapshot` / `GraphChange` / `SourceEdit`    | A reading of a graph, one change to it, and one replacement of a run of lines        |
 | `WriteBackOptions` / `WriteBackResult`            | `{ include?, entryPath?, indent? }` and `{ edits, skipped }`                         |
 | `ImportHost` / `ResolveImport` / `ResolvedImport` | The import resolver types                                                            |

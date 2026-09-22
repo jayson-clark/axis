@@ -1,0 +1,880 @@
+// ═════════════════════════════════════════════════════════════════════════════
+// The checker - what the parser cannot know about a script
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// The parser reads any script that is well formed and has no opinion about
+// what it says. This is where it gets one: whether `notAFunction(x)` names a
+// function, whether `collapsed` belongs on a point, whether `color: red` is a
+// colour, whether a `ticker` is inside a folder. Spec §8 lists the rules and
+// §4.6 the placements; the manifest in `@axis-dsl/syntax` is the authority on
+// every property, so nothing here lists one by hand.
+//
+// Every one of these is a mistake Desmos would *not* report. It accepts
+// `n_{otAFunction}\left(x\right)` as a product of variables and never
+// evaluates it, ignores a property it does not know, and draws nothing for
+// `\pi=3` - the harness found each of those, and the checker exists so that an
+// author hears about them from the compiler instead of from a graph that is
+// quietly wrong.
+//
+// The checker reads the tree as it was written, before any macro is expanded,
+// so a diagnostic always points at text the author can see. A macro's body is
+// checked once, where it is defined, and each use of it only for its arity.
+//
+// Undefined *variables* are not errors: Desmos offers one as a slider, which is
+// a feature. Undefined *functions* are, because a call that is not a call is
+// never what somebody meant.
+
+import {
+    AXIS_CONSTANT_NAME_SET,
+    AXIS_FUNCTION_NAME_SET,
+    AXIS_OPERATOR_NAME_SET,
+    AXIS_PALETTE_HEX,
+    type Call,
+    type Diagnostic,
+    enumValue,
+    type Expression,
+    findProperty,
+    type Identifier,
+    type Metadata,
+    placementsOf,
+    type Property,
+    type PropertyDefinition,
+    type PropertyPlacement,
+    type Span,
+    type Statement,
+} from '@axis-dsl/syntax';
+import { located, type Program, type SourceFile } from './program';
+import { styleProperties } from './styles';
+import { definitionOf, RESERVED_NAMES, type Symbols } from './symbols';
+import { childrenOf } from './walk';
+
+export interface CheckResult {
+    diagnostics: Diagnostic[];
+    /**
+     * The `Call` nodes that are really products - `a(b + 1)` is a·(b + 1) -
+     * for a tool that wants to say so. Both lower to the same latex, so the
+     * compiler itself never asks.
+     */
+    products: WeakSet<Call>;
+}
+
+/** How a placement is named in a message: "`collapsed` does not go on a point". */
+const PLACEMENT_NOUNS: Readonly<Record<PropertyPlacement, string>> = {
+    expression: 'an expression',
+    folder: 'a folder',
+    table: 'a table',
+    column: 'a table column',
+    image: 'an image',
+    ticker: 'the ticker',
+    import: 'an import',
+    note: 'a note',
+    config: 'config',
+    style: 'a style',
+};
+
+/** What an expression is being checked inside of. */
+interface Scope {
+    file: SourceFile;
+    /** Names bound here: function parameters, `with`/`for` bindings, macro parameters. */
+    bound: ReadonlySet<string>;
+    /** Inside the ticker's handler, where `dt` exists. */
+    ticker: boolean;
+    /** Inside a macro's body, which is checked for what it could be used as. */
+    macro: boolean;
+}
+
+/** Check every file of `program` against the names it defines. */
+export function checkProgram(program: Program, symbols: Symbols): CheckResult {
+    const diagnostics: Diagnostic[] = [];
+    const products = new WeakSet<Call>();
+
+    let file: SourceFile = program.entry;
+    const report = (code: string, message: string, span: Span): void => {
+        diagnostics.push(located({ code, severity: 'error', message, span }, file));
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Statements
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const checkFile = (current: SourceFile): void => {
+        file = current;
+        const counts = { config: 0, ticker: 0 };
+        checkStatements(current.tree.file.statements, false, counts);
+    };
+
+    const checkStatements = (
+        statements: readonly Statement[],
+        inFolder: boolean,
+        counts: { config: number; ticker: number },
+    ): void => {
+        const scope: Scope = { file, bound: new Set(), ticker: false, macro: false };
+
+        for (const statement of statements) {
+            switch (statement.kind) {
+                case 'ConfigStatement':
+                    if (inFolder) {
+                        report(
+                            'misplaced-config',
+                            '`config` belongs at the top level of a script, not inside a folder.',
+                            keyword(statement.span, 'config'),
+                        );
+                    } else if (counts.config++ > 0) {
+                        report(
+                            'duplicate-config',
+                            'A script has one `config` block; merge this one into the first.',
+                            keyword(statement.span, 'config'),
+                        );
+                    }
+                    checkProperties(statement.entries, 'config', scope);
+                    break;
+
+                case 'FolderStatement':
+                    if (inFolder) {
+                        report(
+                            'nested-folder',
+                            'Folders do not nest - Desmos has one level of them.',
+                            keyword(statement.span, 'folder'),
+                        );
+                    }
+                    checkMetadata(statement.metadata, 'folder', scope);
+                    checkStatements(statement.body, true, counts);
+                    break;
+
+                case 'TableStatement':
+                    checkMetadata(statement.metadata, 'table', scope);
+                    for (const column of statement.columns) {
+                        if (column.values === null && isEquation(column.header)) {
+                            report(
+                                'invalid-column',
+                                'A table column is `name = [values]` or an expression to compute; an equation is neither.',
+                                column.header.span,
+                            );
+                        } else {
+                            checkExpression(column.header, scope);
+                        }
+                        for (const value of column.values ?? []) {
+                            checkExpression(value, scope);
+                        }
+                        checkMetadata(column.metadata, 'column', scope);
+                    }
+                    break;
+
+                case 'StyleStatement':
+                    if (inFolder) {
+                        report(
+                            'misplaced-style',
+                            'A `style` belongs at the top level of a script, not inside a folder.',
+                            keyword(statement.span, 'style'),
+                        );
+                    }
+                    checkProperties(statement.entries, 'style', scope);
+                    break;
+
+                case 'MacroStatement':
+                    if (inFolder) {
+                        report(
+                            'misplaced-macro',
+                            'A `macro` belongs at the top level of a script, not inside a folder.',
+                            keyword(statement.span, 'macro'),
+                        );
+                    }
+                    checkMacro(statement.name, statement.parameters, statement.body);
+                    break;
+
+                case 'ImportStatement':
+                    checkMetadata(statement.metadata, 'import', scope);
+                    break;
+
+                case 'ImageStatement':
+                    checkMetadata(statement.metadata, 'image', scope);
+                    break;
+
+                case 'TickerStatement':
+                    if (inFolder) {
+                        report(
+                            'misplaced-ticker',
+                            'The `ticker` belongs at the top level of a script, not inside a folder.',
+                            keyword(statement.span, 'ticker'),
+                        );
+                    } else if (counts.ticker++ > 0) {
+                        report(
+                            'duplicate-ticker',
+                            'A graph has one ticker; run both actions from the first as a run: `a -> 1, b -> 2`.',
+                            keyword(statement.span, 'ticker'),
+                        );
+                    }
+                    checkExpression(statement.handler, { ...scope, ticker: true });
+                    checkMetadata(statement.metadata, 'ticker', scope);
+                    break;
+
+                case 'NoteStatement':
+                    checkMetadata(statement.metadata, 'note', scope);
+                    break;
+
+                case 'ExpressionStatement':
+                    checkStatementExpression(statement.expression, scope);
+                    checkMetadata(statement.metadata, 'expression', scope);
+                    break;
+
+                case 'ErrorStatement':
+                    break;
+            }
+        }
+    };
+
+    /**
+     * A statement's expression, which may define a name: the name is checked
+     * as a name being defined, and the parameters of a function are in scope
+     * for its body.
+     */
+    const checkStatementExpression = (expression: Expression, scope: Scope): void => {
+        const definition = definitionOf(expression);
+        if (!definition) {
+            checkExpression(expression, scope);
+            return;
+        }
+
+        const name = definition.name.name;
+        if (RESERVED_NAMES.has(name)) {
+            report(
+                'assign-to-builtin',
+                AXIS_FUNCTION_NAME_SET.has(name)
+                    ? `\`${name}\` is a built-in function and cannot be redefined.`
+                    : `\`${name}\` is built in and cannot be redefined.`,
+                definition.name.span,
+            );
+        }
+        checkSubscripts(definition.name);
+
+        const bound = new Set(scope.bound);
+        if (definition.kind === 'function') {
+            for (const parameter of definition.parameters) {
+                checkSubscripts(parameter);
+                bound.add(parameter.name);
+            }
+        }
+        checkExpression(definition.value, { ...scope, bound });
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Macros
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const checkMacro = (
+        name: Identifier,
+        parameters: readonly Identifier[] | null,
+        body: Expression,
+    ): void => {
+        const macro = symbols.macros.get(name.name);
+        // A second definition, or one whose name collides with another, was
+        // reported when the symbols were gathered and is not the one any use
+        // expands to - so it is not checked.
+        if (macro?.statement.name !== name) {
+            return;
+        }
+
+        if (recursive.has(name.name)) {
+            report(
+                'macro-recursion',
+                `The macro \`${name.name}\` uses itself${recursive.get(name.name)}, so it never finishes expanding.`,
+                name.span,
+            );
+        }
+
+        const bound = new Set(parameters?.map(parameter => parameter.name));
+        checkExpression(body, { file, bound, ticker: false, macro: true });
+    };
+
+    /**
+     * The macros that expand into themselves, directly or round a loop, with
+     * the loop spelt out for the message.
+     */
+    const recursive = findRecursiveMacros(symbols);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Expressions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const checkExpression = (node: Expression, scope: Scope): void => {
+        switch (node.kind) {
+            case 'String':
+                report(
+                    'unexpected-string',
+                    'A string is not a value an expression can use; only a note, a label or a name is written in quotes.',
+                    node.span,
+                );
+                return;
+
+            case 'Identifier':
+                checkIdentifier(node, scope);
+                return;
+
+            case 'Call':
+                checkCall(node, scope);
+                for (const arg of node.arguments) {
+                    checkExpression(arg, scope);
+                }
+                return;
+
+            case 'With':
+            case 'For': {
+                // A binding's value is read outside the bindings, and the body
+                // inside them.
+                const bound = new Set(scope.bound);
+                for (const binding of node.bindings) {
+                    checkSubscripts(binding.name);
+                    checkExpression(binding.value, scope);
+                    bound.add(binding.name.name);
+                }
+                checkExpression(node.body, { ...scope, bound });
+                return;
+            }
+
+            default:
+                for (const child of childrenOf(node)) {
+                    checkExpression(child, scope);
+                }
+        }
+    };
+
+    const checkIdentifier = (node: Identifier, scope: Scope): void => {
+        checkSubscripts(node);
+        if (scope.bound.has(node.name)) {
+            return;
+        }
+
+        if (node.name === 'true' || node.name === 'false') {
+            // Desmos has no booleans: `true` is t·r·u·e to it, and a graph
+            // with one in simply asks for four sliders.
+            report(
+                'boolean-in-expression',
+                `Desmos has no booleans, so \`${node.name}\` means nothing in an expression; use 1 and 0, or a condition such as \`a > 0\`.`,
+                node.span,
+            );
+            return;
+        }
+
+        if (node.name === 'dt' && !scope.ticker && !scope.macro) {
+            report(
+                'dt-outside-ticker',
+                '`dt` is the time since the ticker last ran, and exists only in the ticker’s handler.',
+                node.span,
+            );
+            return;
+        }
+
+        const macro = symbols.macros.get(node.name);
+        if (macro?.parameters) {
+            report(
+                'macro-arity',
+                `The macro \`${node.name}\` takes ${count(macro.parameters.length, 'argument')}: ${node.name}(${macro.parameters.join(', ')}).`,
+                node.span,
+            );
+        }
+    };
+
+    /**
+     * `f(…)`: a builtin, a function the script defines, a macro - or a product
+     * written like a call, which is legal only where it could be one (spec
+     * §5.3). A name Desmos would read as a variable and a single argument make
+     * a product: `a(b + 1)`, `k(x - 1)`. Anything else is an unknown function,
+     * because Desmos would read it as a product in silence and nobody who
+     * wrote `sine(x)` meant that.
+     */
+    const checkCall = (node: Call, scope: Scope): void => {
+        const name = node.callee.name;
+        checkSubscripts(node.callee);
+
+        if (scope.bound.has(name)) {
+            if (node.arguments.length !== 1) {
+                report(
+                    'unknown-function',
+                    `\`${name}\` is a parameter, not a function, so it cannot be called with ${count(node.arguments.length, 'argument')}.`,
+                    node.callee.span,
+                );
+            } else {
+                products.add(node);
+            }
+            return;
+        }
+
+        const macro = symbols.macros.get(name);
+        if (macro) {
+            if (macro.parameters === null) {
+                report(
+                    'macro-arity',
+                    `The macro \`${name}\` takes no arguments and is used without parentheses: \`${name}\`.`,
+                    node.span,
+                );
+            } else if (macro.parameters.length !== node.arguments.length) {
+                report(
+                    'macro-arity',
+                    `The macro \`${name}\` takes ${count(macro.parameters.length, 'argument')}, not ${node.arguments.length}: ${name}(${macro.parameters.join(', ')}).`,
+                    node.span,
+                );
+            }
+            return;
+        }
+
+        if (AXIS_FUNCTION_NAME_SET.has(name) || symbols.functions.has(name)) {
+            return;
+        }
+
+        if (node.arguments.length === 1 && readsAsVariable(name, symbols)) {
+            products.add(node);
+            return;
+        }
+
+        report(
+            'unknown-function',
+            symbols.variables.has(name)
+                ? `\`${name}\` is a variable, not a function, so it cannot be called with ${count(node.arguments.length, 'argument')}.`
+                : `\`${name}\` is not a function - neither a built-in one nor one this script defines.`,
+            node.callee.span,
+        );
+    };
+
+    /**
+     * `x_1_2`: the lexer reads more than one subscript as one name, so that
+     * an enum value like `LOOP_FORWARD_REVERSE` can be written - but in an
+     * expression Desmos has one subscript a name, and there is no spelling of
+     * the second.
+     */
+    const checkSubscripts = (node: Identifier): void => {
+        if ((node.name.match(/_/g)?.length ?? 0) > 1) {
+            report(
+                'multiple-subscripts',
+                `\`${node.name}\` has more than one subscript; a name in an expression has at most one, as in \`x_12\`.`,
+                node.span,
+            );
+        }
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Properties
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const checkMetadata = (
+        metadata: Metadata | null,
+        placement: PropertyPlacement,
+        scope: Scope,
+    ): void => {
+        if (metadata) {
+            checkProperties(metadata.entries, placement, scope);
+        }
+    };
+
+    const checkProperties = (
+        entries: readonly Property[],
+        placement: PropertyPlacement,
+        scope: Scope,
+    ): void => {
+        const seen = new Set<string>();
+
+        for (const property of entries) {
+            const name = property.key.name;
+            const definition = findProperty(name, placement);
+
+            if (!definition) {
+                const elsewhere = placementsOf(name);
+                if (elsewhere.length > 0) {
+                    report(
+                        'misplaced-property',
+                        `\`${name}\` does not go on ${PLACEMENT_NOUNS[placement]}; it belongs on ${list(elsewhere.map(where => PLACEMENT_NOUNS[where]))}.`,
+                        property.key.span,
+                    );
+                } else {
+                    report(
+                        'unknown-property',
+                        `There is no property called \`${name}\`.`,
+                        property.key.span,
+                    );
+                }
+                continue;
+            }
+
+            if (seen.has(name) && !definition.repeatable) {
+                report(
+                    'duplicate-property',
+                    `\`${name}\` is given twice here; only the last would count.`,
+                    property.key.span,
+                );
+            }
+            seen.add(name);
+
+            checkValue(property, definition, placement, scope);
+        }
+    };
+
+    /** Whether a property's value is the kind the manifest says it takes (spec §4.2). */
+    const checkValue = (
+        property: Property,
+        definition: PropertyDefinition,
+        placement: PropertyPlacement,
+        scope: Scope,
+    ): void => {
+        const name = definition.name;
+        const value = property.value;
+
+        if (value === null) {
+            // `key:` with nothing after it is the parser's to report; a bare
+            // key is a flag, which only a boolean can be.
+            if (!property.colon && definition.valueType !== 'boolean') {
+                report(
+                    'invalid-value',
+                    `\`${name}\` needs a value: \`${name}: …\`.`,
+                    property.span,
+                );
+            }
+            return;
+        }
+
+        if (value.kind === 'Range') {
+            if (definition.valueType !== 'range') {
+                report(
+                    'unexpected-range',
+                    `\`${name}\` does not take a range; only a slider and a domain do.`,
+                    value.span,
+                );
+                return;
+            }
+            if (name !== 'slider' && (value.step !== null || value.soft !== 'none')) {
+                report(
+                    'invalid-value',
+                    `A domain is two ends and nothing else; \`step\` and \`soft\` belong to a slider.`,
+                    value.span,
+                );
+            }
+            for (const end of [value.min, value.max, value.step]) {
+                if (end) {
+                    checkExpression(end, scope);
+                }
+            }
+            return;
+        }
+
+        switch (definition.valueType) {
+            case 'expression':
+                if (value.kind === 'String') {
+                    report(
+                        'invalid-value',
+                        `\`${name}\` takes an expression, not a string.`,
+                        value.span,
+                    );
+                } else {
+                    checkExpression(value, scope);
+                }
+                return;
+
+            case 'action':
+                if (['Number', 'String', 'Color'].includes(value.kind)) {
+                    report(
+                        'invalid-value',
+                        `\`${name}\` takes an action - \`a -> a + 1\` - or a run of them, or the name of one.`,
+                        value.span,
+                    );
+                } else {
+                    checkExpression(value, scope);
+                }
+                return;
+
+            case 'number':
+                if (!isNumberLiteral(value)) {
+                    report('invalid-value', `\`${name}\` takes a number.`, value.span);
+                }
+                return;
+
+            case 'string':
+                if (value.kind !== 'String') {
+                    report('invalid-value', `\`${name}\` takes a string, in quotes.`, value.span);
+                }
+                return;
+
+            case 'boolean':
+                if (
+                    value.kind !== 'Identifier' ||
+                    (value.name !== 'true' && value.name !== 'false')
+                ) {
+                    report(
+                        'invalid-value',
+                        `\`${name}\` is true or false - or written on its own, which means true.`,
+                        value.span,
+                    );
+                }
+                return;
+
+            case 'enum':
+                if (
+                    value.kind !== 'Identifier' ||
+                    enumValue(definition, value.name) === undefined
+                ) {
+                    report(
+                        'invalid-enum',
+                        `\`${name}\` is one of ${list(definition.values ?? [], 'or')}.`,
+                        value.span,
+                    );
+                }
+                return;
+
+            case 'color':
+                checkColor(value, name, placement === 'config', scope);
+                return;
+
+            case 'style':
+                checkUse(value, placement);
+                return;
+
+            case 'range':
+                report(
+                    'invalid-value',
+                    `\`${name}\` takes a range, such as \`${name === 'slider' ? '0..10 step 1' : '0..2pi'}\`.`,
+                    value.span,
+                );
+                return;
+        }
+    };
+
+    /**
+     * A colour (spec §4.3): a hex literal, a palette name, or any other
+     * expression - which becomes `colorLatex` and is Desmos' to evaluate. The
+     * config colours are hex strings to Desmos, so they take no expression.
+     */
+    const checkColor = (value: Expression, name: string, config: boolean, scope: Scope): void => {
+        if (value.kind === 'Color') {
+            return;
+        }
+
+        if (value.kind === 'Identifier') {
+            if (AXIS_PALETTE_HEX.has(value.name)) {
+                return;
+            }
+            // `red` is not a palette name, and unless the script defines it
+            // is not a colour of any other kind: as an expression it would be
+            // r·e·d. Said here rather than left as three sliders.
+            const palette = [...AXIS_PALETTE_HEX.keys()].find(
+                colour => colour.toLowerCase() === value.name.toLowerCase(),
+            );
+            if (palette && !symbols.variables.has(value.name) && !scope.bound.has(value.name)) {
+                report(
+                    'invalid-color',
+                    `\`${value.name}\` is not a colour; the palette's names are capitalised: \`${palette}\`.`,
+                    value.span,
+                );
+                return;
+            }
+        }
+
+        if (config) {
+            report(
+                'invalid-color',
+                `\`${name}\` takes a hex colour such as \`#2d70b3\` or a palette name - ${list([...AXIS_PALETTE_HEX.keys()], 'or')}.`,
+                value.span,
+            );
+            return;
+        }
+
+        if (['Number', 'String', 'Sequence', 'Action', 'Comparison'].includes(value.kind)) {
+            report(
+                'invalid-color',
+                `\`${name}\` takes a colour: a hex literal, a palette name, or an expression such as \`rgb(255, 0, 0)\`.`,
+                value.span,
+            );
+            return;
+        }
+
+        checkExpression(value, scope);
+    };
+
+    /** `use: name` - a style that exists, whose properties go where it is used. */
+    const checkUse = (value: Expression, placement: PropertyPlacement): void => {
+        if (value.kind !== 'Identifier') {
+            report('invalid-value', '`use` takes the name of a style.', value.span);
+            return;
+        }
+
+        const style = symbols.styles.get(value.name);
+        if (!style) {
+            report('unknown-style', `There is no style called \`${value.name}\`.`, value.span);
+            return;
+        }
+
+        // A style is checked as a style where it is defined; what it cannot
+        // know there is where it will be used. `showLabel` is a fine thing for
+        // a style to set, and meaningless on a table column.
+        if (placement === 'style') {
+            return;
+        }
+        const use = { value } as Property;
+        for (const name of styleProperties(use, symbols.styles, []).keys()) {
+            if (!findProperty(name, placement)) {
+                report(
+                    'misplaced-property',
+                    `The style \`${value.name}\` sets \`${name}\`, which does not go on ${PLACEMENT_NOUNS[placement]}.`,
+                    value.span,
+                );
+            }
+        }
+    };
+
+    for (const current of program.files) {
+        checkFile(current);
+    }
+
+    // Styles that use themselves are reported once per loop, against the `use:`
+    // that closes it.
+    for (const cycle of findStyleCycles(symbols)) {
+        file = cycle.file;
+        report(
+            'style-cycle',
+            `The style \`${cycle.style}\` uses itself: ${cycle.loop}.`,
+            cycle.span,
+        );
+    }
+
+    return { diagnostics, products };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Whether Desmos would read `name(…)` with one argument as a product: a name
+ * that is a value rather than a function - a variable the script defines, a
+ * constant, or a single letter, which is how anybody writes a coefficient.
+ * A longer name nobody defined is far more likely a misspelt function.
+ */
+function readsAsVariable(name: string, symbols: Symbols): boolean {
+    const head = name.split('_')[0];
+    return (
+        head.length === 1 ||
+        symbols.variables.has(name) ||
+        AXIS_CONSTANT_NAME_SET.has(name) ||
+        AXIS_OPERATOR_NAME_SET.has(name)
+    );
+}
+
+function isEquation(node: Expression): boolean {
+    return node.kind === 'Comparison';
+}
+
+/** `3`, `-0.5`: what a `number` property takes (spec §4.2). */
+export function isNumberLiteral(node: Expression): boolean {
+    return node.kind === 'Number' || (node.kind === 'Unary' && node.operand.kind === 'Number');
+}
+
+/** The span of a statement's leading keyword, which is what a placement error is about. */
+function keyword(span: Span, word: string): Span {
+    return { start: span.start, end: span.start + word.length };
+}
+
+function count(n: number, noun: string): string {
+    return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}
+
+function list(items: readonly string[], conjunction = 'or'): string {
+    const quoted = items.map(item => (item.includes(' ') ? item : `\`${item}\``));
+    if (quoted.length <= 1) return quoted.join('');
+    return `${quoted.slice(0, -1).join(', ')} ${conjunction} ${quoted[quoted.length - 1]}`;
+}
+
+/**
+ * Every macro whose expansion reaches itself, with the loop it goes round:
+ * ` (A -> B -> A)`, or nothing for a macro that uses itself directly.
+ */
+function findRecursiveMacros(symbols: Symbols): Map<string, string> {
+    const uses = new Map<string, string[]>();
+    for (const macro of symbols.macros.values()) {
+        const parameters = new Set(macro.parameters);
+        const names: string[] = [];
+        const visit = (node: Expression): void => {
+            const name =
+                node.kind === 'Identifier'
+                    ? node.name
+                    : node.kind === 'Call'
+                      ? node.callee.name
+                      : undefined;
+            if (name && !parameters.has(name) && symbols.macros.has(name)) {
+                names.push(name);
+            }
+            childrenOf(node).forEach(visit);
+        };
+        visit(macro.body);
+        uses.set(macro.name, names);
+    }
+
+    const recursive = new Map<string, string>();
+    for (const start of uses.keys()) {
+        // Depth-first from each macro, looking for a way back to it.
+        const path: string[] = [start];
+        const seen = new Set<string>();
+        const search = (name: string): boolean => {
+            for (const next of uses.get(name) ?? []) {
+                if (next === start) {
+                    path.push(next);
+                    return true;
+                }
+                if (!seen.has(next)) {
+                    seen.add(next);
+                    path.push(next);
+                    if (search(next)) return true;
+                    path.pop();
+                }
+            }
+            return false;
+        };
+        if (search(start)) {
+            recursive.set(start, path.length > 2 ? ` (${path.join(' -> ')})` : '');
+        }
+    }
+    return recursive;
+}
+
+/**
+ * Each loop of styles using styles, found once and reported against the
+ * `use:` that closes it.
+ */
+function findStyleCycles(
+    symbols: Symbols,
+): { style: string; loop: string; span: Span; file: SourceFile }[] {
+    const cycles: { style: string; loop: string; span: Span; file: SourceFile }[] = [];
+    const done = new Set<string>();
+
+    const visit = (name: string, path: string[]): void => {
+        const style = symbols.styles.get(name);
+        if (!style || done.has(name)) {
+            return;
+        }
+        for (const entry of style.entries) {
+            if (entry.key.name !== 'use' || entry.value?.kind !== 'Identifier') {
+                continue;
+            }
+            const next = entry.value.name;
+            const at = path.indexOf(next);
+            if (at !== -1) {
+                cycles.push({
+                    style: next,
+                    loop: [...path.slice(at), name, next].join(' -> '),
+                    span: entry.value.span,
+                    file: style.file,
+                });
+            } else if (next !== name) {
+                visit(next, [...path, name]);
+            } else {
+                cycles.push({
+                    style: name,
+                    loop: `${name} -> ${name}`,
+                    span: entry.value.span,
+                    file: style.file,
+                });
+            }
+        }
+        done.add(name);
+    };
+
+    for (const name of symbols.styles.keys()) {
+        visit(name, []);
+    }
+    return cycles;
+}

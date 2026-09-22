@@ -35,7 +35,7 @@ import {
     TickerState,
 } from '@axis-dsl/desmos';
 import { scanBlockLine, type BlockFrame } from '@axis-dsl/language';
-import type { CompilationResult } from './compile';
+import type { CompilationResult } from './legacy/compile';
 import { decompileExpression, decompileSettings, graphActionNames } from './decompile';
 
 /** A graph as the calculator holds it: the expression list, and the rest. */

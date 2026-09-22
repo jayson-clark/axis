@@ -64,7 +64,7 @@ closes it again.
 |                                                     |                                                              |
 | --------------------------------------------------- | ------------------------------------------------------------ |
 | `load(source, options?)`                            | compile Axis source and apply it, imports and images and all |
-| `setGraph({ state, options })`                      | apply a whole graph, as `toGraph` or the compiler returns it |
+| `setGraph({ state, options })`                      | apply a whole graph, as the compiler returns it              |
 | `setExpressions(list, settings?, graph?)`           | apply expressions the compiler already produced              |
 | `inspectExpressions()`                              | the expression list with each one's Desmos analysis attached |
 | `getErrors()`                                       | just the expressions Desmos rejected, with its message       |

@@ -193,7 +193,7 @@ describe('expression metadata', { skip }, () => {
 
     for (const [property, { source, expected, at, dropped }] of Object.entries(PROPERTIES)) {
         test(`${property} ${dropped ? 'is dropped by the calculator' : 'reaches the calculator'}`, async () => {
-            const compiled = compileAxis(source).expressions;
+            const compiled = compileAxis(source).state.expressions?.list ?? [];
             const target = compiled.at(at ?? -1);
             assert.ok(target?.id, `${property} compiled to nothing to look for`);
 
@@ -347,8 +347,9 @@ describe('metadata Desmos acts on', { skip }, () => {
         // whichever line reads best.
         const wrapped = 'A = polygon(\n    (0,0), # color: #ff0000\n    (1,0),\n    (1,1)\n)';
         assert.deepEqual(
-            compileAxis(wrapped).expressions,
-            compileAxis('A = polygon((0,0), (1,0), (1,1)) # color: #ff0000').expressions,
+            compileAxis(wrapped).state.expressions?.list,
+            compileAxis('A = polygon((0,0), (1,0), (1,1)) # color: #ff0000').state.expressions
+                ?.list,
         );
 
         await calculator().load(wrapped);

@@ -11,7 +11,7 @@ describe('a real Desmos calculator', { skip }, () => {
             await calculator().load('y = x^2');
             const [expression] = await calculator().inspectExpressions();
 
-            assert.equal(expression.latex, 'y=x^2');
+            assert.equal(expression.latex, 'y=x^{2}');
             assert.equal(expression.analysis?.isGraphable, true);
             assert.equal(expression.analysis?.isError, false);
         });
@@ -95,7 +95,7 @@ describe('a real Desmos calculator', { skip }, () => {
 
         test('applies a config block to the calculator settings', async () => {
             await calculator().load(
-                'config {\n    degreeMode: true,\n    showGrid: false\n}\ny = x',
+                'config {\n    degreeMode: true\n    showGrid: false\n}\ny = x',
             );
             const settings = await calculator().getSettings();
 

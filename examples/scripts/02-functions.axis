@@ -35,15 +35,15 @@ folder "Powers and roots" {
 }
 
 folder "Rounding and sign" {
-    y = floor(x) @ color: RED, lines: false
-    y = ceil(x) @ color: BLUE, lines: false
-    y = round(x) @ color: GREEN, lines: false
-    y = sign(x) @ color: PURPLE, lines: false
+    y = floor(x) @ color: RED
+    y = ceil(x) @ color: BLUE
+    y = round(x) @ color: GREEN
+    y = sign(x) @ color: PURPLE
     y = abs(x) @ color: ORANGE
 }
 
 folder "Number theory" {
-    y = mod(x, 3) @ color: RED, lines: false
+    y = mod(x, 3) @ color: RED
     d = gcd(12, 18) @ hidden
     m = lcm(4, 6) @ hidden
     y = factorial(3) @ hidden

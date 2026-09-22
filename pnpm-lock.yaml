@@ -148,6 +148,9 @@ importers:
       '@axis-dsl/language':
         specifier: workspace:*
         version: link:../language
+      '@axis-dsl/syntax':
+        specifier: workspace:*
+        version: link:../syntax
       playwright-core:
         specifier: 'catalog:'
         version: 1.62.1

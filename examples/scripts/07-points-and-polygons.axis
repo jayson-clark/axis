@@ -18,7 +18,7 @@ folder "Geometry helpers" {
     side = distance(A, B) @ hidden
     M = midpoint(A, C) @ color: ORANGE, pointSize: 15, label: "midpoint", showLabel
     "The median from B to that midpoint."
-    Q = [B, M] @ color: ORANGE, points: false, lineStyle: DASHED
+    Q = [B, M] @ color: ORANGE, lines, points: false, lineStyle: DASHED
 }
 
 folder "A polygon from a list" {
