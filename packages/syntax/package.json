@@ -1,16 +1,14 @@
 {
-    "name": "@axis-dsl/compiler",
-    "version": "1.11.0",
-    "description": "Compiles .axis source into Desmos expressions and calculator settings",
+    "name": "@axis-dsl/syntax",
+    "version": "2.0.0-dev",
+    "description": "The Axis language: lexer, parser, syntax tree and manifest",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
         "watch": "tsc --watch"
     },
-    "dependencies": {
-        "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/language": "workspace:*",
-        "@axis-dsl/syntax": "workspace:*"
+    "devDependencies": {
+        "@types/node": "catalog:"
     },
     "license": "MIT",
     "author": "Jayson Clark",
@@ -18,7 +16,7 @@
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jayson-clark/axis.git",
-        "directory": "packages/compiler"
+        "directory": "packages/syntax"
     },
     "bugs": {
         "url": "https://github.com/jayson-clark/axis/issues"

@@ -1,16 +1,18 @@
 {
-    "name": "@axis-dsl/compiler",
-    "version": "1.11.0",
-    "description": "Compiles .axis source into Desmos expressions and calculator settings",
+    "name": "@axis-dsl/language-service",
+    "version": "2.0.0-dev",
+    "description": "Axis language services over the syntax tree: diagnostics, completions, formatting, semantic tokens, with a Monaco adapter",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
         "watch": "tsc --watch"
     },
     "dependencies": {
-        "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/language": "workspace:*",
-        "@axis-dsl/syntax": "workspace:*"
+        "@axis-dsl/syntax": "workspace:*",
+        "@axis-dsl/compiler": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:"
     },
     "license": "MIT",
     "author": "Jayson Clark",
@@ -18,7 +20,7 @@
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jayson-clark/axis.git",
-        "directory": "packages/compiler"
+        "directory": "packages/language-service"
     },
     "bugs": {
         "url": "https://github.com/jayson-clark/axis/issues"

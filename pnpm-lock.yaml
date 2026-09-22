@@ -105,6 +105,9 @@ importers:
       '@axis-dsl/language':
         specifier: workspace:*
         version: link:../language
+      '@axis-dsl/syntax':
+        specifier: workspace:*
+        version: link:../syntax
 
   packages/desmos:
     devDependencies:
@@ -168,11 +171,43 @@ importers:
         specifier: 'catalog:'
         version: 0.56.0
 
+  packages/language-server:
+    dependencies:
+      '@axis-dsl/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@axis-dsl/language-service':
+        specifier: workspace:*
+        version: link:../language-service
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.4.0
+
+  packages/language-service:
+    dependencies:
+      '@axis-dsl/compiler':
+        specifier: workspace:*
+        version: link:../compiler
+      '@axis-dsl/syntax':
+        specifier: workspace:*
+        version: link:../syntax
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.4.0
+
   packages/protocol:
     dependencies:
       '@axis-dsl/desmos':
         specifier: workspace:*
         version: link:../desmos
+
+  packages/syntax:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.4.0
 
   packages/viewer:
     dependencies:

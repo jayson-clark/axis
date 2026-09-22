@@ -26,9 +26,12 @@
     "files": [],
     "references": [
         { "path": "packages/desmos" },
+        { "path": "packages/syntax" },
         { "path": "packages/protocol" },
         { "path": "packages/language" },
         { "path": "packages/compiler" },
+        { "path": "packages/language-service" },
+        { "path": "packages/language-server" },
         { "path": "packages/harness" },
         { "path": "packages/extension" }
     ]

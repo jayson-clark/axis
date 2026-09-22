@@ -5,6 +5,6 @@
         "outDir": "./dist",
         "rootDir": "src"
     },
-    "references": [{ "path": "../desmos" }, { "path": "../syntax" }, { "path": "../language" }],
+    "references": [{ "path": "../syntax" }, { "path": "../compiler" }],
     "include": ["src/**/*"]
 }
