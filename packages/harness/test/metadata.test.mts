@@ -492,7 +492,7 @@ function withoutPlayDirection(
 async function lastApplied(calculator: () => AxisCalculator, source: string): Promise<Expression> {
     const compiled = compileAxis(source);
     assert.deepEqual(compiled.diagnostics, [], `${source} is not a clean script`);
-    const id = compiled.state.expressions?.list.at(-1)?.id;
+    const id = compiled.state.expressions?.list?.at(-1)?.id;
     await calculator().load(source);
     const list = (await calculator().getState()).expressions?.list ?? [];
     return list.find(item => item.id === id) as Expression;
@@ -794,7 +794,7 @@ describe('metadata Desmos acts on', { skip }, () => {
         // `pointSize: 30` - a name and a colon - starts the next property.
         const source = 'a = 0\nb = 0\n(1, 2) @ onClick: a -> 1, b -> 2, pointSize: 30';
         const compiled = compileAxis(source);
-        const point = compiled.state.expressions?.list.at(-1) as Expression;
+        const point = compiled.state.expressions?.list?.at(-1) as Expression;
         assert.deepEqual(compiled.diagnostics, []);
         assert.equal(point.pointSize, '30');
 
@@ -895,10 +895,9 @@ describe('metadata Desmos acts on', { skip }, () => {
         // be written a vertex to a line and still carry its clause at the end.
         const wrapped = 'A = polygon(\n    (0, 0),\n    (1, 0),\n    (1, 1)\n) @ color: #ff0000';
         assert.deepEqual(
-            compileAxis(wrapped).state.expressions?.list.map(({ latex, color }: Expression) => ({
-                latex,
-                color,
-            })),
+            (compileAxis(wrapped).state.expressions?.list as Expression[]).map(
+                ({ latex, color }) => ({ latex, color }),
+            ),
             [
                 {
                     latex: 'A=\\operatorname{polygon}\\left(\\left(0,0\\right),\\left(1,0\\right),\\left(1,1\\right)\\right)',

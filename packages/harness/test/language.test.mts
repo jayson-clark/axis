@@ -251,7 +251,7 @@ describe('every function the language offers', { skip }, () => {
 
         assert.equal(curves.length, colours.length);
         for (const curve of curves) {
-            assert.equal(curve.analysis?.isGraphable, true, curve.latex);
+            assert.equal(curve.analysis?.isGraphable, true, String(curve.latex));
         }
         assert.deepEqual(await calculator().getErrors(), []);
     });
