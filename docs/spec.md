@@ -251,6 +251,14 @@ written in any case is lowered to that spelling: `dragMode: none` is `NONE`,
 
 There is no separate `colorLatex` property.
 
+A hex literal is lowered written out in full and in lower case - `#ABC` is
+`#aabbcc` - which is the only spelling Desmos writes back. Palette names,
+unlike enum values, are **case-sensitive**, because any other spelling is an
+expression: `color: red` is r·e·d. So a palette name in the wrong case is an
+error (`invalid-color`) unless the script defines that name itself, in which
+case it is the variable. A number, a string, an action or an equation is never
+a colour.
+
 The `config` colours - `backgroundColor`, `textColor`, `accentColor` - are
 `color` too, but Desmos wants a hex string there, so they take only a hex
 literal or a palette name, never an expression.
@@ -272,7 +280,9 @@ range = [ expression ] ".." [ expression ] [ "step" expression ] [ "soft" [ "min
   (§5.1), so nothing looser - an action, a run, a `with` - can be one.
 
 Ranges are the value of `slider`, `domain`, `parametricDomain` and
-`polarDomain`.
+`polarDomain`. A domain is its two ends and nothing else: `step` and `soft` on
+one are an error (`invalid-value`). An end left off a domain is lowered as the
+empty string Desmos stores for it.
 
 ```
 a = 1 @ slider: -5..5 step 0.5
@@ -295,6 +305,12 @@ styles are applied in the order written, and the clause's own properties win
 over every style it uses. Styles may use other styles; a cycle is an error.
 Style names are global across the compilation (including imports), like
 macros, and live in their own namespace.
+
+A style is checked as a style where it is defined, and where it is used for
+what it cannot know there: a property it sets that the place it is used does
+not take - `showLabel` from a style used on a table column - is
+`misplaced-property`, reported against the `use:`. A statement that uses a
+style stays writable back from the graph, since the `use:` is itself source.
 
 ### 4.6 Placement
 
@@ -319,6 +335,11 @@ A property in the wrong place is an error.
 `playing` is two properties: a slider's on an expression, the ticker's own on a
 ticker. The manifest (`appliesTo`, `propertiesFor`, `findProperty`) is the
 authority; this table is its summary.
+
+A property may be given once per clause (`duplicate-property`); only `use` is
+repeatable. An image's `dragMode` is lowered to the `draggable` flag Desmos
+keeps for an image - any mode but `NONE` makes it draggable - because Desmos
+ignores `dragMode` on one.
 
 ## 5. Expressions
 
@@ -403,6 +424,14 @@ function makes it a call; anything else with exactly one argument is a product
 (`a(b + 1)` is `a·(b + 1)`) and the checker marks it so. Both spellings lower
 to the same latex, so the distinction matters only for diagnostics.
 
+A product needs a name Desmos reads as a value: a single letter, with or
+without a subscript (`k(x - 1)`, `k_1(x)`); a variable the compilation
+defines; a parameter or a `with`/`for` binding in scope; a constant or an
+operator (`pi(2)`). A longer name that is none of those - `sine(x)` - is far
+more likely a misspelt function than a coefficient nobody defined, so it is
+`unknown-function`, as is a call on anything but a function with no arguments
+or more than one.
+
 Only identifiers are callable. `(f)(x)` is a product.
 
 ### 5.4 Members
@@ -463,11 +492,16 @@ is never an issue: `macro double(a) = 2 * a` used as `double(1 + 2) ^ 2` is
 - A macro name shadows nothing: it may not collide with a builtin, a user
   function or variable, or another macro.
 - Arity must match; a parameterless macro is used without parentheses.
-- Recursion (direct or mutual) is an error.
+- Recursion (direct or mutual) is an error. A macro that collides with a
+  builtin or with a name the script defines is reported and left out, so the
+  name keeps its other meaning everywhere it is used.
 - A macro expands only in expression positions; it cannot stand for a
   statement, a block or metadata. Reusable metadata is what styles are for.
 - A statement containing an expansion is not writable back from the graph
   (the graph holds the expansion, not the call).
+- A macro's body is checked once, where it is defined, with its parameters in
+  scope; a use is checked only for its arity. `dt` is allowed in a body, since
+  a macro may be written for a ticker.
 
 ## 7. Imports
 
@@ -484,8 +518,14 @@ their contents join the import's folder. An import inside a folder joins that
 folder rather than opening one. Import folders start collapsed.
 
 The imported file's `config` applies too, with the importing file's settings
-winning; likewise the importing file's ticker replaces an imported one. A cycle
-is an error.
+winning; likewise the importing file's ticker replaces an imported one (and of
+several imported tickers, the last to be read). A cycle is an error
+(`import-cycle`), reported against the import that closes it.
+
+A file imported more than once is included the first time and is nothing the
+other times, wherever the imports are: a second copy would define every name
+in it again, which Desmos rejects. An import that cannot be resolved is
+`unresolved-import`, and the rest of the script still compiles.
 
 ## 8. Diagnostics
 
@@ -540,6 +580,50 @@ Errors include, beyond syntax:
 
 An undefined _variable_ is not an error: Desmos offers it as a slider.
 
+The checker and the compiler report these codes. Every one is an error, and
+none of them stops the rest of the script compiling: a value that is wrong is
+left off, and a statement that cannot be written at all is left out.
+
+| Code                    | What                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `unknown-function`      | a call on a name that is not a function (§5.3)                                   |
+| `assign-to-builtin`     | defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`   |
+| `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
+| `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
+| `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |
+| `unexpected-string`     | a string where a value belongs                                                   |
+| `unknown-property`      | a property no placement has                                                      |
+| `misplaced-property`    | a property this placement does not take, directly or through a style             |
+| `duplicate-property`    | a property given twice in one clause                                             |
+| `invalid-value`         | a value of the wrong type for its property (§4.2)                                |
+| `invalid-enum`          | an enum value the property does not list                                         |
+| `invalid-color`         | a colour that is not one (§4.3)                                                  |
+| `unexpected-range`      | a range for a property that takes none                                           |
+| `invalid-column`        | a table column that is an equation (`x = 5`)                                     |
+| `misplaced-config`      | `config` inside a folder                                                         |
+| `misplaced-ticker`      | `ticker` inside a folder                                                         |
+| `misplaced-style`       | `style` inside a folder                                                          |
+| `misplaced-macro`       | `macro` inside a folder                                                          |
+| `nested-folder`         | a folder inside a folder                                                         |
+| `duplicate-config`      | a second `config` in one file                                                    |
+| `duplicate-ticker`      | a second `ticker` in one file                                                    |
+| `duplicate-macro`       | a second macro of one name anywhere in the compilation                           |
+| `macro-collision`       | a macro named after a builtin, a function or a variable                          |
+| `macro-arity`           | a macro used with the wrong number of arguments, or with or without `()` wrongly |
+| `macro-recursion`       | a macro that expands into itself                                                 |
+| `duplicate-style`       | a second style of one name anywhere in the compilation                           |
+| `unknown-style`         | `use:` naming no style                                                           |
+| `style-cycle`           | a style that uses itself, reported at the `use:` that closes the loop            |
+| `unresolved-import`     | an import that cannot be read                                                    |
+| `import-cycle`          | an import that closes a cycle                                                    |
+| `unresolved-image`      | an image file that cannot be read                                                |
+| `invalid-image`         | an image path that is not a picture by its extension                             |
+
+A diagnostic about an imported file carries that file's `path`, and its span
+is into that file; one about the script itself carries none. A misplaced
+`config` or `ticker` is not applied, and the contents of a nested folder join
+the folder it is in.
+
 ## 9. Output
 
 `compileAxis` returns:
@@ -557,3 +641,30 @@ interface CompilationResult {
 
 A host applies it with `calculator.setState(state)` and
 `calculator.updateSettings(options)` — nothing else.
+
+So the state is complete. It is version 11; it carries
+`doNotMigrateMovablePointStyle: true`, without which Desmos substitutes its
+own style for any point it decides is movable; `includeFunctionParametersInRandomSeed`
+at the top level, where Desmos reads it; the viewport under `graph`, with any
+edge the script did not give filled in from ±10; and the ticker beside the list
+only when there is one. The options are the Axis defaults under the merged
+config, with `actions: true` added for a script with a ticker and no `actions`
+of its own - Desmos decides `auto` from the list, which the ticker is not in.
+
+Each item in the list has a deterministic id - `expr_N`, `folder_N`, `note_N`,
+`table_N`, `image_N`, and `col_N` for a column, numbered in the order they are
+lowered - and an entry in `sourceMap` saying where it was written:
+
+```ts
+interface StatementOrigin {
+    path: string;       // the file, as the resolver named it
+    line: number;       // zero-based, first line of the statement
+    endLine: number;    // zero-based, last line, inclusive
+    span: Span;         // the statement's exact characters, metadata included
+    writable: boolean;  // false when a macro expanded into it
+    reason?: string;
+}
+```
+
+Two statements on one line have spans of their own, so sharing a line does not
+make either unwritable.
