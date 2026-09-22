@@ -12,7 +12,8 @@
         "@axis-dsl/compiler": "workspace:*"
     },
     "devDependencies": {
-        "@types/node": "catalog:"
+        "@types/node": "catalog:",
+        "monaco-editor": "catalog:"
     },
     "license": "MIT",
     "author": "Jayson Clark",
@@ -36,10 +37,16 @@
         ".": {
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
-        }
+        },
+        "./monaco": {
+            "types": "./dist/monaco/index.d.ts",
+            "default": "./dist/monaco/index.js"
+        },
+        "./syntaxes/axis.tmLanguage.json": "./syntaxes/axis.tmLanguage.json"
     },
     "files": [
         "dist",
+        "syntaxes",
         "README.md"
     ],
     "sideEffects": false,

@@ -17,32 +17,32 @@ config {
 "Spirograph"
 
 folder "Dials" {
-    big = 7 # sliderBounds: {min: 2, max: 12, step: 1}
-    small = 3 # sliderBounds: {min: 1, max: 11, step: 1}
-    pen = 4 # sliderBounds: {min: 0.5, max: 8, step: 0.1}
+    big = 7 @ slider: 2..12 step 1
+    small = 3 @ slider: 1..11 step 1
+    pen = 4 @ slider: 0.5..8 step 0.1
 }
 
 "The hypotrochoid the pen traces."
 
-diff = big - small # hidden
-ratio = diff / small # hidden
+diff = big - small @ hidden
+ratio = diff / small @ hidden
 
-trace(t) = (diff * cos(t) + pen * cos(ratio * t), diff * sin(t) - pen * sin(ratio * t)) # hidden
+trace(t) = (diff * cos(t) + pen * cos(ratio * t), diff * sin(t) - pen * sin(ratio * t)) @ hidden
 
-trace(t) # color: #fa7e19, lineWidth: 2
+trace(t) @ color: ORANGE, lineWidth: 2
 
 folder "The rolling circles" {
     "The fixed outer circle."
-    x ^ 2 + y ^ 2 = big ^ 2 # color: #2d70b3, lineWidth: 2, lineOpacity: 0.5
+    x ^ 2 + y ^ 2 = big ^ 2 @ color: BLUE, lineWidth: 2, lineOpacity: 0.5
     "The rolling one, at angle w."
-    w = 0 # sliderBounds: {min: 0, max: 6.283, step: 0.005}, playing: true
-    centre = (diff * cos(w), diff * sin(w)) # color: #6042a6, pointSize: 10
-    (centre.x + small * cos(t), centre.y + small * sin(t)) #{
-        color: #6042a6
+    w = 0 @ slider: 0..2pi step 0.005, playing
+    centre = (diff * cos(w), diff * sin(w)) @ color: PURPLE, pointSize: 10
+    (centre.x + small * cos(t), centre.y + small * sin(t)) @{
+        color: PURPLE
         lineWidth: 2
         lineOpacity: 0.6
     }
     "The pen, riding the small circle."
-    tip = trace(w) # color: #fa7e19, pointSize: 16
-    arm = [centre, tip] # color: #fa7e19, points: false, lineOpacity: 0.7
+    tip = trace(w) @ color: ORANGE, pointSize: 16
+    arm = [centre, tip] @ color: ORANGE, points: false, lineOpacity: 0.7
 }
