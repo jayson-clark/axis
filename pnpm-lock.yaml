@@ -68,9 +68,9 @@ importers:
       '@axis-dsl/desmos':
         specifier: workspace:*
         version: link:../../packages/desmos
-      '@axis-dsl/language':
+      '@axis-dsl/language-service':
         specifier: workspace:*
-        version: link:../../packages/language
+        version: link:../../packages/language-service
       '@axis-dsl/viewer':
         specifier: workspace:*
         version: link:../../packages/viewer
