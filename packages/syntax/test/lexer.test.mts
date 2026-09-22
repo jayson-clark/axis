@@ -33,6 +33,7 @@ const roundTrips = (source: string) => {
 function axisFiles(directory: string): string[] {
     if (!existsSync(directory)) return [];
     return readdirSync(directory).flatMap(name => {
+        if (name === 'node_modules') return [];
         const path = join(directory, name);
         if (statSync(path).isDirectory()) return axisFiles(path);
         return name.endsWith('.axis') ? [path] : [];
@@ -57,8 +58,8 @@ describe('lexer round trip', () => {
         }
     });
 
-    // Every v1 example, written in syntax v2 no longer reads - but the lexer
-    // must still hand back exactly what it was given.
+    // Every example, and every fixture: the lexer hands back exactly what it
+    // was given.
     const examples = resolve(here, '../../../examples');
     for (const path of axisFiles(examples)) {
         test(`round-trips ${path.slice(examples.length + 1)}`, () => {
