@@ -13,6 +13,12 @@ export interface CompiledAxis {
     error: string | null;
     /** True between a source edit and the debounced compile that follows it. */
     isStale: boolean;
+    /**
+     * The whole compilation and the source it was compiled from - what writing
+     * a change made in the graph back into the script needs, since the source
+     * map's spans are only good for the text they were read from.
+     */
+    compiled: { source: string; compilation: CompilationResult } | null;
 }
 
 const DEBOUNCE_MS = 250;
@@ -31,6 +37,7 @@ export function useCompiledAxis(source: string): CompiledAxis {
         options: {},
         diagnostics: [],
         error: null,
+        compiled: null,
     }));
     const [isStale, setIsStale] = useState(true);
 
@@ -38,12 +45,14 @@ export function useCompiledAxis(source: string): CompiledAxis {
         setIsStale(true);
         const timer = window.setTimeout(() => {
             try {
-                const { state, options, diagnostics } = compileAxis(source);
+                const compilation = compileAxis(source);
+                const { state, options, diagnostics } = compilation;
                 setResult({
                     state,
                     options,
                     diagnostics,
                     error: describeErrors(diagnostics, source),
+                    compiled: { source, compilation },
                 });
             } catch (error) {
                 // Only a bug in the compiler lands here.
