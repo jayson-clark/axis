@@ -36,7 +36,7 @@ import {
 } from '@axis-dsl/desmos';
 import { scanBlockLine, type BlockFrame } from '@axis-dsl/language';
 import type { CompilationResult } from './legacy/compile';
-import { decompileExpression, decompileSettings, graphActionNames } from './decompile';
+import { decompileExpression, decompileSettings, graphActionNames } from './legacy/decompile';
 
 /** A graph as the calculator holds it: the expression list, and the rest. */
 export interface GraphSnapshot {
