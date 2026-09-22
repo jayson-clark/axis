@@ -9,8 +9,8 @@ config {
     showGrid: false
     showXAxis: false
     showYAxis: false
-    backgroundColor: "#11131a"
-    textColor: "#e6e8ef"
+    backgroundColor: #11131a
+    textColor: #e6e8ef
     lockViewport: false
 }
 

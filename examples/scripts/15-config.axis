@@ -54,8 +54,8 @@ config {
     pointsOfInterest: true
 
     // Theming
-    backgroundColor: "#ffffff"
-    textColor: "#222222"
+    backgroundColor: #ffffff
+    textColor: #222222
     fontSize: 16
 
     // Features
