@@ -183,9 +183,6 @@ importers:
 
   packages/language-service:
     dependencies:
-      '@axis-dsl/compiler':
-        specifier: workspace:*
-        version: link:../compiler
       '@axis-dsl/syntax':
         specifier: workspace:*
         version: link:../syntax
