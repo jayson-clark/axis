@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
-import { compileAxis } from '@axis-dsl/compiler';
-import { CalculatorOptions, DesmosExpression, GraphSettings, TickerState } from '@axis-dsl/desmos';
+import { compileAxis, toGraph } from '@axis-dsl/compiler';
+import { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
 
 export interface CompiledAxis {
-    expressions: DesmosExpression[];
-    settings?: CalculatorOptions;
-    /** The viewport and `squareAxes`, which the viewer applies as graph state. */
-    graph?: GraphSettings;
-    /** The graph's ticker, which the viewer applies the same way. */
-    ticker?: TickerState;
+    /** The whole graph state, null until the first compile has finished. */
+    state: GraphState | null;
+    /** The calculator options, applied after the state. */
+    options: CalculatorOptions;
     /** Message from the last failed compile, or null. */
     error: string | null;
     /** True between a source edit and the debounced compile that follows it. */
@@ -20,16 +18,14 @@ const DEBOUNCE_MS = 250;
 /**
  * Compiles `source` on a debounce.
  *
- * A failed compile keeps the last good expressions on screen and surfaces the
- * error alongside them — clearing the graph on every half-typed line would make
- * the live preview useless.
+ * A failed compile keeps the last good graph on screen and surfaces the error
+ * alongside it — clearing the graph on every half-typed line would make the
+ * live preview useless.
  */
 export function useCompiledAxis(source: string): CompiledAxis {
     const [result, setResult] = useState<Omit<CompiledAxis, 'isStale'>>(() => ({
-        expressions: [],
-        settings: undefined,
-        graph: undefined,
-        ticker: undefined,
+        state: null,
+        options: {},
         error: null,
     }));
     const [isStale, setIsStale] = useState(true);
@@ -38,14 +34,8 @@ export function useCompiledAxis(source: string): CompiledAxis {
         setIsStale(true);
         const timer = window.setTimeout(() => {
             try {
-                const compiled = compileAxis(source);
-                setResult({
-                    expressions: compiled.expressions,
-                    settings: compiled.settings,
-                    graph: compiled.graph,
-                    ticker: compiled.ticker,
-                    error: null,
-                });
+                const { state, options } = toGraph(compileAxis(source));
+                setResult({ state, options, error: null });
             } catch (error) {
                 setResult(previous => ({
                     ...previous,

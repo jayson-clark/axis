@@ -8,6 +8,7 @@ import {
     createImportResolver,
     loadImages,
     loadImports,
+    toGraph,
 } from '@axis-dsl/compiler';
 import { AXIS_FILE_EXTENSION } from '@axis-dsl/language/vscode';
 import {
@@ -15,7 +16,7 @@ import {
     PREVIEW_QUERY,
     type HostMessage,
     type ViewerMessage,
-} from '@axis-dsl/protocol';
+} from '@axis-dsl/viewer/protocol';
 import { previewDebugEnabled, resolveDesmosApiKey } from './config';
 import { imageHost, importHost } from './imports';
 
@@ -470,20 +471,14 @@ export class PreviewServer implements vscode.Disposable {
             const path = uri.toString();
             const files = await loadImports({ path, source }, importHost);
             const pictures = await loadImages({ path, source }, files, imageHost);
-            const { expressions, settings, graph, state, ticker, imports, images } = compileAxis(
-                source,
-                {
-                    path,
-                    resolveImport: createImportResolver(files, importHost.resolve),
-                    resolveImage: createImageResolver(pictures, imageHost.resolve),
-                },
-            );
-
-            this.watchDependencies(preview, [...imports, ...images]);
-            this.broadcast(preview, {
-                command: 'setExpressions',
-                data: { expressions, settings, graph, state, ticker },
+            const compilation = compileAxis(source, {
+                path,
+                resolveImport: createImportResolver(files, importHost.resolve),
+                resolveImage: createImageResolver(pictures, imageHost.resolve),
             });
+
+            this.watchDependencies(preview, [...compilation.imports, ...compilation.images]);
+            this.broadcast(preview, { command: 'setGraph', data: toGraph(compilation) });
             this.broadcast(preview, {
                 command: 'setStatus',
                 data: { status: basename(uri) },

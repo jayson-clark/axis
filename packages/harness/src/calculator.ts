@@ -30,7 +30,14 @@ import {
     MathBounds,
     Point,
 } from '@axis-dsl/desmos';
-import { CompilationResult, CompileOptions, compileAxis, convertToLatex } from '@axis-dsl/compiler';
+import {
+    CompilationResult,
+    CompiledGraph,
+    CompileOptions,
+    compileAxis,
+    convertToLatex,
+    toGraph,
+} from '@axis-dsl/compiler';
 import { acquireBrowser, releaseBrowser } from './browser';
 import { HARNESS_URL, installRouting } from './page';
 
@@ -207,19 +214,17 @@ export class AxisCalculator {
     /** Compile `source` and apply it. The compilation result is handed back. */
     async load(source: string, options: LoadOptions = {}): Promise<CompilationResult> {
         const compiled = compileAxis(source, options);
-        await this.setExpressions(
-            compiled.expressions,
-            { ...compiled.settings, ...options.settings },
-            compiled.graph,
-            compiled.state,
-            compiled.ticker,
+        await this.setGraph(
+            toGraph({ ...compiled, settings: { ...compiled.settings, ...options.settings } }),
         );
         return compiled;
     }
 
     /**
      * Apply expressions directly, for a test that has them already or is
-     * checking something the Axis syntax cannot express.
+     * checking something the Axis syntax cannot express. They are assembled
+     * into a graph the way a compilation is, so what a test sees here is what
+     * the viewer would show.
      */
     async setExpressions(
         expressions: DesmosExpression[],
@@ -228,52 +233,28 @@ export class AxisCalculator {
         state?: GraphStateFlags,
         ticker?: TickerState,
     ): Promise<void> {
+        await this.setGraph(toGraph({ expressions, settings, graph, state, ticker }));
+    }
+
+    /**
+     * Apply a whole graph, exactly as every other host does: `setState` with
+     * the state, then `updateSettings` with the options, and nothing else.
+     *
+     * Nothing is filled in here. A graph that renders differently in the
+     * harness than in the viewer would make every answer the harness gives
+     * about it an answer about some other graph.
+     */
+    async setGraph({ state, options }: CompiledGraph): Promise<void> {
         await this.page.evaluate(
-            ([list, options, graphSettings, stateFlags, tickerState]) => {
+            ([graphState, calculatorOptions]) => {
                 const { calculator } = window.__axisHarness!;
                 // setState, not setExpressions: folder membership only travels
                 // as part of a whole graph state.
-                //
-                // The viewport defaults to whatever the calculator is already
-                // showing, since setState would otherwise reset the framing
-                // between two loads in the same page — a script that names its
-                // own bounds overrides that.
-                const bounds = calculator.graphpaperBounds.mathCoordinates;
-                calculator.setState({
-                    version: 11,
-                    // The top-level state flags. Desmos reads these here and
-                    // nowhere else - see GraphStateFlags.
-                    ...stateFlags,
-                    // See DesmosGraph.tsx: a point style is the author's, on a
-                    // movable point as much as a fixed one.
-                    doNotMigrateMovablePointStyle: true,
-                    graph: {
-                        ...graphSettings,
-                        viewport: {
-                            xmin: bounds.left,
-                            xmax: bounds.right,
-                            ymin: bounds.bottom,
-                            ymax: bounds.top,
-                            ...graphSettings?.viewport,
-                        },
-                    },
-                    // The ticker sits beside the list, not in it, and is left
-                    // off entirely rather than set to nothing: Desmos reads a
-                    // ticker with no handler as no ticker at all.
-                    expressions: { list, ...(tickerState && { ticker: tickerState }) },
-                });
+                calculator.setState(graphState);
                 // updateSettings has to follow setState, which resets them.
-                if (options) {
-                    calculator.updateSettings(options);
-                }
+                calculator.updateSettings(calculatorOptions);
             },
-            [
-                expressions as ExpressionState[],
-                settings ?? null,
-                graph ?? null,
-                state ?? null,
-                ticker ?? null,
-            ] as const,
+            [state, options] as const,
         );
         await this.settle();
     }

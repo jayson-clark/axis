@@ -6,8 +6,13 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
+        // Composite so the solution build compiles it before the extension,
+        // whose preview server imports `@axis-dsl/viewer/protocol` and would
+        // otherwise find no declarations there on a clean checkout.
+        "composite": true,
         "outDir": "./dist",
         "rootDir": "src"
     },
+    "references": [{ "path": "../desmos" }],
     "include": ["src/**/*"]
 }

@@ -1,6 +1,6 @@
 import { CSSProperties, Ref, useImperativeHandle, useRef, useState } from 'react';
 import type { AsyncScreenshotOptions } from '@axis-dsl/desmos';
-import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
+import type { ConnectionState, ViewerTransport } from './protocol/index.js';
 import { DesmosGraph, DesmosGraphHandle } from './DesmosGraph.js';
 import { JsonInspector, JsonView } from './JsonInspector.js';
 import { useViewerState } from './useViewerState.js';
@@ -150,19 +150,8 @@ function TabBar({
 export function AxisViewer({ ref, transport, debug = false, className, style }: AxisViewerProps) {
     const graphRef = useRef<DesmosGraphHandle>(null);
     const [activeTab, setActiveTab] = useState<AxisViewerTab>('graph');
-    const {
-        apiKey,
-        canSetApiKey,
-        expressions,
-        settings,
-        graph,
-        state,
-        ticker,
-        status,
-        connection,
-        hasConnected,
-        sync,
-    } = useViewerState(transport);
+    const { apiKey, canSetApiKey, graph, status, connection, hasConnected, sync } =
+        useViewerState(transport);
     const notice = connectionNotice(connection, hasConnected);
 
     useImperativeHandle(
@@ -177,11 +166,9 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
     );
 
     const jsonViews: JsonView[] = [
-        { id: 'compiled', label: 'Compiled', get: () => expressions },
-        { id: 'settings', label: 'Settings', get: () => settings ?? null },
-        { id: 'graph', label: 'Viewport', get: () => graph ?? null },
-        { id: 'state', label: 'State flags', get: () => state ?? null },
-        { id: 'ticker', label: 'Ticker', get: () => ticker ?? null },
+        // What the host sent, next to what the calculator made of it below.
+        { id: 'state', label: 'State', get: () => graph?.state ?? null },
+        { id: 'options', label: 'Options', get: () => graph?.options ?? null },
         {
             id: 'getExpressions',
             label: 'getExpressions()',
@@ -245,10 +232,8 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
                 <DesmosGraph
                     ref={graphRef}
                     apiKey={apiKey}
-                    expressions={expressions}
-                    settings={settings}
-                    graph={graph}
-                    state={state}
+                    state={graph?.state}
+                    options={graph?.options}
                     // Only while the host has asked for it. A host with nowhere
                     // to put a change should not be paying for one to be read
                     // off the calculator on every frame of every drag.
@@ -261,7 +246,6 @@ export function AxisViewer({ ref, transport, debug = false, className, style }: 
                                   })
                             : undefined
                     }
-                    ticker={ticker}
                     renderError={message => (
                         <div
                             style={{

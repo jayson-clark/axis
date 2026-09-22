@@ -4,6 +4,8 @@
 
 export { compileAxis } from './compile';
 export type { CompilationResult, CompileOptions, StatementOrigin } from './compile';
+export { toGraph } from './graph';
+export type { CompiledGraph } from './graph';
 export { convertToLatex } from './latex';
 export { convertFromLatex } from './unlatex';
 export { emitLatex, identifierLatex, LatexParseError, parseLatex } from './latex/index';

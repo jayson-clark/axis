@@ -11,9 +11,23 @@ import type {
     CalculatorOptions,
     DesmosExpression,
     GraphSettings,
+    GraphState,
     GraphStateFlags,
     TickerState,
 } from '@axis-dsl/desmos';
+
+/**
+ * A graph as a host hands it over: the payload of `setGraph`, and what the
+ * compiler produces.
+ *
+ * Applied as `calculator.setState(state)` followed by
+ * `calculator.updateSettings(options)`, in that order - `setState` resets the
+ * calculator's settings, so the other way round would lose them.
+ */
+export interface ViewerGraph {
+    state: GraphState;
+    options: CalculatorOptions;
+}
 
 /** Host → viewer. */
 export type ViewerMessage =
@@ -30,26 +44,17 @@ export type ViewerMessage =
               canSetApiKey?: boolean;
           };
       }
-    | {
-          command: 'setExpressions';
-          data: {
-              expressions: DesmosExpression[];
-              settings?: CalculatorOptions;
-              /**
-               * The viewport and `squareAxes`, which reach the calculator
-               * through its state rather than through `updateSettings`.
-               */
-              graph?: GraphSettings;
-              /**
-               * The flags Desmos reads off the top of a graph state, outside
-               * `graph` — `includeFunctionParametersInRandomSeed` and any
-               * later sibling.
-               */
-              state?: GraphStateFlags;
-              /** The graph's ticker, which reaches it the same way. */
-              ticker?: TickerState;
-          };
-      }
+    /**
+     * The graph to show, whole: what `setState` takes and what
+     * `updateSettings` takes, and nothing a host has to assemble first.
+     *
+     * Two fields because Desmos has exactly two ways in, and a setting given to
+     * the wrong one is ignored without complaint - the viewport and the
+     * top-level state flags only take through `setState`, the calculator
+     * options only through `updateSettings`. Everything else the graph is made
+     * of, the ticker and the expression list included, is part of `state`.
+     */
+    | { command: 'setGraph'; data: ViewerGraph }
     /** Free text shown in the tab strip — a count, "Compiling…", null to clear. */
     | { command: 'setStatus'; data: { status: string | null } }
     /**
@@ -64,10 +69,13 @@ export type ViewerMessage =
     | { command: 'setSync'; data: { enabled: boolean } };
 
 /**
- * A graph as the calculator holds it, in the four parts Desmos keeps it in.
+ * A graph as the calculator holds it, read back in parts: the expression list,
+ * the calculator options, and the three things beside the list in its state.
  *
- * The same shape `setExpressions` carries, because it is the same thing going
- * the other way: what the host sent, and what the graph became.
+ * The shape `writeBackGraph` in `@axis-dsl/compiler` reads, which is why it is
+ * not a {@link ViewerGraph}: the write-back compares the two readings part by
+ * part, and splitting a state up is the viewer's to do once rather than every
+ * host's.
  */
 export interface GraphReading {
     expressions: DesmosExpression[];
@@ -79,7 +87,7 @@ export interface GraphReading {
 
 /** Viewer → host. */
 export type HostMessage =
-    /** Sent on mount. The host answers with `init` and the current expressions. */
+    /** Sent on mount. The host answers with `init` and the current graph. */
     | { command: 'ready' }
     /** Sent only to a host that set `canSetApiKey`; only it knows where one goes. */
     | { command: 'requestApiKey' }
@@ -88,7 +96,7 @@ export type HostMessage =
      * recoloured something, panned. Sent only while `setSync` is on.
      *
      * Both readings travel, and both are needed. `before` is the graph as the
-     * calculator handed it back immediately after the host's expressions were
+     * calculator handed it back immediately after the host's graph was
      * applied, `after` is the graph now, and the difference between them is
      * exactly what the user did. Comparing against what the host *sent* would
      * not do: Desmos normalises what it is given, leaving a property off the

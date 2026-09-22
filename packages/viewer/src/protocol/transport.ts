@@ -1,4 +1,4 @@
-import type { HostMessage, ViewerMessage } from './messages';
+import type { HostMessage, ViewerMessage } from './messages.js';
 
 /**
  * Whether a transport with a wire currently has one.

@@ -34,21 +34,24 @@ silence. Anything that renders a compilation has to apply both halves.
 
 ## Applying the result
 
-Apply the expressions with `setState`, not `setExpressions`:
+`toGraph` assembles a compilation into the two things a calculator takes, and
+applying it is two calls:
 
 ```ts
-calculator.setState({
-    version: 11,
-    // The script's own viewport, over whatever framing you default to.
-    graph: { viewport: { xmin: -10, xmax: 10, ymin: -10, ymax: 10 }, ...graph },
-    expressions: { list: expressions },
-});
+import { compileAxis, toGraph } from '@axis-dsl/compiler';
 
-// updateSettings has to follow setState, which resets graph settings.
-if (settings) {
-    calculator.updateSettings(settings);
-}
+const { state, options } = toGraph(compileAxis(source));
+
+calculator.setState(state);
+// updateSettings has to follow setState, which resets the calculator's settings.
+calculator.updateSettings(options);
 ```
+
+`state` is the whole graph state: the expression list, the ticker beside it,
+the viewport and `squareAxes`, and the top-level flags, with a viewport of
+±10 filled in for a script that names none. `toGraph` is temporary - the
+rewritten compiler returns `{ state, options }` from `compileAxis` itself - so a
+host that applies what it returns and nothing else will not change when it goes.
 
 Desmos has two shapes for an expression, and they are not interchangeable.
 `setExpression` takes the API's; `setState` takes the serialized graph state's,
@@ -279,6 +282,7 @@ written in.
 | `loadImages(entry, files, host)`                  | Reads every image file the script and its imports draw; returns a `Map` of data URIs |
 | `createImageResolver(images, resolve)`            | Turns that `Map` into the synchronous `resolveImage` the compiler wants              |
 | `findImageFiles(source)`                          | Just the image paths one file draws, in order                                        |
+| `toGraph(compilation)`                            | A compilation as `{ state, options }`, for `setState` and `updateSettings`           |
 | `convertToLatex(expr)`                            | One Axis expression to the LaTeX Desmos expects                                      |
 | `decompileAxis(graph, options?)`                  | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source      |
 | `decompileExpression(expression, options?)`       | One expression as the statement that builds it — the decompiler's unit of work       |
@@ -291,6 +295,7 @@ written in.
 | `DecompileInput` / `DecompileOptions`             | `{ expressions, settings? }` and `{ indent? }`                                       |
 | `CompileOptions`                                  | `{ path?, resolveImport?, resolveImage? }`                                           |
 | `CompilationResult`                               | `{ expressions, settings?, imports, images, sourceMap, configOrigin? }`              |
+| `CompiledGraph`                                   | `{ state: GraphState, options: CalculatorOptions }`, what `toGraph` returns          |
 | `StatementOrigin`                                 | `{ path, line, endLine, writable, reason? }` — where one expression was written      |
 | `GraphSnapshot` / `GraphChange` / `SourceEdit`    | A reading of a graph, one change to it, and one replacement of a run of lines        |
 | `WriteBackOptions` / `WriteBackResult`            | `{ include?, entryPath?, indent? }` and `{ edits, skipped }`                         |

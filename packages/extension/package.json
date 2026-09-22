@@ -118,7 +118,6 @@
         "@axis-dsl/compiler": "workspace:*",
         "@axis-dsl/language": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/protocol": "workspace:*",
         "@axis-dsl/viewer": "workspace:*"
     },
     "private": true,

@@ -2,6 +2,12 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "composite": true,
+        // node20 rather than the root's node16, for one import: the preview
+        // server shares the protocol with the page through
+        // `@axis-dsl/viewer/protocol`, which is ESM, and node16 refuses to let
+        // CommonJS require it. The extension host is Node 22, which can.
+        "module": "node20",
+        "moduleResolution": "node16",
         // The preview server is built on node's http, fs and crypto.
         "types": ["node"],
         "outDir": "./dist",
@@ -9,7 +15,7 @@
     },
     "references": [
         { "path": "../desmos" },
-        { "path": "../protocol" },
+        { "path": "../viewer" },
         { "path": "../language" },
         { "path": "../compiler" }
     ],
