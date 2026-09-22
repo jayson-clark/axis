@@ -84,7 +84,7 @@ multiplied together. `evaluateLatex` takes it verbatim.
 one, so the harness moves a real mouse to where the object is drawn:
 
 ```ts
-await calculator.load('a = 0 # sliderBounds: {min: 0, max: 5, step: 1}\n(1, 1) # onClick: a -> a + 1');
+await calculator.load('a = 0 @ slider: 0..5 step 1\n(1, 1) @ onClick: a -> a + 1');
 await calculator.click({ x: 1, y: 1 });
 assert.equal((await calculator.evaluate('a')).numericValue, 1);
 ```
@@ -100,13 +100,13 @@ the page itself.
 ## axis-inspect
 
 The command an agent runs. It compiles a script, loads it into a real
-calculator, and prints the verdict Desmos reached on every expression. It exits
-`1` if any expression is in error, so it works in a check without anybody
-parsing the output.
+calculator, and prints the compiler's diagnostics beside the verdict Desmos
+reached on every expression. It exits `1` if either found an error, so it works
+in a check without anybody parsing the output.
 
 ```sh
 $ npx axis-inspect examples/scripts/01-basics.axis
-01-basics.axis — 11 expressions, 0 errors
+01-basics.axis — 14 expressions, 0 diagnostics, 0 errors
 
   0  text       Basics
   1  text       Notes explain a graph to whoever opens it next.
@@ -132,19 +132,28 @@ axis-inspect - < graph.axis           # source on stdin
 `packages/harness/test` is the Axis language checked against the calculator that
 has to accept it, rather than against the compiler's own idea of itself:
 
-| Suite      | What it pins                                                                                 |
-| ---------- | -------------------------------------------------------------------------------------------- |
-| `metadata` | every one of the 24 `# key: value` properties, read back off the applied graph               |
-| `config`   | every one of the 86 `config { … }` properties, off `calculator.settings` and the graph state |
-| `language` | every function and constant in the manifest is one Desmos knows, plus the operators          |
-| `graph`    | folders, tables, notes, imports, images, and all 22 example scripts                          |
-| `harness`  | the harness itself                                                                           |
+| Suite         | What it pins                                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `metadata`    | every `@ key: value` property in every placement it is legal in, read back off the graph; ranges, colours, flags |
+| `config`      | every `config { … }` entry, off `calculator.settings` and the graph state                                        |
+| `language`    | every function, operator and constant in the manifest is one Desmos knows, and comes to what it should           |
+| `graph`       | folders, tables, notes, imports, images, `;`, and every example script: no diagnostics, no errors                |
+| `ticker`      | every `ticker` property, and that a playing ticker, its runs and `dt` actually tick                              |
+| `macros`      | what a `macro` expands to, evaluated rather than just compiled                                                   |
+| `styles`      | how `use:` styles combine: composition, precedence, a style carrying a slider                                    |
+| `diagnostics` | each compile diagnostic for a representative mistake, and that the rest of the script still graphs               |
+| `expressions` | emitted latex evaluated against a plain evaluator of the same tree                                               |
+| `decompile`   | decompiling the graph state a real calculator hands back                                                         |
+| `writeback`   | changes made to a live graph, written back into the script                                                       |
+| `harness`     | the harness itself, and `axis-inspect`                                                                           |
 
-Each of the first three is driven from `@axis-dsl/language`'s manifest and fails
-if a name is added there without a test, so the coverage cannot quietly rot.
-They caught three real bugs when they were written: `sliderBounds` never
-reaching the calculator, `3cos(t)` compiling to three variables multiplied
-together, and a double inequality in an example that Desmos will not shade.
+`metadata`, `config`, `language` and `ticker` are driven from the manifest in
+`@axis-dsl/syntax` - its properties by placement, its functions, operators and
+constants - and fail if a name is added there without a test, so the coverage
+cannot quietly rot. They caught real bugs when they were written: `sliderBounds`
+never reaching the calculator, `3cos(t)` compiling to three variables
+multiplied together, a double inequality in an example that Desmos will not
+shade, and a miscased palette colour drawn as three variables.
 
 ## The calculator it runs
 
