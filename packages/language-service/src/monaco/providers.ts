@@ -20,6 +20,7 @@ import {
     type DocumentSymbolKind,
 } from '../navigation';
 import { getSemanticTokens, SEMANTIC_TOKEN_LEGEND } from '../semantic-tokens';
+import type { ProgramOptions } from '../program';
 import { toMonacoRange, toPosition, toRange, treeOf } from './convert';
 import type { MonacoApi } from './themes';
 
@@ -45,8 +46,32 @@ function completionKinds(
     };
 }
 
+/**
+ * How the providers reach a model's imports: the compiler's resolvers, and the
+ * path each model is known to them by. Without a resolver an import is an
+ * error, as it is in a compile.
+ */
+export interface AxisProgramOptions extends Omit<ProgramOptions, 'path'> {
+    /** The path the resolvers know a model's file by. None by default. */
+    pathOf?: (model: monaco.editor.ITextModel) => string | undefined;
+}
+
+export function programOptions(
+    options: AxisProgramOptions,
+    model: monaco.editor.ITextModel,
+): ProgramOptions {
+    return {
+        path: options.pathOf?.(model),
+        resolveImport: options.resolveImport,
+        resolveImage: options.resolveImage,
+    };
+}
+
 /** Register the Axis completion provider on `api`. */
-export function registerAxisCompletions(api: MonacoApi): monaco.IDisposable {
+export function registerAxisCompletions(
+    api: MonacoApi,
+    options: AxisProgramOptions = {},
+): monaco.IDisposable {
     const kinds = completionKinds(api);
     const insertAsSnippet = api.languages.CompletionItemInsertTextRule.InsertAsSnippet;
 
@@ -55,7 +80,11 @@ export function registerAxisCompletions(api: MonacoApi): monaco.IDisposable {
         // member, a path and its next segment.
         triggerCharacters: ['@', ':', '.', '"', '/'],
         provideCompletionItems(model, position) {
-            const items = getCompletions(treeOf(model), toPosition(position));
+            const items = getCompletions(
+                treeOf(model),
+                toPosition(position),
+                programOptions(options, model),
+            );
             const word = model.getWordUntilPosition(position);
             const fallback: monaco.IRange = {
                 startLineNumber: position.lineNumber,
@@ -82,10 +111,17 @@ export function registerAxisCompletions(api: MonacoApi): monaco.IDisposable {
     });
 }
 
-export function registerAxisHover(api: MonacoApi): monaco.IDisposable {
+export function registerAxisHover(
+    api: MonacoApi,
+    options: AxisProgramOptions = {},
+): monaco.IDisposable {
     return api.languages.registerHoverProvider(AXIS_LANGUAGE_ID, {
         provideHover(model, position) {
-            const hover = getHover(treeOf(model), toPosition(position));
+            const hover = getHover(
+                treeOf(model),
+                toPosition(position),
+                programOptions(options, model),
+            );
             return (
                 hover && {
                     contents: [{ value: hover.contents }],
@@ -125,22 +161,36 @@ export function registerAxisFormatting(api: MonacoApi): monaco.IDisposable {
     };
 }
 
-export function registerAxisSemanticTokens(api: MonacoApi): monaco.IDisposable {
+export function registerAxisSemanticTokens(
+    api: MonacoApi,
+    options: AxisProgramOptions = {},
+): monaco.IDisposable {
     return api.languages.registerDocumentSemanticTokensProvider(AXIS_LANGUAGE_ID, {
         getLegend: () => SEMANTIC_TOKEN_LEGEND,
         provideDocumentSemanticTokens(model) {
-            return { data: new Uint32Array(getSemanticTokens(treeOf(model)).data) };
+            return {
+                data: new Uint32Array(
+                    getSemanticTokens(treeOf(model), programOptions(options, model)).data,
+                ),
+            };
         },
         releaseDocumentSemanticTokens() {},
     });
 }
 
 /** Go to definition, find references and highlights - all within the one model. */
-export function registerAxisNavigation(api: MonacoApi): monaco.IDisposable {
+export function registerAxisNavigation(
+    api: MonacoApi,
+    options: AxisProgramOptions = {},
+): monaco.IDisposable {
     const disposables = [
         api.languages.registerDefinitionProvider(AXIS_LANGUAGE_ID, {
             provideDefinition(model, position) {
-                return getDefinition(treeOf(model), toPosition(position)).map(location => ({
+                return getDefinition(
+                    treeOf(model),
+                    toPosition(position),
+                    programOptions(options, model),
+                ).map(location => ({
                     uri: location.uri ? api.Uri.parse(location.uri) : model.uri,
                     range: toMonacoRange(location.range),
                 }));

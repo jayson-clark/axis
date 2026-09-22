@@ -4,10 +4,16 @@
 //
 // The manifest's documentation for what it defines - builtins, properties,
 // enum values, the palette - and the keywords' own; for a name the script
-// defines, the definition itself, printed.
+// defines, the definition itself, printed - and for one an import defines,
+// given the resolver to read it with, the same from that file.
 
 import { AXIS_PALETTE_HEX, isTrivia, type Keyword, type Token } from '@axis-dsl/syntax';
-import { builtinDescription, definitionText, propertyDocumentation } from './describe';
+import {
+    builtinDescription,
+    definitionText,
+    importedText,
+    propertyDocumentation,
+} from './describe';
 import {
     offsetAt,
     spanToRange,
@@ -18,6 +24,7 @@ import {
     type Range,
 } from './document';
 import { KEYWORD_INFO } from './keywords';
+import { importedSymbol, type ImportedSymbol, type ProgramOptions } from './program';
 import { occurrenceAt, type Occurrence, type SymbolDefinition } from './symbols';
 import type { SyntaxTree } from '@axis-dsl/syntax';
 
@@ -39,7 +46,11 @@ const KIND_TEXT: Readonly<Record<SymbolDefinition['kind'], string>> = {
     binding: 'local',
 };
 
-export function getHover(input: DocumentInput, position: Position): Hover | undefined {
+export function getHover(
+    input: DocumentInput,
+    position: Position,
+    options: ProgramOptions = {},
+): Hover | undefined {
     const tree = toTree(input);
     const offset = offsetAt(tree, position);
 
@@ -54,7 +65,7 @@ export function getHover(input: DocumentInput, position: Position): Hover | unde
 
     const occurrence = occurrenceAt(tree, offset);
     if (!occurrence) return undefined;
-    const contents = describe(tree, occurrence);
+    const contents = describe(tree, occurrence, options);
     return contents === undefined
         ? undefined
         : { contents, range: spanToRange(tree, occurrence.identifier.span) };
@@ -81,7 +92,15 @@ function keywordAt(tree: SyntaxTree, offset: number): Token | undefined {
     return undefined;
 }
 
-function describe(tree: SyntaxTree, occurrence: Occurrence): string | undefined {
+function describe(
+    tree: SyntaxTree,
+    occurrence: Occurrence,
+    options: ProgramOptions,
+): string | undefined {
+    const imported = (namespace: 'value' | 'style') => {
+        const symbol = importedSymbol(tree, options, occurrence.identifier.name, namespace);
+        return symbol && importedDescription(symbol);
+    };
     const name = occurrence.identifier.name;
     switch (occurrence.role) {
         case 'property':
@@ -93,14 +112,14 @@ function describe(tree: SyntaxTree, occurrence: Occurrence): string | undefined 
         case 'palette':
             return `**${name}** - Desmos palette colour \`${AXIS_PALETTE_HEX.get(name)}\``;
         case 'styleName':
-            return occurrence.symbol ? symbolText(tree, occurrence.symbol) : undefined;
+            return occurrence.symbol ? symbolText(tree, occurrence.symbol) : imported('style');
         case 'member':
             if (name === 'x' || name === 'y')
                 return `**.${name}** - the point's ${name} coordinate`;
             return builtinText(name, occurrence);
         case 'name':
             if (occurrence.symbol) return symbolText(tree, occurrence.symbol);
-            return builtinText(name, occurrence);
+            return builtinText(name, occurrence) ?? imported('value');
     }
 }
 
@@ -110,6 +129,10 @@ function symbolText(tree: SyntaxTree, symbol: SymbolDefinition): string {
     return symbol.kind === 'parameter' || symbol.kind === 'binding'
         ? `(${KIND_TEXT[symbol.kind]}) ${text}`
         : `(${KIND_TEXT[symbol.kind]})\n\n${code(text)}`;
+}
+
+function importedDescription(symbol: ImportedSymbol): string {
+    return `(${symbol.kind})\n\n${code(importedText(symbol))}\n\nFrom \`${symbol.file.path}\`.`;
 }
 
 function builtinText(name: string, occurrence: Occurrence): string | undefined {

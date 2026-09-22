@@ -6,6 +6,7 @@ import type * as monaco from 'monaco-editor/editor';
 import { getDiagnostics, type Diagnostic, type SemanticChecker } from '../diagnostics';
 import { AXIS_LANGUAGE_ID } from '../language';
 import { toMonacoRange, treeOf } from './convert';
+import { programOptions, type AxisProgramOptions } from './providers';
 import type { MonacoApi } from './themes';
 
 /** Marker owner, so a re-validation replaces its own markers and nothing else. */
@@ -14,9 +15,12 @@ const OWNER = 'axis';
 /** How long an edit sits before the document is re-checked. */
 const DEBOUNCE_MS = 250;
 
-export interface AxisDiagnosticsOptions {
-    /** The compiler's checker, for the diagnostics the syntax alone cannot give. */
-    semantic?: SemanticChecker;
+export interface AxisDiagnosticsOptions extends AxisProgramOptions {
+    /**
+     * The checker beyond the parser: the compiler's by default, with these
+     * resolvers; `false` for syntax errors alone.
+     */
+    semantic?: SemanticChecker | false;
 }
 
 function toMarkers(api: MonacoApi, diagnostics: Diagnostic[]): monaco.editor.IMarkerData[] {
@@ -61,7 +65,13 @@ export function registerAxisDiagnostics(
         if (model.isDisposed()) return;
         const markers =
             model.getLanguageId() === AXIS_LANGUAGE_ID
-                ? toMarkers(api, getDiagnostics(treeOf(model), { semantic: options.semantic }))
+                ? toMarkers(
+                      api,
+                      getDiagnostics(treeOf(model), {
+                          ...programOptions(options, model),
+                          semantic: options.semantic,
+                      }),
+                  )
                 : [];
         api.editor.setModelMarkers(model, OWNER, markers);
     };

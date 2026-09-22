@@ -15,6 +15,7 @@
 
 import type { SyntaxTree, Token } from '@axis-dsl/syntax';
 import { linesOf, spanToRange, toTree, type DocumentInput, type Range } from './document';
+import { importedSymbols, type ImportedSymbol, type ProgramOptions } from './program';
 import { analyze, type Occurrence } from './symbols';
 
 /** The token types, in legend order: a token's type is its index here. */
@@ -60,17 +61,27 @@ export interface SemanticTokens {
     data: number[];
 }
 
-/** Every token worth colouring, in document order. */
-export function getSemanticTokenList(input: DocumentInput): SemanticToken[] {
+/**
+ * Every token worth colouring, in document order. Given the compiler's
+ * `resolveImport`, a name an import defines is coloured as what it is there.
+ */
+export function getSemanticTokenList(
+    input: DocumentInput,
+    options: ProgramOptions = {},
+): SemanticToken[] {
     const tree = toTree(input);
     const byStart = new Map<number, Occurrence>(
         analyze(tree).occurrences.map(occurrence => [occurrence.identifier.span.start, occurrence]),
     );
+    const imported = new Map<string, ImportedSymbol>();
+    for (const symbol of importedSymbols(tree, options)) {
+        imported.set(`${symbol.kind === 'style' ? 'style' : 'value'}:${symbol.name}`, symbol);
+    }
 
     const result: SemanticToken[] = [];
     let previous: Token | undefined;
     for (const token of tree.tokens) {
-        const classified = classify(token, previous, byStart);
+        const classified = classify(token, previous, byStart, imported);
         if (classified && token.span.end > token.span.start) {
             result.push({ range: spanToRange(tree, token.span), ...classified });
         }
@@ -82,9 +93,12 @@ export function getSemanticTokenList(input: DocumentInput): SemanticToken[] {
 }
 
 /** The document's semantic tokens, encoded against {@link SEMANTIC_TOKEN_LEGEND}. */
-export function getSemanticTokens(input: DocumentInput): SemanticTokens {
+export function getSemanticTokens(
+    input: DocumentInput,
+    options: ProgramOptions = {},
+): SemanticTokens {
     const tree = toTree(input);
-    return { data: encode(tree, getSemanticTokenList(tree)) };
+    return { data: encode(tree, getSemanticTokenList(tree, options)) };
 }
 
 const OPERATORS: ReadonlySet<string> = new Set([
@@ -113,6 +127,7 @@ function classify(
     token: Token,
     previous: Token | undefined,
     byStart: ReadonlyMap<number, Occurrence>,
+    imported: ReadonlyMap<string, ImportedSymbol>,
 ): Classified | undefined {
     const plain = (type: SemanticTokenType): Classified => ({ type, modifiers: [] });
     switch (token.kind) {
@@ -129,7 +144,7 @@ function classify(
             return OPERATORS.has(token.text) ? plain('operator') : undefined;
         case 'identifier': {
             const occurrence = byStart.get(token.span.start);
-            if (occurrence) return classifyOccurrence(occurrence);
+            if (occurrence) return classifyOccurrence(occurrence, imported);
             // `soft min` and `soft max`: words only there, so not in the tree.
             if (previous?.kind === 'keyword' && previous.text === 'soft') return plain('keyword');
             return undefined;
@@ -139,7 +154,10 @@ function classify(
     }
 }
 
-function classifyOccurrence(occurrence: Occurrence): Classified {
+function classifyOccurrence(
+    occurrence: Occurrence,
+    imported: ReadonlyMap<string, ImportedSymbol>,
+): Classified {
     const modifiers: SemanticTokenModifier[] = [];
     if (occurrence.declaration) modifiers.push('declaration');
     const tokenOf = (type: SemanticTokenType): Classified => ({ type, modifiers });
@@ -163,7 +181,9 @@ function classifyOccurrence(occurrence: Occurrence): Classified {
             break;
     }
 
-    const symbol = occurrence.symbol;
+    const name = occurrence.identifier.name;
+    const symbol =
+        occurrence.symbol ?? (occurrence.builtin ? undefined : imported.get(`value:${name}`));
     if (symbol) {
         switch (symbol.kind) {
             case 'style':

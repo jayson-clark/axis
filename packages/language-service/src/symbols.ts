@@ -29,6 +29,7 @@ import {
     type SyntaxTree,
 } from '@axis-dsl/syntax';
 import type * as ast from '@axis-dsl/syntax';
+import { definitionOf } from '@axis-dsl/compiler';
 import { touches } from './document';
 
 export type SymbolKind = 'variable' | 'function' | 'macro' | 'style' | 'parameter' | 'binding';
@@ -100,8 +101,8 @@ export interface Analysis {
 }
 
 /**
- * Names `=` does not define: an equation in `x` and `y`, or in polar form `r`
- * and `theta`, is a curve rather than a variable (spec §5.5).
+ * The column headers that name nothing: a table headed `x` and `y` plots its
+ * points, where one headed `x_1` defines a list.
  */
 const CURVE_VARIABLES: ReadonlySet<string> = new Set(['x', 'y', 'r', 'theta']);
 
@@ -144,21 +145,13 @@ export function occurrencesOf(tree: SyntaxTree, symbol: SymbolDefinition): Occur
 export function definitionShape(
     expression: ast.Expression,
 ): { name: ast.Identifier; parameters?: ast.Identifier[]; body: ast.Expression } | undefined {
-    if (
-        expression.kind !== 'Comparison' ||
-        expression.operators.length !== 1 ||
-        expression.operators[0] !== '='
-    ) {
-        return undefined;
-    }
-    const [lhs, body] = expression.operands;
-    if (lhs.kind === 'Identifier') {
-        return CURVE_VARIABLES.has(lhs.name) ? undefined : { name: lhs, body };
-    }
-    if (lhs.kind === 'Call' && lhs.arguments.every(argument => argument.kind === 'Identifier')) {
-        return { name: lhs.callee, parameters: lhs.arguments as ast.Identifier[], body };
-    }
-    return undefined;
+    // The compiler's own reading, so the editor and a compile never disagree
+    // about whether a statement defines something.
+    const definition = definitionOf(expression);
+    if (!definition) return undefined;
+    return definition.kind === 'function'
+        ? { name: definition.name, parameters: definition.parameters, body: definition.value }
+        : { name: definition.name, body: definition.value };
 }
 
 /** The statements of a file, those inside folders included, in document order. */

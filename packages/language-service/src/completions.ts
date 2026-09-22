@@ -20,7 +20,7 @@ import {
     type SyntaxTree,
 } from '@axis-dsl/syntax';
 import { cursorContext, type CursorContext, type StatementOwner } from './context';
-import { propertyDocumentation, definitionSummary, definitionText } from './describe';
+import { definitionSummary, definitionText, importedText, propertyDocumentation } from './describe';
 import {
     offsetAt,
     spanToRange,
@@ -32,6 +32,7 @@ import {
 } from './document';
 import { KEYWORD_INFO, STATEMENT_KEYWORDS } from './keywords';
 import { pathCompletionsAt, type DirectoryEntry, type PathKind } from './paths';
+import { importedSymbols, type ImportedSymbol, type ProgramOptions } from './program';
 import { analyze, type SymbolDefinition } from './symbols';
 
 /** Editor-agnostic completion category. Adapters map these to their own enums. */
@@ -69,7 +70,7 @@ export interface CompletionItem {
     retrigger?: boolean;
 }
 
-export interface CompletionOptions {
+export interface CompletionOptions extends ProgramOptions {
     /**
      * Lists a directory for path completion inside `import "…"` and `image
      * "…"`: the directory as written, relative to the document, which the host
@@ -77,6 +78,13 @@ export interface CompletionOptions {
      * asynchronously calls `getPathContext` and `getPathCompletions` itself.
      */
     listDirectory?: (directory: string, kind: PathKind) => readonly DirectoryEntry[];
+}
+
+/** What every item builder needs: the tree, the cursor, and how to reach the imports. */
+interface Request {
+    tree: SyntaxTree;
+    offset: number;
+    options: ProgramOptions;
 }
 
 // Relevance, most first: what the script itself defines is what is most often
@@ -105,12 +113,12 @@ export function getCompletions(
     const offset = offsetAt(tree, position);
     const { context, word } = cursorContext(tree, offset);
     const range = spanToRange(tree, word);
-    return itemsFor(tree, context, offset)
+    return itemsFor({ tree, offset, options }, context)
         .map(item => ({ ...item, range }))
         .sort((a, b) => (a.sortText ?? '').localeCompare(b.sortText ?? ''));
 }
 
-function itemsFor(tree: SyntaxTree, context: CursorContext, offset: number): CompletionItem[] {
+function itemsFor(request: Request, context: CursorContext): CompletionItem[] {
     switch (context.kind) {
         case 'none':
         case 'path':
@@ -118,14 +126,14 @@ function itemsFor(tree: SyntaxTree, context: CursorContext, offset: number): Com
         case 'statement':
             return [
                 ...keywordItems(context.owner),
-                ...expressionItems(tree, offset, { ticker: false, parameters: [], locals: [] }),
+                ...expressionItems(request, { ticker: false, parameters: [], locals: [] }),
             ];
         case 'expression':
-            return context.member ? memberItems() : expressionItems(tree, offset, context);
+            return context.member ? memberItems() : expressionItems(request, context);
         case 'propertyKey':
             return propertyKeyItems(context.placement, context.written);
         case 'propertyValue':
-            return propertyValueItems(tree, offset, context.placement, context.key);
+            return propertyValueItems(request, context.placement, context.key);
     }
 }
 
@@ -172,8 +180,7 @@ function builtinItems(ticker: boolean): CompletionItem[] {
 
 /** The names the file defines that are visible at `offset`. */
 function userItems(
-    tree: SyntaxTree,
-    offset: number,
+    { tree, offset, options }: Request,
     parameters: readonly string[],
     locals: readonly string[],
 ): CompletionItem[] {
@@ -219,6 +226,11 @@ function userItems(
     ]) {
         add(userItem(tree, definition));
     }
+    // Then what the imports define, which the file may use as freely as its own.
+    for (const symbol of importedSymbols(tree, options)) {
+        if (symbol.kind === 'style') continue;
+        add(importedItem(symbol));
+    }
     return items;
 }
 
@@ -236,19 +248,37 @@ function userItem(tree: SyntaxTree, definition: SymbolDefinition): CompletionIte
                   : 'variable',
         detail: definitionSummary(tree, definition),
         documentation: '```axis\n' + definitionText(tree, definition) + '\n```',
-        snippet: callable
-            ? `${definition.name}(${parameters.map((parameter, at) => `\${${at + 1}:${parameter}}`).join(', ')})`
-            : undefined,
+        snippet: callable ? callSnippet(definition.name, parameters) : undefined,
         sortText: RANK.user + definition.name,
     };
 }
 
+function importedItem(symbol: ImportedSymbol): CompletionItem {
+    const text = importedText(symbol);
+    const callable = symbol.kind === 'function' || (symbol.kind === 'macro' && symbol.parameters);
+    return {
+        label: symbol.name,
+        kind: symbol.kind === 'variable' ? 'variable' : symbol.kind,
+        detail: `${firstLine(text)}  (${symbol.file.path.split(/[\\/]/).pop()})`,
+        documentation: '```axis\n' + text + '\n```\n\nFrom `' + symbol.file.path + '`.',
+        snippet: callable ? callSnippet(symbol.name, symbol.parameters ?? []) : undefined,
+        sortText: RANK.user + symbol.name,
+    };
+}
+
+const callSnippet = (name: string, parameters: readonly string[]) =>
+    `${name}(${parameters.map((parameter, at) => `\${${at + 1}:${parameter}}`).join(', ')})`;
+
+const firstLine = (text: string) => {
+    const line = text.split('\n')[0];
+    return line.length > 60 ? `${line.slice(0, 59)}…` : line;
+};
+
 function expressionItems(
-    tree: SyntaxTree,
-    offset: number,
+    request: Request,
     context: { ticker: boolean; parameters: readonly string[]; locals: readonly string[] },
 ): CompletionItem[] {
-    const user = userItems(tree, offset, context.parameters, context.locals);
+    const user = userItems(request, context.parameters, context.locals);
     const taken = new Set(user.map(item => item.label));
     return [...user, ...builtinItems(context.ticker).filter(item => !taken.has(item.label))];
 }
@@ -290,14 +320,14 @@ function propertyKeyItems(
 }
 
 function propertyValueItems(
-    tree: SyntaxTree,
-    offset: number,
+    request: Request,
     placement: PropertyPlacement,
     key: string,
 ): CompletionItem[] {
+    const { tree } = request;
     const property = findProperty(key, placement) ?? findProperty(key);
     const expressions = () =>
-        expressionItems(tree, offset, { ticker: false, parameters: [], locals: [] });
+        expressionItems(request, { ticker: false, parameters: [], locals: [] });
     if (!property) return expressions();
 
     const value = (
@@ -326,11 +356,17 @@ function propertyValueItems(
             // and a literal will do there (spec §4.3).
             return placement === 'config' ? palette : [...palette, ...expressions()];
         }
-        case 'style':
-            return [...analyze(tree).globals.style.values()].map(style => ({
+        case 'style': {
+            const local = [...analyze(tree).globals.style.values()].map(style => ({
                 ...value(style.name, 'style', definitionSummary(tree, style)),
                 documentation: '```axis\n' + definitionText(tree, style) + '\n```',
             }));
+            const taken = new Set(local.map(item => item.label));
+            const imported = importedSymbols(tree, request.options)
+                .filter(symbol => symbol.kind === 'style' && !taken.has(symbol.name))
+                .map(symbol => ({ ...importedItem(symbol), sortText: RANK.value + symbol.name }));
+            return [...local, ...imported];
+        }
         case 'string':
         case 'number':
             return [];

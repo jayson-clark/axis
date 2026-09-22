@@ -16,6 +16,7 @@ import {
     type PropertyPlacement,
     type SyntaxTree,
 } from '@axis-dsl/syntax';
+import type { ImportedSymbol } from './program';
 import type { BuiltinKind, SymbolDefinition } from './symbols';
 
 /** A definition as Axis source: the statement that makes it, metadata left off. */
@@ -37,6 +38,16 @@ export function definitionText(tree: SyntaxTree, definition: SymbolDefinition): 
         return tree.source.slice(definition.column.span.start, definition.column.span.end);
     }
     const statement = definition.statement;
+    if (statement.kind === 'ExpressionStatement') {
+        return printStatement({ ...statement, metadata: null });
+    }
+    return printStatement(statement);
+}
+
+/** An imported definition as Axis source, as {@link definitionText} writes a local one. */
+export function importedText(symbol: ImportedSymbol): string {
+    const statement = symbol.statement;
+    if (statement.kind === 'TableStatement') return symbol.name;
     if (statement.kind === 'ExpressionStatement') {
         return printStatement({ ...statement, metadata: null });
     }

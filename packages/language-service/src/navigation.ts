@@ -8,8 +8,8 @@
 //
 // A name the file does not define may still be defined - by an import, since
 // macros, styles and every definition are in scope across files (spec §6, §7).
-// Following one there needs the other file parsed, which is the host's to do,
-// so `getDefinition` asks an optional resolver for any name it cannot place.
+// Given the compiler's `resolveImport`, `getDefinition` follows one there, to
+// a location in the file the resolver named.
 
 import { printExpression, type SyntaxTree } from '@axis-dsl/syntax';
 import type * as ast from '@axis-dsl/syntax';
@@ -22,27 +22,17 @@ import {
     type Position,
     type Range,
 } from './document';
+import { importedSymbol, type ProgramOptions } from './program';
 import { analyze, definitionShape, occurrenceAt, occurrencesOf, type Occurrence } from './symbols';
 
-/** A place a definition is written: in this document when `uri` is absent. */
+/** A place a definition is written: in this document when `uri` is absent, else in the file the resolver named so. */
 export interface Location {
     uri?: string;
     range: Range;
 }
 
-/**
- * A name the document uses without defining: `value` for a variable, function
- * or macro, `style` for the name after `use:`.
- */
-export interface ExternalReference {
-    name: string;
-    namespace: 'value' | 'style';
-}
-
-export interface DefinitionOptions {
-    /** Where a name the document does not define is defined: in an import, say. */
-    resolveExternal?: (reference: ExternalReference) => readonly Location[] | undefined;
-}
+/** How to reach the files the document imports, for a name defined in one of them. */
+export type DefinitionOptions = ProgramOptions;
 
 /** Whether an occurrence names something a definition could be found for. */
 const isReference = (occurrence: Occurrence) =>
@@ -59,11 +49,20 @@ export function getDefinition(
     if (occurrence.symbol) {
         return [{ range: spanToRange(tree, occurrence.symbol.identifier.span) }];
     }
+    const imported = importedSymbol(
+        tree,
+        options,
+        occurrence.identifier.name,
+        occurrence.role === 'styleName' ? 'style' : 'value',
+    );
+    if (!imported) return [];
+    const { lines } = imported.file;
+    const { span } = imported.identifier;
     return [
-        ...(options.resolveExternal?.({
-            name: occurrence.identifier.name,
-            namespace: occurrence.role === 'styleName' ? 'style' : 'value',
-        }) ?? []),
+        {
+            uri: imported.file.path,
+            range: { start: lines.positionAt(span.start), end: lines.positionAt(span.end) },
+        },
     ];
 }
 

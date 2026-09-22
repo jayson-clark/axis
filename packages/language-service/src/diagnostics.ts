@@ -2,18 +2,16 @@
 // Diagnostics
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The parser's diagnostics are always here: they come with the tree. What the
-// tree cannot say - an unknown function, a property on the wrong statement, a
-// macro called with the wrong number of arguments - is the checker's (#17),
-// and the checker lives in the compiler, which this package does not depend
-// on. So it is a seam: a host that has the compiler passes its checker as
-// `semantic`, and an editor then shows exactly what a compile would report,
-// while a host without one (a playground that only highlights) still gets
-// every syntax error.
+// The parser's diagnostics come with the tree. What the tree cannot say - an
+// unknown function, a property on the wrong statement, a macro called with
+// the wrong number of arguments, an import that is not there - is the
+// compiler's: by default the diagnostics are exactly what `compileAxis`
+// reports for the document, with the host's resolvers, so an editor and a
+// compile never disagree. `semantic` replaces that checker - with a cheaper
+// one, a cached one, or `false` for the syntax alone.
 //
-// Whether an import or an image's file exists is a third kind again, which
-// only a host with a file system can answer; `missingImportDiagnostic` and
-// `missingImageDiagnostic` build what it reports.
+// `missingImportDiagnostic` and `missingImageDiagnostic` are for a host that
+// checks the file system itself rather than handing the compiler resolvers.
 
 import type {
     Diagnostic as SyntaxDiagnostic,
@@ -23,6 +21,7 @@ import type {
 } from '@axis-dsl/syntax';
 import { rangeToSpan, spanToRange, toTree, type DocumentInput, type Range } from './document';
 import type { DocumentLink } from './links';
+import { compilerDiagnostics, type ProgramOptions } from './program';
 
 export type { DiagnosticSeverity };
 
@@ -38,33 +37,42 @@ export interface Diagnostic {
 }
 
 /**
- * The semantic checker: everything wrong with a script that its syntax does
- * not show. Given the tree, returns the diagnostics a compile would add to the
- * parser's - the compiler's `check` (#17), in a host that has it.
+ * A semantic checker: everything wrong with a script that its syntax does not
+ * show. Given the tree, returns what a compile would add to the parser's.
  *
- * Diagnostics carrying a `path` belong to another file (an import's) and are
- * left out, since their spans are not this document's; a host that shows
- * those does so against the file they name.
+ * Diagnostics carrying a `path` other than the document's belong to another
+ * file (an import's) and are left out, since their spans are not this
+ * document's; a host that shows those does so against the file they name.
  */
 export type SemanticChecker = (tree: SyntaxTree) => readonly SyntaxDiagnostic[];
 
-export interface DiagnosticOptions {
-    semantic?: SemanticChecker;
+export interface DiagnosticOptions extends ProgramOptions {
+    /**
+     * The checker to run beyond the parser. The compiler's by default, given
+     * this object's `path` and resolvers; `false` for syntax alone.
+     */
+    semantic?: SemanticChecker | false;
 }
 
-/** Every problem with the document: the parser's, and the checker's when one is given. */
+/** Every problem with the document: the parser's and the compiler's. */
 export function getDiagnostics(
     input: DocumentInput,
     options: DiagnosticOptions = {},
 ): Diagnostic[] {
     const tree = toTree(input);
     const found = [...tree.diagnostics];
-    if (options.semantic) {
-        // A checker that also reports syntax - the compiler's own list does -
-        // would otherwise show every parse error twice.
+    const semantic =
+        options.semantic === false
+            ? undefined
+            : (options.semantic ??
+              ((checked: SyntaxTree) => compilerDiagnostics(checked, options)));
+    if (semantic) {
+        // The compiler's list includes the parser's, which would otherwise
+        // show every syntax error twice.
         const seen = new Set(found.map(key));
-        for (const diagnostic of options.semantic(tree)) {
-            if (diagnostic.path !== undefined || seen.has(key(diagnostic))) continue;
+        for (const diagnostic of semantic(tree)) {
+            if (diagnostic.path !== undefined && diagnostic.path !== options.path) continue;
+            if (seen.has(key(diagnostic))) continue;
             seen.add(key(diagnostic));
             found.push(diagnostic);
         }

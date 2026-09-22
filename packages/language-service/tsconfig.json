@@ -8,6 +8,6 @@
         "outDir": "./dist",
         "rootDir": "src"
     },
-    "references": [{ "path": "../syntax" }],
+    "references": [{ "path": "../syntax" }, { "path": "../compiler" }],
     "include": ["src/**/*"]
 }

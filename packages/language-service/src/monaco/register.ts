@@ -19,14 +19,19 @@ import {
     registerAxisSemanticTokens,
 } from './providers';
 import { defineAxisThemes, type MonacoApi } from './themes';
+import type { AxisProgramOptions } from './providers';
 import type { SemanticChecker } from '../diagnostics';
 
-export interface RegisterAxisOptions {
-    /**
-     * The compiler's checker, so the editor's markers are everything a compile
-     * would report rather than only the syntax errors.
-     */
-    semantic?: SemanticChecker;
+/**
+ * Everything is optional. With nothing, the markers are what `compileAxis`
+ * reports for each model on its own - an import is unresolved, as in a compile
+ * given no resolver. With `resolveImport` (and `pathOf`, if the resolver names
+ * files), imports resolve and what they define is completed, hovered and
+ * followed like the model's own names.
+ */
+export interface RegisterAxisOptions extends AxisProgramOptions {
+    /** A checker to use instead of the compiler's, or `false` for syntax errors alone. */
+    semantic?: SemanticChecker | false;
     /**
      * Switch semantic highlighting on in every editor the instance creates.
      * Monaco's standalone themes leave it off, and without it the semantic
@@ -83,12 +88,12 @@ export function registerAxisLanguage(
     const disposables: monaco.IDisposable[] = [
         api.languages.setMonarchTokensProvider(AXIS_LANGUAGE_ID, createAxisMonarchLanguage()),
         api.languages.setLanguageConfiguration(AXIS_LANGUAGE_ID, toMonacoLanguageConfiguration()),
-        registerAxisCompletions(api),
-        registerAxisHover(api),
+        registerAxisCompletions(api, options),
+        registerAxisHover(api, options),
         registerAxisFormatting(api),
-        registerAxisSemanticTokens(api),
-        registerAxisNavigation(api),
-        registerAxisDiagnostics(api, { semantic: options.semantic }),
+        registerAxisSemanticTokens(api, options),
+        registerAxisNavigation(api, options),
+        registerAxisDiagnostics(api, options),
     ];
 
     if (options.semanticHighlighting !== false) {

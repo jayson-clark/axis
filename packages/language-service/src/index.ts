@@ -8,9 +8,9 @@
 // characters, as `lineIndex` in `@axis-dsl/syntax` counts them.
 //
 // Nothing here touches an editor or the DOM: `./monaco` adapts it to Monaco,
-// and the language server (#26) adapts it to LSP. Semantic diagnostics come
-// from the compiler's checker, which a host passes in (`getDiagnostics`'
-// `semantic` option) rather than this package depending on the compiler.
+// and the language server (#26) adapts it to LSP. Diagnostics, and the names
+// a script's imports define, come from the compiler's own passes, given the
+// host's `resolveImport` and `resolveImage` (`ProgramOptions`).
 
 export {
     toTree,
@@ -77,7 +77,6 @@ export {
     type DocumentHighlight,
     type DocumentSymbol,
     type DocumentSymbolKind,
-    type ExternalReference,
     type FoldingRange,
     type Location,
     type ReferenceOptions,
@@ -93,3 +92,9 @@ export {
     type SymbolNamespace,
 } from './symbols';
 export { KEYWORD_INFO, STATEMENT_KEYWORDS, type KeywordInfo } from './keywords';
+export {
+    compilerDiagnostics,
+    importedSymbols,
+    type ImportedSymbol,
+    type ProgramOptions,
+} from './program';

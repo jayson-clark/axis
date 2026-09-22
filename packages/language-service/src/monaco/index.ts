@@ -15,6 +15,7 @@ export {
     registerAxisHover,
     registerAxisNavigation,
     registerAxisSemanticTokens,
+    type AxisProgramOptions,
 } from './providers';
 export { registerAxisDiagnostics, type AxisDiagnosticsOptions } from './diagnostics';
 export { defineAxisThemes, AXIS_DARK_THEME, AXIS_LIGHT_THEME } from './themes';
