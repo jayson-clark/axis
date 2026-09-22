@@ -28,6 +28,8 @@ export {
 } from './decompile';
 export type { DecompileExpressionOptions, DecompileInput, DecompileOptions } from './decompile';
 export { applySourceEdits, diffGraphs, writeBackGraph } from './writeback';
+export { applyPropertyWrites, mergeExpression, propertyWrites, statementFor } from './readback';
+export type { PropertyWrite, ReadbackPlacement } from './readback';
 export type {
     ChangeKind,
     GraphChange,
