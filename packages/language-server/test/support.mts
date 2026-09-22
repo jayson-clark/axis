@@ -69,11 +69,13 @@ export interface Client {
 export async function startClient(
     options: {
         root?: string;
+        /** The server to start: the package's own bin by default, or a bundle of it. */
+        server?: string;
         settings?: Record<string, unknown>;
         initializationOptions?: unknown;
     } = {},
 ): Promise<Client> {
-    const child: ChildProcess = spawn(process.execPath, [BIN, '--stdio'], {
+    const child: ChildProcess = spawn(process.execPath, [options.server ?? BIN, '--stdio'], {
         stdio: ['pipe', 'pipe', 'inherit'],
     });
     const connection = createMessageConnection(

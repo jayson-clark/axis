@@ -1,7 +1,9 @@
-// Base compiler options for every package that builds to CommonJS for the
-// VSCode extension host, and the solution file that builds them in order.
-// Browser-bundled packages extend tsconfig.web.json instead. The viewer is one,
-// but is still built here, ahead of the extension that imports its protocol.
+// Base compiler options for every package that builds to CommonJS, and the
+// solution file that builds them in order. Browser-bundled packages extend
+// tsconfig.web.json instead. The viewer is one, but is still built here, ahead
+// of the extension that imports its protocol. The extension itself is not: it
+// is bundled by esbuild from its own `build` script, which `pnpm build` runs
+// after this.
 {
     "compilerOptions": {
         "target": "ES2020",
@@ -33,7 +35,6 @@
         { "path": "packages/language-service" },
         { "path": "packages/language-server" },
         { "path": "packages/viewer" },
-        { "path": "packages/harness" },
-        { "path": "packages/extension" }
+        { "path": "packages/harness" }
     ]
 }

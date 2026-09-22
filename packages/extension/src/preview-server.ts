@@ -8,11 +8,13 @@ import {
     createImportResolver,
     loadImages,
     loadImports,
+    type CompilationResult,
 } from '@axis-dsl/compiler';
-import { AXIS_FILE_EXTENSION } from '@axis-dsl/language/vscode';
+import { AXIS_FILE_EXTENSION } from '@axis-dsl/language-service';
 import {
     PREVIEW_PATHS,
     PREVIEW_QUERY,
+    type GraphReading,
     type HostMessage,
     type ViewerMessage,
 } from '@axis-dsl/viewer/protocol';
@@ -42,8 +44,8 @@ const HEARTBEAT_MS = 30_000;
 
 /**
  * The viewer bundle inside this extension's `dist`, copied there at build time
- * by `scripts/copy-viewer-bundle.mjs`. Deliberately not named after any module
- * in `src/`: `tsc` emits into the same folder and would overwrite it.
+ * by `scripts/build.mjs`. Deliberately not named after either of the bundles
+ * that script writes beside it.
  */
 const VIEWER_BUNDLE = 'viewer.js';
 
@@ -100,6 +102,14 @@ interface Preview {
      */
     dependencies: Map<string, vscode.Disposable>;
     timer?: ReturnType<typeof setTimeout>;
+    /**
+     * The compilation the pages are showing, and the source of every file it
+     * was compiled from, keyed as the compiler named them. What a write-back
+     * needs: `writeBackGraph` maps a change to the graph onto the statement
+     * that produced it through the compilation's source map, and rewrites
+     * that statement's text.
+     */
+    compiled?: { compilation: CompilationResult; sources: ReadonlyMap<string, string> };
 }
 
 /** A previewed file, as the status bar reports it. */
@@ -359,9 +369,38 @@ export class PreviewServer implements vscode.Disposable {
         if (message.command === 'requestApiKey') {
             // Only the host knows where a key lives; the viewer just asks.
             void vscode.commands.executeCommand('workbench.action.openSettings', 'axis.apiKey');
+        } else if (message.command === 'graphChanged') {
+            const uri = this.fileFrom(new URL(request.url ?? '/', 'http://127.0.0.1'));
+            const preview = uri && this.previews.get(uri.toString());
+            if (preview) {
+                this.graphChanged(preview, message.data);
+            }
         }
         response.writeHead(204).end();
     }
+
+    /**
+     * A change made to the graph by hand, to be written back into the script.
+     *
+     * Not wired yet, and so never reached: the viewer only reports changes
+     * after a host sends it `setSync`, and this one does not. Write-back is
+     * being reworked in #24 - the viewer's `graphChanged` becomes the graph's
+     * `{ state, options }` - and lands here when it does:
+     *
+     * 1. `writeBackGraph(preview.compiled.compilation, …, preview.compiled.sources)`
+     *    for the edits, each against the file it names;
+     * 2. those applied as one `vscode.WorkspaceEdit`, to the open document
+     *    where there is one, so the user sees - and can undo - the change;
+     * 3. `setSync` sent from `serveEvents` alongside `init`, once 1 and 2 are
+     *    in, to switch the reporting on.
+     *
+     * The preview compiles what is saved and the editor holds what is typed,
+     * so an edit has to be refused, or rebased, when the document is dirty.
+     */
+    private graphChanged(
+        _preview: Preview,
+        _change: { before: GraphReading; after: GraphReading },
+    ): void {}
 
     // ── Watching ────────────────────────────────────────────────────────────
 
@@ -475,6 +514,7 @@ export class PreviewServer implements vscode.Disposable {
                 resolveImport: createImportResolver(files, importHost.resolve),
                 resolveImage: createImageResolver(pictures, imageHost.resolve),
             });
+            preview.compiled = { compilation, sources: new Map([...files, [path, source]]) };
 
             const { imports, images } = compilation.dependencies;
             this.watchDependencies(preview, [...imports, ...images]);
