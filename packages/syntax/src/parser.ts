@@ -100,6 +100,8 @@ class Parser {
     private pos = 0;
     /** The end of the last token consumed, which is where a node ends. */
     private lastEnd = 0;
+    /** The last token consumed, newlines stepped over not counted. */
+    private lastToken: Token | null = null;
     private readonly contexts: Context[] = [{ newlines: false, commaRule: false, inAbs: false }];
     /** How many blocks we are inside, so recovery knows a `}` is not its to skip. */
     private blockDepth = 0;
@@ -150,6 +152,7 @@ class Parser {
         const token = this.peek();
         if (token.kind !== 'eof') this.pos++;
         this.lastEnd = token.span.end;
+        this.lastToken = token;
         return token;
     }
 
@@ -1113,7 +1116,7 @@ class Parser {
                 return value;
             },
         );
-        const trailingComma = this.tokens[this.pos - 1]?.text === ',';
+        const trailingComma = this.lastToken?.text === ',';
 
         if (this.at(closer)) {
             this.next();
@@ -1201,10 +1204,9 @@ class Parser {
     /**
      * `{c1: v1, c2: v2, otherwise}` or `{x > 0}`.
      *
-     * A trailing entry with no `: value` is the `otherwise` whenever there is
-     * more than one entry - including `{x > 0, x < 2}`, which Desmos reads as
-     * both restrictions and which emits the same latex either way. A lone bare
-     * condition is a branch: the restriction `{x > 0}`.
+     * A trailing entry with no `: value` is the `otherwise` when some entry
+     * before it has a value. When none does, every entry is a bare condition:
+     * `{x > 0}` is a restriction, and `{x > 0, x < 2}` two of them.
      */
     private parsePiecewise(start: number): ast.Piecewise {
         const entries: ast.PiecewiseBranch[] = [];
@@ -1230,7 +1232,7 @@ class Parser {
 
         let otherwise: ast.Expression | null = null;
         const last = entries[entries.length - 1];
-        if (entries.length > 1 && last.value === null) {
+        if (last && last.value === null && entries.some(entry => entry.value !== null)) {
             entries.pop();
             otherwise = last.condition;
         }

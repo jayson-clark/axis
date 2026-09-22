@@ -438,10 +438,10 @@ bindings that extends to the end of the enclosing bracket or statement.
 ### 5.8 Piecewise
 
 `{condition: value, condition: value, otherwise}`; a branch without `: value`
-is a restriction (`{x > 0}`). With more than one entry, a trailing entry
-without `: value` is the `otherwise` - so `{x > 0, x < 2}` reads as one
-restriction branch and an `otherwise` of `x < 2`, which emits exactly the same
-latex as two restrictions would. A piecewise immediately after an expression is an
+is a restriction (`{x > 0}`). A trailing entry without `: value` is the
+`otherwise` when some entry before it has a `:`; when none does, every entry
+is a bare condition, so `{x > 0, x < 2}` is two restrictions. A piecewise
+immediately after an expression is an
 implicit product and reads as a domain restriction: `y = x^2 {x > 0}`.
 
 ## 6. Macros

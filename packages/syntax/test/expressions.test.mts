@@ -174,10 +174,11 @@ describe('atoms (spec §5.2)', () => {
     test('piecewise: branches, otherwise, restrictions', () => {
         assert.equal(expr('{x < 0: -x, x}'), '(piecewise (if (< x 0) (- x)) (else x))');
         assert.equal(expr('{x > 0}'), '(piecewise (if (> x 0)))');
-        // A trailing bare condition is the otherwise; Desmos reads (and the
-        // compiler emits) `{x > 0, y > 0}` the same either way.
-        assert.equal(expr('{x > 0, y > 0}'), '(piecewise (if (> x 0)) (else (> y 0)))');
-        assert.equal(expr('{x > 0, y > 0, 1}'), '(piecewise (if (> x 0)) (if (> y 0)) (else 1))');
+        assert.equal(expr('{x > 0, y > 0}'), '(piecewise (if (> x 0)) (if (> y 0)))');
+        assert.equal(
+            expr('{x > 0: 1, y > 0, 2}'),
+            '(piecewise (if (> x 0) 1) (if (> y 0)) (else 2))',
+        );
         assert.equal(
             expr('{x < 0: 1, x < 1: 2, 3}'),
             '(piecewise (if (< x 0) 1) (if (< x 1) 2) (else 3))',
@@ -232,5 +233,17 @@ describe('expression statements', () => {
 
     test('a run is only for statement values: inside brackets a comma is the bracket', () => {
         assert.equal(tree('f(a -> 1, b -> 2)'), '(call f (-> a 1) (-> b 2))');
+    });
+});
+
+describe('trailing commas', () => {
+    test('a trailing comma on its own line still makes a one-element tuple', () => {
+        assert.equal(expr('(a,\n)'), '(tuple a)');
+        assert.equal(expr('(a,)'), '(tuple a)');
+    });
+
+    test('a list or a call may end with one', () => {
+        assert.equal(expr('[1, 2,\n]'), '(list 1 2)');
+        assert.equal(expr('f(1, 2,)'), '(call f 1 2)');
     });
 });

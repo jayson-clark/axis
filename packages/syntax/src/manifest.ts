@@ -541,11 +541,12 @@ export const AXIS_MANIFEST = {
             category: 'list',
         },
         {
-            // How it is spelt in latex is the compiler's business; here it is a
-            // name the checker should know, so `n -> n + dt` is not an
-            // undefined variable offered as a slider.
+            // Desmos provides it to a ticker's handler and nowhere else: the
+            // emitter writes `\operatorname{dt}`, which Desmos rejects in any
+            // other expression. Known here so `n -> n + dt` is not taken for
+            // an undefined variable and offered as a slider.
             name: 'dt',
-            detail: 'Milliseconds since the last tick, inside a ticker handler',
+            detail: 'Milliseconds since the last tick - only valid in a ticker handler',
             category: 'ticker',
         },
     ] satisfies OperatorDefinition[],
