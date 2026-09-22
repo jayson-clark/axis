@@ -139,6 +139,15 @@ describe('encoding', () => {
         assert.deepEqual(data.slice(20, 25), [0, 2, 1, type('operator'), 0]);
     });
 
+    test('encodes only the tokens a range overlaps, from the start of the document', () => {
+        const source = 'a = 1\nb = 2\nc = 3';
+        const range = { start: { line: 1, character: 0 }, end: { line: 1, character: 5 } };
+        const { data } = getSemanticTokens(source, { range });
+        // `b`, `=` and `2`, the first placed absolutely: line 1, character 0.
+        assert.equal(data.length, 15);
+        assert.deepEqual(data.slice(0, 2), [1, 0]);
+    });
+
     test('decodes back to the token list', () => {
         const source = 'f(x) = x^2 @ color: BLUE\n// a comment\nticker n -> n + dt';
         const list = getSemanticTokenList(source);
