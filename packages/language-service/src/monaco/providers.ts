@@ -161,21 +161,42 @@ export function registerAxisFormatting(api: MonacoApi): monaco.IDisposable {
     };
 }
 
+/**
+ * Register semantic tokens for whole documents and for the visible range.
+ *
+ * Both, because Monaco's `features/register.all` - the entry point an app
+ * that skips Monaco's bundled languages loads - brings in only the viewport
+ * half of semantic highlighting, and a document provider alone is then never
+ * asked. The full `editor.all` asks the document provider and uses the range
+ * one while it waits.
+ */
 export function registerAxisSemanticTokens(
     api: MonacoApi,
     options: AxisProgramOptions = {},
 ): monaco.IDisposable {
-    return api.languages.registerDocumentSemanticTokensProvider(AXIS_LANGUAGE_ID, {
+    const tokens = (model: monaco.editor.ITextModel, range?: monaco.IRange) => ({
+        data: new Uint32Array(
+            getSemanticTokens(treeOf(model), {
+                ...programOptions(options, model),
+                range: range && toRange(range),
+            }).data,
+        ),
+    });
+    const document = api.languages.registerDocumentSemanticTokensProvider(AXIS_LANGUAGE_ID, {
         getLegend: () => SEMANTIC_TOKEN_LEGEND,
-        provideDocumentSemanticTokens(model) {
-            return {
-                data: new Uint32Array(
-                    getSemanticTokens(treeOf(model), programOptions(options, model)).data,
-                ),
-            };
-        },
+        provideDocumentSemanticTokens: model => tokens(model),
         releaseDocumentSemanticTokens() {},
     });
+    const range = api.languages.registerDocumentRangeSemanticTokensProvider(AXIS_LANGUAGE_ID, {
+        getLegend: () => SEMANTIC_TOKEN_LEGEND,
+        provideDocumentRangeSemanticTokens: (model, visible) => tokens(model, visible),
+    });
+    return {
+        dispose() {
+            document.dispose();
+            range.dispose();
+        },
+    };
 }
 
 /** Go to definition, find references and highlights - all within the one model. */

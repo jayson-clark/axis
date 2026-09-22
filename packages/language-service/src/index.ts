@@ -63,6 +63,7 @@ export {
     SEMANTIC_TOKEN_TYPES,
     type SemanticToken,
     type SemanticTokenModifier,
+    type SemanticTokenOptions,
     type SemanticTokens,
     type SemanticTokenType,
 } from './semantic-tokens';

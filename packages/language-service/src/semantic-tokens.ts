@@ -92,13 +92,31 @@ export function getSemanticTokenList(
     return result;
 }
 
+export interface SemanticTokenOptions extends ProgramOptions {
+    /**
+     * Only the tokens that overlap this range - the lines an editor is
+     * showing, as LSP's `semanticTokens/range` and Monaco's viewport provider
+     * ask for. The whole document when absent.
+     */
+    range?: Range;
+}
+
 /** The document's semantic tokens, encoded against {@link SEMANTIC_TOKEN_LEGEND}. */
 export function getSemanticTokens(
     input: DocumentInput,
-    options: ProgramOptions = {},
+    options: SemanticTokenOptions = {},
 ): SemanticTokens {
     const tree = toTree(input);
-    return { data: encode(tree, getSemanticTokenList(tree, options)) };
+    let list = getSemanticTokenList(tree, options);
+    const { range } = options;
+    if (range) {
+        const before = (a: Range['start'], b: Range['start']) =>
+            a.line < b.line || (a.line === b.line && a.character < b.character);
+        list = list.filter(
+            token => before(token.range.start, range.end) && before(range.start, token.range.end),
+        );
+    }
+    return { data: encode(tree, list) };
 }
 
 const OPERATORS: ReadonlySet<string> = new Set([
