@@ -8,6 +8,8 @@
 export type * from './ast';
 export type { Token, TokenKind, Keyword } from './tokens';
 export { KEYWORDS, isTrivia } from './tokens';
+export { lex, unescapeString, type LexResult } from './lexer';
+export { parse, parseExpression, type SyntaxTree } from './parser';
+export { lineIndex, type LineIndex, type Position } from './lines';
+export { debugTree } from './debug';
 export * from './manifest';
-
-// The lexer and parser land in #14 and #15.

@@ -1,0 +1,72 @@
+// Every expression form in spec §5, each at the top of a statement.
+
+// Precedence (§5.1), the consequences table.
+y = 1/2x
+y = a/b^2
+y = x^2/3
+y = a/b/c
+y = -x^2
+y = 2^-1
+y = x^10
+y = 2^3^2
+
+// Implicit multiplication.
+y = 2x + 2pi x + 3cos(t) + (a)(b) + x y + 2|x|
+
+// Comparisons, chained.
+1 < x < 2
+0 <= y <= x
+y >= x ^ 2
+
+// Atoms (§5.2).
+n = 3
+m = 0.5 + .5 + 1e-3
+theta_1 = theta2 + x_12
+c = #c74440
+d = #fff
+p = (a)
+P = (a, b)
+Q = (a, b, c)
+L = [a, b, c]
+R_1 = [1...10]
+R_2 = [1, 3...9]
+R_3 = [1, ..., 10]
+E = []
+C = [f(i) for i = [1...10]]
+G = [(a, b) for a = [-4...4], b = [1, 2]]
+y = {x < 0: -x, x}
+y = x^2 {x > 0}
+y = {x > 0, x < 2}
+v = |x - 1|
+
+// Postfix (§5.3, §5.4).
+s = sin(x)
+u = a(b + 1)
+w = L[1] + L[2...5] + L[L > 2]
+k = P.x + P.y + L.count + L.mean
+q = n!
+
+// with and for (§5.7).
+f(x) = x n with n = length(a)
+S = i ^ 2 for i = L
+
+// Brackets spread over lines.
+M = [
+    1,
+    2,
+    3,
+]
+h(x) = {
+    x < 0: -1,
+    x > 0: 1,
+    0
+}
+z = f(
+    a,
+    b
+)
+
+// Actions (§5.6).
+A = a -> a + 1
+reset = E -> (2, -6), n -> 0
+T = A, reset

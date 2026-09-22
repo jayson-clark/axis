@@ -1,0 +1,48 @@
+// Properties and metadata (spec §4).
+
+style emphasis { color: RED; lineWidth: 4 }
+style dashed { use: emphasis; lineStyle: DASHED }
+
+// Inline, with bare flags (§4.1).
+y = x @ color: #2d70b3, lineWidth: 2.5, hidden
+y = 2x @ hidden, fill
+y = 3x @ lineWidth: a + 1, lineOpacity: 0.5
+
+// The comma rule.
+(1, 2) @ onClick: a -> 1, b -> 2, color: RED
+(2, 3) @ onClick: a -> 1, hidden
+(3, 4) @ onClick: A, B -> 1
+y = x @ lineWidth: w with w = 2, v = 3, fill
+
+// Block metadata.
+y = sin(x) @{
+    color: rgb(40, 120, 200)
+    lineStyle: dashed
+    label: "a wave"; showLabel
+    onClick: a -> 1, b -> 2
+}
+
+// Colours (§4.3).
+y = x + 1 @ color: #c74440
+y = x + 2 @ color: #fff
+y = x + 3 @ color: PURPLE
+y = x + 4 @ color: hsv(h, 1, 1)
+y = x + 5 @ color: C
+
+// Ranges (§4.4).
+a = 1 @ slider: -5..5 step 0.5
+b = 0 @ slider: 0.. soft
+c = 0 @ slider: ..5
+d = 0 @ slider: .. step 1
+t = 0 @ slider: 0..2pi soft max, playing
+u = 0 @ slider: -a..a step a / 10 soft min
+(cos(t), sin(t)) @ domain: 0..tau
+r = theta @ polarDomain: 0..6pi, parametricDomain: 0..1
+
+// Styles (§4.5).
+(-2, 1) @ use: emphasis, color: BLUE
+(-1, 1) @ use: emphasis, use: dashed
+
+// Enums, strings and numbers.
+P = (1, 2) @ pointStyle: OPEN, dragMode: none, labelOrientation: above_left, label: "P"
+s = 0 @ loopMode: LOOP_FORWARD_REVERSE, playDirection: -1, animationPeriod: 4000

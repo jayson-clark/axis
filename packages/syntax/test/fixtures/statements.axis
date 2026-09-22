@@ -1,0 +1,77 @@
+// Every statement form in spec §3.2, and the ways of separating them.
+
+config {
+    showGrid: false
+    degreeMode
+    xmin: -10; xmax: 10
+    backgroundColor: #fafafa
+    xAxisScale: linear
+    actions: auto
+}
+
+style swatch { pointSize: 14; showLabel }
+style loud {
+    use: swatch
+    color: RED
+}
+
+macro TAU2 = 2tau
+macro wave(k, phase) = sin(k * x + phase)
+macro one() = 1
+macro reset = a -> 0, b -> 0
+
+import "./lib/waves"
+import "./lib/waves.axis" as "Waves"
+import "./lib/waves" @ collapsed: false, hidden
+
+image "./images/beach.png" @ center: (0, 1), width: 10, height: 10 / 4.05
+image "https://example.com/a.png" @{
+    angle: pi / 4
+    opacity: 0.5
+    foreground
+}
+
+"A note on its own"
+"A secret note" @ secret
+"Say \"hi\"\nover two lines"
+
+folder "Titled" {
+    y = x
+    y = 2x @ hidden
+}
+
+folder { y = -x }
+
+folder "Metadata straight after the brace" { @ collapsed, secret
+    f(x) = x ^ 2
+}
+
+folder "Block metadata" { @{ collapsed; hidden }
+    g(x) = x ^ 3
+}
+
+table {
+    x_1 = [1, 2, 3]
+    y_1 = [1, 4, 9] @ color: BLUE, lines
+    x_1 ^ 2
+    z = []
+}
+
+table { @ color: GREEN, pointStyle: CROSS; t = [0, 1]; t ^ 2 @ use: swatch }
+
+a = 1; b = 2; c = a + b
+;;
+
+y = sin(x)
+f(x) = x ^ 2 - 1
+y < x
+(1, 2)
+x ^ 2 + 1
+
+A = a -> a + 1
+B = b -> 0
+R = A, B
+S = a -> 1, b -> 2
+a -> 0, b -> 0
+
+ticker a -> a + dt / 1000, b -> b + 1 @ minStep: 50, playing, open
