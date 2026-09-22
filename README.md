@@ -235,10 +235,17 @@ npm install @axis-dsl/compiler @axis-dsl/language @axis-dsl/viewer monaco-editor
 Compile anywhere — a build step, a server, a test:
 
 ```ts
-import { compileAxis } from '@axis-dsl/compiler';
+import { compileAxis, toGraph } from '@axis-dsl/compiler';
 
-const { expressions, settings, graph, ticker } = compileAxis(source);
+const { state, options } = toGraph(compileAxis(source));
+
+calculator.setState(state);
+calculator.updateSettings(options);
 ```
+
+That is the whole of applying a graph: `state` is everything `setState` takes —
+the expression list, the ticker, the viewport, the top-level flags — and
+`options` is everything `updateSettings` takes.
 
 Compilation is synchronous and touches no filesystem, so a script with imports
 is handed a resolver. `loadImports` walks the graph first over whatever reading
@@ -291,18 +298,13 @@ your framework is app-shaped work that every bundler spells differently.
 The graph half is a component, since it owns a Desmos instance:
 
 ```tsx
-import { compileAxis } from '@axis-dsl/compiler';
+import { useMemo } from 'react';
+import { compileAxis, toGraph } from '@axis-dsl/compiler';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 
 function Graph({ source }) {
-    const { expressions, settings, graph, ticker } = compileAxis(source);
-    const transport = useLocalViewerHost({
-        apiKey: MY_DESMOS_KEY,
-        expressions,
-        settings,
-        graph,
-        ticker,
-    });
+    const { state, options } = useMemo(() => toGraph(compileAxis(source)), [source]);
+    const transport = useLocalViewerHost({ apiKey: MY_DESMOS_KEY, state, options });
 
     return <AxisViewer transport={transport} />;
 }
@@ -317,14 +319,13 @@ React 19 and Monaco 0.56+ are peer dependencies, so your app owns both.
 
 ## Packages
 
-| Package              | Purpose                                             |
-| -------------------- | --------------------------------------------------- |
-| `@axis-dsl/compiler` | Compiles `.axis` source to Desmos expressions       |
-| `@axis-dsl/language` | Completions, formatting, diagnostics, grammars      |
-| `@axis-dsl/viewer`   | The results panel: the graph, and its JSON in debug |
-| `@axis-dsl/protocol` | Messages and transports that drive the viewer       |
-| `@axis-dsl/desmos`   | Typed Desmos calculator API                         |
-| `@axis-dsl/harness`  | Runs a script against a real headless Desmos        |
+| Package              | Purpose                                            |
+| -------------------- | -------------------------------------------------- |
+| `@axis-dsl/compiler` | Compiles `.axis` source to Desmos expressions      |
+| `@axis-dsl/language` | Completions, formatting, diagnostics, grammars     |
+| `@axis-dsl/viewer`   | The results panel, and the protocol that drives it |
+| `@axis-dsl/desmos`   | Typed Desmos calculator API                        |
+| `@axis-dsl/harness`  | Runs a script against a real headless Desmos       |
 
 ## Testing against a real Desmos graph
 

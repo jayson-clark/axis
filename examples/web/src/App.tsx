@@ -53,7 +53,8 @@ export function App() {
     const [source, setSource] = useState(STARTER_SOURCE);
     const theme = useSystemTheme();
 
-    const { expressions, settings, graph, ticker, error, isStale } = useCompiledAxis(source);
+    const { state, options, error, isStale } = useCompiledAxis(source);
+    const count = state?.expressions?.list?.length ?? 0;
 
     // The playground drives the viewer over the same protocol the extension
     // uses; the only difference is that the channel never leaves the page.
@@ -61,13 +62,9 @@ export function App() {
     // offer a button that would have nowhere to lead.
     const viewerTransport = useLocalViewerHost({
         apiKey: DESMOS_API_KEY,
-        expressions,
-        settings,
-        graph,
-        ticker,
-        status: isStale
-            ? 'Compiling…'
-            : `${expressions.length} expression${expressions.length === 1 ? '' : 's'}`,
+        state,
+        options,
+        status: isStale ? 'Compiling…' : `${count} expression${count === 1 ? '' : 's'}`,
     });
 
     return (

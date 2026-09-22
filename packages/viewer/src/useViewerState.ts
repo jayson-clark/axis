@@ -1,23 +1,13 @@
 import { useEffect, useState } from 'react';
-import type {
-    CalculatorOptions,
-    DesmosExpression,
-    GraphSettings,
-    GraphStateFlags,
-    TickerState,
-} from '@axis-dsl/desmos';
-import type { ConnectionState, ViewerTransport } from '@axis-dsl/protocol';
+import type { ConnectionState, ViewerGraph, ViewerTransport } from './protocol/index.js';
 
 export interface ViewerState {
     /** null until the host answers our `ready` with a key. */
     apiKey: string | null;
     /** Whether the host can act on `requestApiKey`. */
     canSetApiKey: boolean;
-    expressions: DesmosExpression[];
-    settings: CalculatorOptions | undefined;
-    graph: GraphSettings | undefined;
-    state: GraphStateFlags | undefined;
-    ticker: TickerState | undefined;
+    /** null until the host sends one, which leaves the calculator blank. */
+    graph: ViewerGraph | null;
     status: string | null;
     /** `connected` for a transport that does not report one. */
     connection: ConnectionState;
@@ -37,11 +27,7 @@ export interface ViewerState {
 const INITIAL: ViewerState = {
     apiKey: null,
     canSetApiKey: false,
-    expressions: [],
-    settings: undefined,
-    graph: undefined,
-    state: undefined,
-    ticker: undefined,
+    graph: null,
     status: null,
     connection: 'connecting',
     hasConnected: false,
@@ -66,15 +52,8 @@ export function useViewerState(transport: ViewerTransport): ViewerState {
                         canSetApiKey: message.data.canSetApiKey ?? false,
                     }));
                     break;
-                case 'setExpressions':
-                    setState(current => ({
-                        ...current,
-                        expressions: message.data.expressions,
-                        settings: message.data.settings,
-                        graph: message.data.graph,
-                        state: message.data.state,
-                        ticker: message.data.ticker,
-                    }));
+                case 'setGraph':
+                    setState(current => ({ ...current, graph: message.data }));
                     break;
                 case 'setStatus':
                     setState(current => ({ ...current, status: message.data.status }));

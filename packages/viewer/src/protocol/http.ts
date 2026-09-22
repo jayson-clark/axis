@@ -2,9 +2,9 @@
 // The preview-server transport
 // ═════════════════════════════════════════════════════════════════════════════
 
-import type { HostMessage, ViewerMessage } from './messages';
-import type { ConnectionState, ViewerTransport } from './transport';
-import { PREVIEW_PATHS, PREVIEW_QUERY } from './preview';
+import type { HostMessage, ViewerMessage } from './messages.js';
+import type { ConnectionState, ViewerTransport } from './transport.js';
+import { PREVIEW_PATHS, PREVIEW_QUERY } from './preview.js';
 
 export interface HttpTransportOptions {
     /** All default to the values in the page's own URL. */

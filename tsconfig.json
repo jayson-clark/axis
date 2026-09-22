@@ -1,6 +1,7 @@
 // Base compiler options for every package that builds to CommonJS for the
 // VSCode extension host, and the solution file that builds them in order.
-// Browser-bundled packages extend tsconfig.web.json instead.
+// Browser-bundled packages extend tsconfig.web.json instead. The viewer is one,
+// but is still built here, ahead of the extension that imports its protocol.
 {
     "compilerOptions": {
         "target": "ES2020",
@@ -27,11 +28,11 @@
     "references": [
         { "path": "packages/desmos" },
         { "path": "packages/syntax" },
-        { "path": "packages/protocol" },
         { "path": "packages/language" },
         { "path": "packages/compiler" },
         { "path": "packages/language-service" },
         { "path": "packages/language-server" },
+        { "path": "packages/viewer" },
         { "path": "packages/harness" },
         { "path": "packages/extension" }
     ]
