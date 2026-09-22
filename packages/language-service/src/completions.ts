@@ -118,7 +118,7 @@ function itemsFor(tree: SyntaxTree, context: CursorContext, offset: number): Com
         case 'statement':
             return [
                 ...keywordItems(context.owner),
-                ...expressionItems(tree, offset, { ticker: false, parameters: [] }),
+                ...expressionItems(tree, offset, { ticker: false, parameters: [], locals: [] }),
             ];
         case 'expression':
             return context.member ? memberItems() : expressionItems(tree, offset, context);
@@ -175,6 +175,7 @@ function userItems(
     tree: SyntaxTree,
     offset: number,
     parameters: readonly string[],
+    locals: readonly string[],
 ): CompletionItem[] {
     const analysis = analyze(tree);
     const items: CompletionItem[] = [];
@@ -190,6 +191,14 @@ function userItems(
             label: name,
             kind: 'parameter',
             detail: 'Parameter',
+            sortText: RANK.parameter + name,
+        });
+    }
+    for (const name of locals) {
+        add({
+            label: name,
+            kind: 'variable',
+            detail: 'Bound by with / for',
             sortText: RANK.parameter + name,
         });
     }
@@ -237,9 +246,9 @@ function userItem(tree: SyntaxTree, definition: SymbolDefinition): CompletionIte
 function expressionItems(
     tree: SyntaxTree,
     offset: number,
-    context: { ticker: boolean; parameters: readonly string[] },
+    context: { ticker: boolean; parameters: readonly string[]; locals: readonly string[] },
 ): CompletionItem[] {
-    const user = userItems(tree, offset, context.parameters);
+    const user = userItems(tree, offset, context.parameters, context.locals);
     const taken = new Set(user.map(item => item.label));
     return [...user, ...builtinItems(context.ticker).filter(item => !taken.has(item.label))];
 }
@@ -287,7 +296,8 @@ function propertyValueItems(
     key: string,
 ): CompletionItem[] {
     const property = findProperty(key, placement) ?? findProperty(key);
-    const expressions = () => expressionItems(tree, offset, { ticker: false, parameters: [] });
+    const expressions = () =>
+        expressionItems(tree, offset, { ticker: false, parameters: [], locals: [] });
     if (!property) return expressions();
 
     const value = (

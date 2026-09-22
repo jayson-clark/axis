@@ -37,6 +37,8 @@ export type CursorContext =
           ticker: boolean;
           /** The parameters of the function or macro whose body this is. */
           parameters: string[];
+          /** The names a `with` or `for` in the statement binds. */
+          locals: string[];
           /** Straight after a `.`: `P.x`, `L.count`. */
           member: boolean;
       }
@@ -81,6 +83,8 @@ interface StatementState {
     tokens: Token[];
     /** Every token of it so far, brackets and all, for reading a definition's parameters. */
     all: Token[];
+    /** The index of its first token, -1 before it has one. */
+    start: number;
     /** The metadata clause the statement's `@` opened. */
     metadata: PropertyState | null;
     /** A block of its own it has opened and closed, or a `@{ … }`: it is over. */
@@ -107,6 +111,7 @@ const BLOCK_KEYWORDS: ReadonlySet<string> = new Set(['folder', 'table', 'config'
 const newStatement = (): StatementState => ({
     tokens: [],
     all: [],
+    start: -1,
     metadata: null,
     finished: false,
     opened: false,
@@ -188,12 +193,56 @@ export function cursorContext(tree: SyntaxTree, offset: number): CursorInfo {
     for (let i = 0; i < limit; i++) {
         const token = tokens[i];
         if (isTrivia(token) || token.kind === 'eof') continue;
-        if (token.kind !== 'newline') nearestStatement(frames)?.all.push(token);
+        const statement = nearestStatement(frames);
+        if (statement && token.kind !== 'newline') {
+            if (statement.start < 0) statement.start = i;
+            statement.all.push(token);
+        }
         step(frames, token, closers[i] >= 0);
         last = token.kind === 'newline' ? last : token;
     }
 
-    return { context: contextOf(frames, last, word), word };
+    const context = contextOf(frames, last, word);
+    if (context.kind === 'expression') {
+        const start = nearestStatement(frames)?.start ?? -1;
+        if (start >= 0) context.locals = bindingsOf(tokens, start);
+    }
+    return { context, word };
+}
+
+/**
+ * The names the `with` and `for` bindings of the statement starting at
+ * `start` give - read to the statement's end, past the cursor, since
+ * `[i ^ 2 for i = L]` is typed body first and binds its name after.
+ */
+function bindingsOf(tokens: readonly Token[], start: number): string[] {
+    const names: string[] = [];
+    let depth = 0;
+    let binding = false;
+    for (let i = start; i < tokens.length; i++) {
+        const token = tokens[i];
+        if (isTrivia(token)) continue;
+        if (token.kind === 'eof') break;
+        if (token.kind === 'punctuation') {
+            if (token.text in OPENERS) depth++;
+            else if (token.text === ')' || token.text === ']' || token.text === '}') {
+                if (--depth < 0) break;
+            } else if (
+                depth === 0 &&
+                (token.text === ';' || token.text === '@' || token.text === '@{')
+            ) {
+                break;
+            }
+        }
+        if (token.kind === 'newline' && depth === 0) break;
+        if (token.kind === 'keyword' && (token.text === 'with' || token.text === 'for'))
+            binding = true;
+        if (binding && token.kind === 'identifier') {
+            const next = tokens.slice(i + 1).find(after => !isTrivia(after));
+            if (next && isPunctuation(next, '=')) names.push(token.text);
+        }
+    }
+    return names;
 }
 
 function previousMeaningful(tokens: readonly Token[], index: number): Token | undefined {
@@ -295,9 +344,8 @@ function step(frames: Frame[], token: Token, closed: boolean): void {
             if (parent.kind === 'statements') parent.statement.finished = true;
             return;
         }
-        // In a block a comma is part of the value, or - between two entries -
-        // the separator somebody meant a `;` to be.
-        if (isPunctuation(token, ',') && state.stage !== 'value') {
+        // A comma between entries is the separator somebody meant a `;` to be.
+        if (isPunctuation(token, ',') && state.stage !== 'value' && state.stage !== 'pending') {
             finishEntry(state);
             return;
         }
@@ -425,7 +473,7 @@ function property(
                 state.key = state.pending;
                 state.written.push(state.key);
                 state.stage = 'value';
-            } else if (isPunctuation(token, ',')) {
+            } else if (inline && isPunctuation(token, ',')) {
                 // A bare flag: `@ color: RED, hidden, fill`.
                 state.written.push(state.pending);
                 state.stage = 'afterComma';
@@ -437,7 +485,10 @@ function property(
             }
             return;
         case 'value':
-            if (inline && isPunctuation(token, ',')) {
+            // A comma may start the next property or continue the value, and
+            // which is only known from what follows it (spec §4.1) - in a
+            // block, where only `name:` after it ends the value, as inline.
+            if (isPunctuation(token, ',')) {
                 state.previous = state.key;
                 state.stage = 'afterComma';
                 return;
@@ -543,6 +594,7 @@ function expressionContext(
         kind: 'expression',
         ticker: false,
         parameters: statement ? parametersOf(statement.all) : [],
+        locals: [],
         member,
     };
 }
