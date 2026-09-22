@@ -6,7 +6,7 @@ export { compileAxis } from './compile';
 export type { CompilationResult, CompileOptions, StatementOrigin } from './compile';
 export { convertToLatex } from './latex';
 export { convertFromLatex } from './unlatex';
-export { emitLatex, identifierLatex } from './latex/index';
+export { emitLatex, identifierLatex, LatexParseError, parseLatex } from './latex/index';
 export {
     decompileAxis,
     decompileExpression,
