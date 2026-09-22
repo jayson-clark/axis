@@ -706,7 +706,7 @@ describe('settings', () => {
                 'config {',
                 '    // the grid',
                 '    showGrid: false',
-                '    degreeMode: true',
+                '    degreeMode',
                 '}',
                 '',
                 '// still here',

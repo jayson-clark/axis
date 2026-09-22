@@ -297,41 +297,40 @@ folder it was made in, or of the script; one deleted there is deleted here.
 
 ## API
 
-| Export                                                          |                                                                                       |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `compileAxis(script, options?)`                                 | The compiler. Returns a `CompilationResult`                                           |
-| `loadImports(entry, host)`                                      | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path   |
-| `createImportResolver(files, resolve)`                          | Turns that `Map` into the synchronous `resolveImport` the compiler wants              |
-| `findImports(source)`                                           | Just the specifiers one file imports, in order                                        |
-| `loadImages(entry, files, host)`                                | Reads every image file the script and its imports draw; returns a `Map` of data URIs  |
-| `createImageResolver(images, resolve)`                          | Turns that `Map` into the synchronous `resolveImage` the compiler wants               |
-| `findImageFiles(source)`                                        | Just the image paths one file draws, in order                                         |
-| `loadProgram(source, options?)`                                 | The first pass: the script and everything it imports, parsed                          |
-| `collectSymbols(program)`                                       | The second: every macro, style, function and variable the program defines             |
-| `checkProgram(program, symbols)`                                | The third: every semantic diagnostic                                                  |
-| `expandMacros(expression, macros)`                              | One expression with its macros substituted, as trees                                  |
-| `resolveProperties(entries, styles)`                            | One metadata clause with its styles applied                                           |
-| `definitionOf(expression)`                                      | What a statement defines - a function, a variable - or nothing                        |
-| `emitLatex(expression)` / `parseLatex(latex)`                   | One expression tree to Desmos latex, and back                                         |
-| `convertToLatex(expr)`                                          | Axis 1's text-to-latex converter, kept for the v1 decompiler                          |
-| `decompileAxis(graph, options?)`                                | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source       |
-| `decompileExpression(expression, options?)`                     | One expression as the statement that builds it - the decompiler's unit of work        |
-| `decompileSettings(graph, options?)`                            | Just the `config { … }` block a graph's settings decompile to                         |
-| `graphActionNames(expressions)`                                 | The names a graph defines as actions, which `decompileExpression` wants               |
-| `writeBackGraph(source, { before, after }, compiled, options?)` | What changed on a live graph, as edits to the statements that produced it             |
-| `diffGraphs(before, after)`                                     | Just the changes between two readings of the same graph, by expression id             |
-| `applySourceEdits(source, edits)`                               | Applies one file's edits to its text                                                  |
-| `convertFromLatex(latex)`                                       | One piece of Desmos LaTeX back into the Axis 1 expression it compiles from            |
-| `DecompileInput` / `DecompileOptions`                           | `{ expressions, settings? }` and `{ indent? }`                                        |
-| `CompileOptions`                                                | `{ path?, resolveImport?, resolveImage? }`                                            |
-| `CompilationResult`                                             | `{ state, options, diagnostics, sourceMap, configOrigin?, dependencies }`             |
-| `StatementOrigin`                                               | `{ path, line, endLine, span, writable, reason? }` - where one item was written       |
-| `GraphSnapshot` / `GraphChange` / `SourceEdit`                  | A graph's `{ state, options }`, one change to it, and one replacement of a span       |
-| `WriteBackOptions` / `WriteBackResult`                          | `{ include?, indent?, path? }` and `{ edits, skipped }`                               |
-| `propertyWrites` / `applyPropertyWrites`                        | Which properties changed between two readings of one item, and those made to a clause |
-| `mergeExpression(source, before, after)`                        | A changed expression with every unchanged part kept as the author wrote it            |
-| `statementFor(item)`                                            | The statement a graph item would be written as, for one the script does not have      |
-| `ImportHost` / `ResolveImport` / `ResolvedImport`               | The import resolver types                                                             |
-| `ImageHost` / `ResolveImage` / `ResolvedImage`                  | The image resolver types                                                              |
+| Export                                                          |                                                                                        |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `compileAxis(script, options?)`                                 | The compiler. Returns a `CompilationResult`                                            |
+| `loadImports(entry, host)`                                      | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path    |
+| `createImportResolver(files, resolve)`                          | Turns that `Map` into the synchronous `resolveImport` the compiler wants               |
+| `findImports(source)`                                           | Just the specifiers one file imports, in order                                         |
+| `loadImages(entry, files, host)`                                | Reads every image file the script and its imports draw; returns a `Map` of data URIs   |
+| `createImageResolver(images, resolve)`                          | Turns that `Map` into the synchronous `resolveImage` the compiler wants                |
+| `findImageFiles(source)`                                        | Just the image paths one file draws, in order                                          |
+| `loadProgram(source, options?)`                                 | The first pass: the script and everything it imports, parsed                           |
+| `collectSymbols(program)`                                       | The second: every macro, style, function and variable the program defines              |
+| `checkProgram(program, symbols)`                                | The third: every semantic diagnostic                                                   |
+| `expandMacros(expression, macros)`                              | One expression with its macros substituted, as trees                                   |
+| `resolveProperties(entries, styles)`                            | One metadata clause with its styles applied                                            |
+| `definitionOf(expression)`                                      | What a statement defines - a function, a variable - or nothing                         |
+| `emitLatex(expression)` / `parseLatex(latex)`                   | One expression tree to Desmos latex, and back                                          |
+| `convertToLatex(expr)`                                          | Axis 1's text-to-latex converter, kept for the v1 decompiler                           |
+| `decompileAxis(graph, options?)`                                | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source        |
+| `decompileExpression(expression, options?)`                     | One expression as the statement that builds it - the decompiler's unit of work         |
+| `decompileSettings(graph, options?)`                            | Just the `config { … }` block a graph's settings decompile to                          |
+| `graphActionNames(expressions)`                                 | The names a graph defines as actions, which `decompileExpression` wants                |
+| `writeBackGraph(source, { before, after }, compiled, options?)` | What changed on a live graph, as edits to the statements that produced it              |
+| `diffGraphs(before, after)`                                     | Just the changes between two readings of the same graph, by expression id              |
+| `applySourceEdits(source, edits)`                               | Applies one file's edits to its text                                                   |
+| `convertFromLatex(latex)`                                       | One piece of Desmos LaTeX back into the Axis 1 expression it compiles from             |
+| `DecompileInput` / `DecompileOptions`                           | `{ expressions, settings? }` and `{ indent? }`                                         |
+| `CompileOptions`                                                | `{ path?, resolveImport?, resolveImage? }`                                             |
+| `CompilationResult`                                             | `{ state, options, diagnostics, sourceMap, configOrigin?, dependencies }`              |
+| `StatementOrigin`                                               | `{ path, line, endLine, span, writable, reason? }` - where one item was written        |
+| `GraphSnapshot` / `GraphChange` / `SourceEdit`                  | A graph's `{ state, options }`, one change to it, and one replacement of a span        |
+| `WriteBackOptions` / `WriteBackResult`                          | `{ include?, indent?, path? }` and `{ edits, skipped }`                                |
+| `propertyWrites` / `applyPropertyWrites`                        | Which properties two decompiled readings of one item disagree on, merged onto a clause |
+| `mergeExpression(source, before, after)`                        | A changed expression with every unchanged part kept as the author wrote it             |
+| `ImportHost` / `ResolveImport` / `ResolvedImport`               | The import resolver types                                                              |
+| `ImageHost` / `ResolveImage` / `ResolvedImage`                  | The image resolver types                                                               |
 
 MIT

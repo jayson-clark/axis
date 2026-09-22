@@ -13,7 +13,7 @@ export default defineConfig({
         // and there is no second artifact to keep in sync. tsconfig.json
         // mirrors this as `paths` entries.
         alias: [
-            // Subpath exports (`@axis-dsl/language/monaco`) first: each is a
+            // Subpath exports (`@axis-dsl/language-service/monaco`) first: each is a
             // directory of its own under src/.
             {
                 find: /^@axis-dsl\/([^/]+)\/(.+)$/,

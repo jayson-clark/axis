@@ -16,7 +16,7 @@ import {
     AXIS_LIGHT_THEME,
     registerAxisLanguage,
     type MonacoApi,
-} from '@axis-dsl/language/monaco';
+} from '@axis-dsl/language-service/monaco';
 
 export interface AxisEditorHandle {
     format(): void;

@@ -7,6 +7,12 @@
 // here rather than in an app. Monaco matches a rule to every token its name
 // prefixes, so `keyword.axis` colours `keyword.metadata.axis` too unless a
 // rule of its own says otherwise.
+//
+// The rules without the `.axis` postfix are for the semantic tokens, which
+// Monaco matches as `type.modifier.modifier` in the legend's order - so
+// `function.defaultLibrary` is a builtin and `variable.readonly` a constant.
+// They are coloured as the grammar colours the same things, and the grammar's
+// own rules are more specific, so neither steps on the other.
 
 import type * as monaco from 'monaco-editor/editor';
 
@@ -36,6 +42,18 @@ const DARK_RULES: monaco.editor.ITokenThemeRule[] = [
     { token: 'operator.axis', foreground: 'd4d4d4' },
     { token: 'operator.range.axis', foreground: 'c586c0' },
     { token: 'invalid.axis', foreground: 'f44747' },
+
+    { token: 'keyword', foreground: 'c586c0' },
+    { token: 'function', foreground: 'dcdcaa' },
+    { token: 'function.defaultLibrary', foreground: '4ec9b0' },
+    { token: 'variable', foreground: '9cdcfe' },
+    { token: 'variable.readonly', foreground: '569cd6' },
+    { token: 'variable.defaultLibrary', foreground: '569cd6' },
+    { token: 'parameter', foreground: '9cdcfe', fontStyle: 'italic' },
+    { token: 'property', foreground: '9cdcfe' },
+    { token: 'enumMember', foreground: '4fc1ff' },
+    { token: 'macro', foreground: 'dcdcaa', fontStyle: 'italic' },
+    { token: 'type', foreground: '4ec9b0' },
 ];
 
 const LIGHT_RULES: monaco.editor.ITokenThemeRule[] = [
@@ -54,6 +72,18 @@ const LIGHT_RULES: monaco.editor.ITokenThemeRule[] = [
     { token: 'operator.axis', foreground: '000000' },
     { token: 'operator.range.axis', foreground: 'af00db' },
     { token: 'invalid.axis', foreground: 'cd3131' },
+
+    { token: 'keyword', foreground: 'af00db' },
+    { token: 'function', foreground: '795e26' },
+    { token: 'function.defaultLibrary', foreground: '267f99' },
+    { token: 'variable', foreground: '001080' },
+    { token: 'variable.readonly', foreground: '0070c1' },
+    { token: 'variable.defaultLibrary', foreground: '0070c1' },
+    { token: 'parameter', foreground: '001080', fontStyle: 'italic' },
+    { token: 'property', foreground: '001080' },
+    { token: 'enumMember', foreground: '0070c1' },
+    { token: 'macro', foreground: '795e26', fontStyle: 'italic' },
+    { token: 'type', foreground: '267f99' },
 ];
 
 /**

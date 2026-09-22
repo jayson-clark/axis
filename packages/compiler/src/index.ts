@@ -24,12 +24,17 @@ export {
     decompileAxis,
     decompileExpression,
     decompileSettings,
-    graphActionNames,
+    decompileTicker,
 } from './decompile';
-export type { DecompileExpressionOptions, DecompileInput, DecompileOptions } from './decompile';
+export type {
+    DecompiledStatement,
+    DecompileExpressionOptions,
+    DecompileInput,
+    DecompileResult,
+} from './decompile';
 export { applySourceEdits, diffGraphs, writeBackGraph } from './writeback';
-export { applyPropertyWrites, mergeExpression, propertyWrites, statementFor } from './readback';
-export type { PropertyWrite, ReadbackPlacement } from './readback';
+export { applyPropertyWrites, mergeExpression, propertyWrites } from './readback';
+export type { PropertyWrite } from './readback';
 export type {
     ChangeKind,
     GraphChange,

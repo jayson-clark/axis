@@ -47,12 +47,13 @@ import {
     AXIS_STATE_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
     type ConfigStatement,
-    type Expression,
+    type Diagnostic,
     type FolderStatement,
     lex,
     type Metadata,
     parse,
     printStatement,
+    type PropertyPlacement,
     sameTree,
     type Span,
     type Statement,
@@ -62,21 +63,14 @@ import {
     type TickerStatement,
 } from '@axis-dsl/syntax';
 import type { CompilationResult, StatementOrigin } from './compile';
+import { decompileExpression, decompileSettings, decompileTicker } from './decompile';
 import {
     applyPropertyWrites,
     applyWrites,
     cellValues,
-    columnFor,
-    configNode,
     importAliasFor,
-    type Item,
-    latexNode,
     mergeExpression,
-    metadataFor,
     propertyWrites,
-    type PropertyWrite,
-    type ReadbackPlacement,
-    statementFor,
     stringNode,
 } from './readback';
 
@@ -322,8 +316,14 @@ interface Located {
     depth: number;
 }
 
-/** A statement rebuilt, ready to be printed over the one it replaces. */
-type Rebuilt = { statement: Statement; unknown: string[] } | { reason: string };
+/**
+ * A statement rebuilt, ready to be printed over the one it replaces, with
+ * anything about the change it could not say - or why there is no statement.
+ */
+type Rebuilt = { statement: Statement; notes: string[] } | { reason: string };
+
+/** A graph item, or a table column, as a bag of keys. */
+type Item = Record<string, unknown>;
 
 class Writer {
     private readonly edits: SourceEdit[] = [];
@@ -423,9 +423,9 @@ class Writer {
             return this.skip(change, origin.reason ?? 'this statement cannot be rewritten');
         }
 
-        const was = change.before as unknown as Item;
-        const now = change.after as unknown as Item;
-        if (was.folderId !== now.folderId) {
+        const was = change.before!;
+        const now = change.after!;
+        if ((was as Item).folderId !== (now as Item).folderId) {
             return this.skip(change, 'moving an expression between folders is not written back');
         }
 
@@ -435,19 +435,9 @@ class Writer {
         // matches its own default, so a slider written `0..10` comes back
         // carrying only the min - and rewriting from that would quietly take
         // the max out of somebody's script as the price of dragging it.
-        let rebuilt: Rebuilt;
-        try {
-            rebuilt = this.rebuild(located.statement, was, now);
-        } catch (error) {
-            rebuilt = {
-                reason: `Desmos holds latex Axis cannot read: ${(error as Error).message}`,
-            };
-        }
+        const rebuilt = this.rebuild(located.statement, was, now);
         if ('reason' in rebuilt) return this.skip(change, rebuilt.reason);
-
-        if (rebuilt.unknown.length > 0) {
-            this.skip(change, unknownReason(rebuilt.unknown));
-        }
+        for (const note of rebuilt.notes) this.skip(change, note);
 
         // A folder is rewritten up to its `{` and its own metadata, and not
         // one character into its body: its statements are their own.
@@ -475,98 +465,120 @@ class Writer {
         return null;
     }
 
-    /** A statement with the difference between two readings of it written in. */
-    private rebuild(statement: Statement, was: Item, now: Item): Rebuilt {
-        switch (statement.kind) {
-            case 'ExpressionStatement': {
-                let expression = statement.expression;
-                if (was.latex !== now.latex) {
-                    if (typeof now.latex !== 'string' || now.latex.trim() === '') {
-                        return { reason: 'an empty expression has no statement to write' };
-                    }
-                    expression = mergeExpression(
-                        statement.expression,
-                        readLatex(was.latex),
-                        latexNode(now.latex),
-                    );
-                }
-                const { metadata, unknown } = this.properties('expression', statement, was, now);
-                return { statement: { ...statement, expression, metadata }, unknown };
-            }
+    /**
+     * A statement with the difference between two readings of it written in.
+     *
+     * Both readings are decompiled - the decompiler is the one place that
+     * knows what a graph item says as Axis - and it is the difference between
+     * the two statements that is merged onto the author's, part by part.
+     */
+    private rebuild(statement: Statement, was: DesmosExpression, now: DesmosExpression): Rebuilt {
+        if (statement.kind === 'TableStatement') {
+            return this.table(statement, was as Table, now as Table);
+        }
 
-            case 'NoteStatement': {
-                const text: StringLiteral =
-                    was.text === now.text
-                        ? statement.text
-                        : { ...stringNode(String(now.text ?? '')), span: statement.text.span };
-                const { metadata, unknown } = this.properties('note', statement, was, now);
-                return { statement: { ...statement, text, metadata }, unknown };
-            }
+        const before = decompileExpression(was);
+        const after = decompileExpression(now);
+        const notes = problems(before.diagnostics, after.diagnostics);
+        const b = before.statement;
+        const a = after.statement;
+        if (!a || !b) {
+            return {
+                reason:
+                    after.diagnostics[0]?.message ??
+                    before.diagnostics[0]?.message ??
+                    'an empty expression has no statement to write',
+            };
+        }
+        if (
+            statement.kind === 'ImageStatement' &&
+            (was as Item).image_url !== (now as Item).image_url
+        ) {
+            // The source is the one thing never taken from the graph. A
+            // picture named by path was read off a disk and inlined as a
+            // `data:` URI before the graph existed, so the graph carries the
+            // bytes and has no memory of the path - and writing its URL back
+            // would put the whole picture, base64'd, where the filename was.
+            notes.push(unknownReason(['image_url']));
+        }
+        // A key whose change alone leaves the reading as it was is one no
+        // Axis property says. The rest of the change is still written.
+        const unsaid = changedKeys(was, now).filter(key => {
+            const alone = decompileExpression({
+                ...was,
+                [key]: (now as Item)[key],
+            } as DesmosExpression);
+            return alone.statement !== null && sameTree(alone.statement, b);
+        });
+        if (unsaid.length > 0) notes.push(unknownReason(unsaid));
+        if (sameTree(a, b)) {
+            return { reason: notes[0] ?? unknownReason(changedKeys(was, now)) };
+        }
 
-            case 'ImageStatement': {
-                // The source is the one thing never taken from the graph. A
-                // picture named by path was read off a disk and inlined as a
-                // `data:` URI before the graph existed, so the graph carries
-                // the bytes and has no memory of the path - and writing its
-                // URL back would put the whole picture, base64'd, where the
-                // filename was.
-                const { metadata, unknown } = this.properties('image', statement, was, now);
-                if (was.image_url !== now.image_url) unknown.push('image_url');
-                return { statement: { ...statement, metadata }, unknown };
+        if (
+            statement.kind === 'ExpressionStatement' &&
+            b.kind === 'ExpressionStatement' &&
+            a.kind === 'ExpressionStatement'
+        ) {
+            const expression = mergeExpression(statement.expression, b.expression, a.expression);
+            const metadata = this.merged('expression', statement, b.metadata, a.metadata);
+            return { statement: { ...statement, expression, metadata }, notes };
+        }
+        if (
+            statement.kind === 'NoteStatement' &&
+            b.kind === 'NoteStatement' &&
+            a.kind === 'NoteStatement'
+        ) {
+            const text: StringLiteral =
+                b.text.value === a.text.value
+                    ? statement.text
+                    : { ...stringNode(a.text.value), span: statement.text.span };
+            const metadata = this.merged('note', statement, b.metadata, a.metadata);
+            return { statement: { ...statement, text, metadata }, notes };
+        }
+        if (
+            statement.kind === 'ImageStatement' &&
+            b.kind === 'ImageStatement' &&
+            a.kind === 'ImageStatement'
+        ) {
+            const metadata = this.merged('image', statement, b.metadata, a.metadata);
+            return { statement: { ...statement, metadata }, notes };
+        }
+        if (b.kind === 'FolderStatement' && a.kind === 'FolderStatement') {
+            const renamed = !sameTree(b.title, a.title);
+            if (statement.kind === 'FolderStatement') {
+                const title = renamed ? a.title : statement.title;
+                const metadata = this.merged('folder', statement, b.metadata, a.metadata);
+                return { statement: { ...statement, title, metadata }, notes };
             }
-
-            case 'FolderStatement': {
-                const title =
-                    was.title === now.title
-                        ? statement.title
-                        : typeof now.title === 'string'
-                          ? stringNode(now.title)
-                          : null;
-                const { metadata, unknown } = this.properties('folder', statement, was, now);
-                return { statement: { ...statement, title, metadata }, unknown };
+            if (statement.kind === 'ImportStatement') {
+                // The folder an import stands for is titled by its `as`, or
+                // by the file when it has none.
+                const alias = renamed
+                    ? importAliasFor(a.title?.value, statement.path.value)
+                    : statement.alias;
+                const metadata = this.merged('import', statement, b.metadata, a.metadata);
+                return { statement: { ...statement, alias, metadata }, notes };
             }
-
-            case 'ImportStatement': {
-                const alias =
-                    was.title === now.title
-                        ? statement.alias
-                        : importAliasFor(
-                              typeof now.title === 'string' ? now.title : undefined,
-                              statement.path.value,
-                          );
-                const { metadata, unknown } = this.properties('import', statement, was, now);
-                return { statement: { ...statement, alias, metadata }, unknown };
-            }
-
-            case 'TableStatement':
-                return this.table(statement, was as unknown as Table, now as unknown as Table);
         }
 
         return { reason: 'this statement is not one a graph item is written from' };
     }
 
-    /** A statement's metadata with the properties that changed rewritten. */
-    private properties(
-        placement: ReadbackPlacement,
+    /** A statement's metadata with the properties the two readings disagree on rewritten. */
+    private merged(
+        placement: PropertyPlacement,
         statement: { metadata: Metadata | null; span: Span },
-        was: Item,
-        now: Item,
-    ): { metadata: Metadata | null; unknown: string[] } {
-        const { writes, unknown } = propertyWrites(
+        before: Metadata | null,
+        after: Metadata | null,
+    ): Metadata | null {
+        const writes = propertyWrites(
             placement,
-            was,
-            now,
+            before?.entries ?? [],
+            after?.entries ?? [],
             statement.metadata?.entries ?? [],
         );
-        return {
-            metadata: applyPropertyWrites(
-                statement.metadata,
-                writes,
-                statement.span.end,
-                this.source,
-            ),
-            unknown,
-        };
+        return applyPropertyWrites(statement.metadata, writes, statement.span.end, this.source);
     }
 
     /**
@@ -581,67 +593,56 @@ class Writer {
         }
 
         const columns: TableColumn[] = [];
-        const unknown = Object.keys({ ...was, ...now }).filter(
+        const notes: string[] = [];
+        const unsaid = Object.keys({ ...was, ...now }).filter(
             key =>
                 !['type', 'id', 'folderId', 'columns'].includes(key) &&
                 !same((was as unknown as Item)[key], (now as unknown as Item)[key]),
         );
+        if (unsaid.length > 0) notes.push(unknownReason(unsaid));
 
         for (const column of now.columns) {
+            // A blank among a column's cells is something a list cannot hold;
+            // the decompiler writes one as `0 / 0`, which is not the blank the
+            // graph has, so it is refused here rather than written wrong.
+            const cells = cellValues(column.values ?? []);
+            if (cells.some(cell => cell.trim() === '')) {
+                return { reason: 'a table cell left empty has no Axis spelling' };
+            }
+
+            const after = decompiledColumn(now, column);
+            if ('reason' in after) return after;
+            notes.push(...after.notes);
+
             const index = was.columns.findIndex(candidate => candidate.id === column.id);
             if (index < 0) {
-                columns.push(columnFor(column as unknown as Item));
+                columns.push(after.column);
                 continue;
             }
 
+            const before = decompiledColumn(was, was.columns[index]);
+            if ('reason' in before) return before;
             const written = statement.columns[index];
-            const before = was.columns[index] as unknown as Item;
-            const after = column as unknown as Item;
-
-            const header =
-                before.latex === after.latex
-                    ? written.header
-                    : mergeExpression(
-                          written.header,
-                          readLatex(before.latex),
-                          latexNode(String(after.latex)),
-                      );
+            const [b, a] = [before.column, after.column];
 
             let values = written.values;
-            if (!same(before.values, after.values)) {
-                const cells = cellValues((after.values as string[] | undefined) ?? []);
-                if (cells.some(cell => cell.trim() === '')) {
-                    return { reason: 'a table cell left empty has no Axis spelling' };
-                }
-                const previous = (before.values as string[] | undefined) ?? [];
-                values =
-                    written.values === null && cells.length === 0
-                        ? null
-                        : cells.map((cell, at) =>
-                              mergeExpression(
-                                  written.values?.[at],
-                                  readLatex(previous[at]),
-                                  latexNode(cell),
-                              ),
-                          );
+            if (!same(was.columns[index].values, column.values)) {
+                values = a.values
+                    ? a.values.map((value, at) =>
+                          mergeExpression(written.values?.[at], b.values?.[at], value),
+                      )
+                    : null;
             }
 
-            const writes = propertyWrites('column', before, after, written.metadata?.entries ?? []);
-            unknown.push(...writes.unknown);
             columns.push({
                 ...written,
-                header,
+                header: mergeExpression(written.header, b.header, a.header),
                 values,
-                metadata: applyPropertyWrites(
-                    written.metadata,
-                    writes.writes,
-                    written.span.end,
-                    this.source,
-                ),
+                metadata: this.merged('column', written, b.metadata, a.metadata),
             });
         }
 
-        return { statement: { ...statement, columns }, unknown: [...new Set(unknown)] };
+        return { statement: { ...statement, columns }, notes: [...new Set(notes)] };
     }
 
     /** A folder's `folder "Title" { @ …` rewritten, and its body left alone. */
@@ -702,11 +703,8 @@ class Writer {
             const folderId = (item as { folderId?: string }).folderId;
             if (item.type === 'folder') continue;
 
-            const statement = statementFor(item);
-            if ('reason' in statement) {
-                this.skip(change, statement.reason);
-                continue;
-            }
+            const statement = this.made(change, item);
+            if (!statement) continue;
 
             if (folderId !== undefined && folders.has(folderId)) {
                 members.set(folderId, [...(members.get(folderId) ?? []), statement]);
@@ -719,11 +717,12 @@ class Writer {
 
         for (const change of changes) {
             if (change.after?.type !== 'folder') continue;
-            const statement = statementFor(change.after, members.get(change.id!) ?? []);
-            if ('reason' in statement) {
-                this.skip(change, statement.reason);
-            } else {
-                pending.push({ change, statement });
+            const statement = this.made(change, change.after);
+            if (statement?.kind === 'FolderStatement') {
+                pending.push({
+                    change,
+                    statement: { ...statement, body: members.get(change.id!) ?? [] },
+                });
             }
         }
 
@@ -735,6 +734,30 @@ class Writer {
         for (const { change, statement } of pending) {
             this.append(statement, change);
         }
+    }
+
+    /**
+     * The statement a new item is written as - the decompiler's - or nothing,
+     * with the reason reported.
+     */
+    private made(change: GraphChange, item: DesmosExpression): Statement | null {
+        // A picture added in the calculator arrives as its own bytes, and a
+        // script has no statement meaning "these bytes" - only ones that name
+        // a file or a URL. Writing it out would put the whole picture,
+        // base64'd, into somebody's source.
+        if (item.type === 'image' && /^data:/i.test(item.image_url ?? '')) {
+            this.skip(
+                change,
+                'add this picture to the project and draw it with `image`, to give it a name',
+            );
+            return null;
+        }
+        const { statement, diagnostics } = decompileExpression(item);
+        for (const diagnostic of diagnostics) this.skip(change, diagnostic.message);
+        if (!statement && diagnostics.length === 0) {
+            this.skip(change, 'an empty expression has no statement to write');
+        }
+        return statement;
     }
 
     /** A new statement written at the end of the folder it was made in. */
@@ -795,9 +818,7 @@ class Writer {
     private append(statement: Statement, change: GraphChange): void {
         const printed = printStatement(statement, { indent: this.unit });
         const end = this.source.length;
-        if (this.source.trim() === '') {
-            this.insert(end, `${printed}\n`, change);
-        } else if (this.source.endsWith('\n')) {
+        if (this.source.trim() === '' || this.source.endsWith('\n')) {
             this.insert(end, `${printed}\n`, change);
         } else {
             this.insert(end, `\n${printed}`, change);
@@ -831,31 +852,16 @@ class Writer {
 
         const entries = config?.entries ?? [];
         const framed = entries.some(entry => VIEWPORT.has(entry.key.name));
-        const changed = CONFIG_NAMES.filter(
-            name => !same(configValue(this.before, name), configValue(this.after, name)),
+        const all = propertyWrites(
+            'config',
+            decompileSettings(this.before)?.entries ?? [],
+            decompileSettings(this.after)?.entries ?? [],
+            entries,
         );
-        const writable = changed.filter(name => framed || !VIEWPORT.has(name));
+        const writes = all.filter(write => framed || !VIEWPORT.has(write.name));
 
-        const writes: PropertyWrite[] = [];
-        const unwritable: string[] = [];
-        for (const name of writable) {
-            const property = [...entries].reverse().find(entry => entry.key.name === name);
-            const now = configValue(this.after, name);
-            const value = configNode(name, now, property);
-            if (value !== undefined) {
-                writes.push({ name, value });
-            } else if (now === undefined) {
-                if (property) writes.push({ name, remove: true });
-            } else {
-                unwritable.push(name);
-            }
-        }
-
-        if (unwritable.length > 0) {
-            this.skip(change, `${list(unwritable)} changed to a value the script cannot write`);
-        }
         if (writes.length === 0) {
-            if (changed.length > writable.length) {
+            if (all.length > 0) {
                 this.skip(change, 'the viewport moved, and this script does not set one');
             }
             return;
@@ -900,56 +906,26 @@ class Writer {
         const statement = this.top.find(
             (candidate): candidate is TickerStatement => candidate.kind === 'TickerStatement',
         );
+        const after = now && decompileTicker(now);
+        for (const diagnostic of after?.diagnostics ?? []) this.skip(change, diagnostic.message);
 
         if (!statement) {
-            if (was)
+            if (was) {
                 return this.skip(change, 'the ticker is written in a file this script imports');
-            if (!now) return;
-            try {
-                const made: TickerStatement = {
-                    kind: 'TickerStatement',
-                    handler: latexNode(now.handlerLatex!),
-                    metadata: metadataFor('ticker', now as unknown as Item),
-                    span: { start: 0, end: 0 },
-                };
-                return this.append(made, change);
-            } catch (error) {
-                return this.skip(
-                    change,
-                    `Desmos holds latex Axis cannot read: ${(error as Error).message}`,
-                );
             }
+            if (after?.statement) this.append(after.statement, change);
+            return;
         }
 
         if (!now) {
             return this.replace(removalSpan(this.source, statement.span), '', change);
         }
+        const a = after?.statement;
+        const b = was && decompileTicker(was).statement;
+        if (!a) return;
 
-        let handler: Expression;
-        try {
-            handler =
-                was?.handlerLatex === now.handlerLatex
-                    ? statement.handler
-                    : mergeExpression(
-                          statement.handler,
-                          readLatex(was?.handlerLatex),
-                          latexNode(now.handlerLatex!),
-                      );
-        } catch (error) {
-            return this.skip(
-                change,
-                `Desmos holds latex Axis cannot read: ${(error as Error).message}`,
-            );
-        }
-
-        const { metadata, unknown } = this.properties(
-            'ticker',
-            statement,
-            (was ?? {}) as unknown as Item,
-            now as unknown as Item,
-        );
-        if (unknown.length > 0) this.skip(change, unknownReason(unknown));
-
+        const handler = mergeExpression(statement.handler, b?.handler, a.handler);
+        const metadata = this.merged('ticker', statement, b?.metadata ?? null, a.metadata);
         const printed = this.print({ ...statement, handler, metadata }, statement.span, 0);
         if (typeof printed !== 'string') return this.skip(change, printed.reason);
         this.replace(statement.span, printed, change);
@@ -1039,9 +1015,34 @@ class Writer {
 
 const key = (span: Span) => `${span.start}:${span.end}`;
 
-/** Latex off a reading, as a tree, or nothing for latex that is not there. */
-function readLatex(latex: unknown): Expression | undefined {
-    return typeof latex === 'string' && latex !== '' ? latexNode(latex) : undefined;
+/**
+ * One column of a table, decompiled on its own - so a column whose header
+ * cannot be read is that column's problem, and the rest stay lined up.
+ */
+function decompiledColumn(
+    table: Table,
+    column: Table['columns'][number],
+): { column: TableColumn; notes: string[] } | { reason: string } {
+    const { statement, diagnostics } = decompileExpression({ ...table, columns: [column] });
+    const read = statement?.kind === 'TableStatement' ? statement.columns[0] : undefined;
+    if (!read) {
+        return { reason: diagnostics[0]?.message ?? 'a column of this table cannot be read' };
+    }
+    return { column: read, notes: diagnostics.map(diagnostic => diagnostic.message) };
+}
+
+/** What the decompiler could not say about `after` that it could about `before`. */
+function problems(before: readonly Diagnostic[], after: readonly Diagnostic[]): string[] {
+    const known = new Set(before.map(diagnostic => diagnostic.message));
+    return after.map(diagnostic => diagnostic.message).filter(message => !known.has(message));
+}
+
+/** The keys of an item that differ between two readings of it. */
+function changedKeys(was: DesmosExpression, now: DesmosExpression): string[] {
+    const [a, b] = [was as unknown as Item, now as unknown as Item];
+    return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
+        key => !same(a[key], b[key]),
+    );
 }
 
 /** Whether `text` parses back as exactly `statement`, layout aside. */
