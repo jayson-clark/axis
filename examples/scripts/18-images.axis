@@ -24,7 +24,14 @@ image "./images/wave.png" @ name: "Wave", center: c, width: w, height: w * 0.6
 
 // `opacity` fades it, `foreground` draws it over the graph rather than under
 // it, and `angle` turns it, anticlockwise, in radians.
-image "./images/wave.png" @ center: (3, -2), width: 5, height: 3, angle: pi / 12, opacity: 0.4, foreground
+image "./images/wave.png" @{
+    center: (3, -2)
+    width: 5
+    height: 3
+    angle: pi / 12
+    opacity: 0.4
+    foreground
+}
 
 // The picture is a picture; the curve it came from is still an expression.
 y = 2 * sin(x) @ color: BLUE, lineWidth: 3

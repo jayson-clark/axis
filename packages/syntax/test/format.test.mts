@@ -400,14 +400,14 @@ describe('format: every example and fixture', () => {
         }
     }
 
-    test('the examples are already formatted, all but the one line too long for them', () => {
+    test('the examples are already formatted', () => {
         const unformatted = axisFiles(examples).filter(path => {
             const source = readFileSync(path, 'utf8');
             return format(source) !== source;
         });
         assert.deepEqual(
             unformatted.map(path => path.slice(examples.length + 1)),
-            ['18-images.axis'],
+            [],
         );
     });
 });
