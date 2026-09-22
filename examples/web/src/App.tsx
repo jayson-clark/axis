@@ -17,19 +17,19 @@ const STARTER_SOURCE = `// Welcome to Axis — a scripting language for Desmos.
 // Edit on the left, watch the graph update on the right.
 
 config {
-    degreeMode: false,
+    degreeMode: false
     showGrid: true
 }
 
 "Getting started"
 
-f(x) = x^2 - 4x + 3 # color: #c74440
+f(x) = x ^ 2 - 4x + 3 @ color: #c74440
 
-g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
+g(x) = sin(x) + cos(2x) @ color: #2d70b3, lineWidth: 2
 
-a = 1.5 # playing: true
+a = 1.5 @ playing
 
-h(x) = a * f(x) # color: #388c46, lineStyle: DASHED
+h(x) = a * f(x) @ color: #388c46, lineStyle: DASHED
 `;
 
 /** Follows the OS setting. There is no in-app toggle to keep in sync with it. */

@@ -8,8 +8,8 @@
         "watch": "tsc --watch"
     },
     "dependencies": {
-        "@axis-dsl/syntax": "workspace:*",
-        "@axis-dsl/compiler": "workspace:*"
+        "@axis-dsl/compiler": "workspace:*",
+        "@axis-dsl/syntax": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "catalog:",

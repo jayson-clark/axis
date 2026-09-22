@@ -8,8 +8,9 @@
         // TypeScript allows only one wildcard per pattern, so package subpath
         // exports are listed individually.
         "paths": {
-            "@axis-dsl/language/monaco": ["../../packages/language/src/monaco/index.ts"],
-            "@axis-dsl/language/vscode": ["../../packages/language/src/vscode/index.ts"],
+            "@axis-dsl/language-service/monaco": [
+                "../../packages/language-service/src/monaco/index.ts"
+            ],
             "@axis-dsl/viewer/protocol": ["../../packages/viewer/src/protocol/index.ts"],
             "@axis-dsl/*": ["../../packages/*/src/index.ts"]
         }
