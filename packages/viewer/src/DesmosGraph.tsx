@@ -75,28 +75,15 @@ export interface DesmosGraphProps {
  */
 const DEFAULT_CHANGE_DELAY = 400;
 
-/** A calculator's state, in the parts the rest of Axis keeps a graph in. */
+/**
+ * A calculator's graph, in the two halves a graph is applied as.
+ *
+ * `settings` is copied rather than handed over: it is the live observable
+ * object Desmos keeps updating, and a reading has to stay what it was when it
+ * was taken.
+ */
 function reading(calculator: Calculator): GraphReading {
-    const state = calculator.getState();
-
-    const { includeFunctionParametersInRandomSeed } = state;
-    // A calculator with nothing in it yet answers with no expression list at
-    // all, which is a graph of none rather than a graph that cannot be read.
-    const held = state.expressions ?? { list: [] };
-
-    return {
-        expressions: held.list ?? [],
-        // `settings` is the live options object rather than part of the state:
-        // Desmos keeps the two apart, and so does everything reading this.
-        settings: { ...calculator.settings },
-        graph: state.graph,
-        // The flags Desmos reads off the top of a state rather than out of its
-        // `graph`, which is also where it writes them back.
-        ...(includeFunctionParametersInRandomSeed !== undefined && {
-            state: { includeFunctionParametersInRandomSeed },
-        }),
-        ticker: held.ticker,
-    };
+    return { state: calculator.getState(), options: { ...calculator.settings } };
 }
 
 /**

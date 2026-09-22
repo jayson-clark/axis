@@ -33,6 +33,8 @@ export type {
     DecompileResult,
 } from './decompile';
 export { applySourceEdits, diffGraphs, writeBackGraph } from './writeback';
+export { applyPropertyWrites, mergeExpression, propertyWrites } from './readback';
+export type { PropertyWrite } from './readback';
 export type {
     ChangeKind,
     GraphChange,
