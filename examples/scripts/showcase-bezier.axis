@@ -19,7 +19,7 @@ folder "Control points - drag these" {
     C = (4, -5) @ color: BLACK, pointSize: 16, dragMode: XY, label: "C", showLabel
     D = (6, 3) @ color: BLACK, pointSize: 16, dragMode: XY, label: "D", showLabel
     "The control polygon."
-    hull = [A, B, C, D] @ color: BLACK, points: false, lineStyle: DASHED, lineOpacity: 0.35
+    hull = [A, B, C, D] @ color: BLACK, lines, points: false, lineStyle: DASHED, lineOpacity: 0.35
 }
 
 "The curve itself, as a parametric point in t."
@@ -33,11 +33,11 @@ folder "de Casteljau at s" {
     E = A + s * (B - A) @ color: RED, pointSize: 12
     F = B + s * (C - B) @ color: RED, pointSize: 12
     G = C + s * (D - C) @ color: RED, pointSize: 12
-    L1 = [E, F, G] @ color: RED, points: false, lineOpacity: 0.6
+    L1 = [E, F, G] @ color: RED, lines, points: false, lineOpacity: 0.6
     "Second round."
     H = E + s * (F - E) @ color: BLUE, pointSize: 12
     I = F + s * (G - F) @ color: BLUE, pointSize: 12
-    L2 = [H, I] @ color: BLUE, points: false, lineOpacity: 0.6
+    L2 = [H, I] @ color: BLUE, lines, points: false, lineOpacity: 0.6
     "And the point on the curve."
     J = H + s * (I - H) @ color: PURPLE, pointSize: 20
 }

@@ -27,8 +27,8 @@ folder "Lists as points" {
     (N, N ^ 2) @ color: RED, pointSize: 12
     "One list against a function of it."
     (N, sqrt(N)) @ color: BLUE, pointSize: 12
-    "points: false connects them into a path instead."
-    (N, 0.5N) @ color: GREEN, points: false, lineWidth: 3
+    "lines connects them into a path, and points: false leaves only that."
+    (N, 0.5N) @ color: GREEN, lines, points: false, lineWidth: 3
 }
 
 folder "A list of graphs" {

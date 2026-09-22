@@ -42,5 +42,5 @@ folder "Animation" {
     (t, sin(t)) @ color: BLUE, pointSize: 18
     y = sin(x) @ color: BLUE, lineOpacity: 0.4
     "A trailing chord back to the origin."
-    Q = [(0, 0), (t, sin(t))] @ color: ORANGE, points: false, lineStyle: DASHED
+    Q = [(0, 0), (t, sin(t))] @ color: ORANGE, lines, points: false, lineStyle: DASHED
 }

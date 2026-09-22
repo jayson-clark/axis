@@ -16,16 +16,16 @@ config {
 ang = 0.9 @ slider: 0..2pi step 0.005, playing
 
 folder "The circle" {
-    (cos(t), sin(t)) @ color: BLACK, lineWidth: 2, lineOpacity: 0.5
+    (cos(t), sin(t)) @ color: BLACK, lineWidth: 2, lineOpacity: 0.5, domain: 0..tau
     P = (cos(ang), sin(ang)) @ color: PURPLE, pointSize: 18
     "The radius out to P."
-    R = [(0, 0), P] @ color: PURPLE, points: false, lineWidth: 3
+    R = [(0, 0), P] @ color: PURPLE, lines, points: false, lineWidth: 3
 }
 
 folder "Reading off the components" {
     "cos is the horizontal leg, sin the vertical one."
-    A = [(0, 0), (cos(ang), 0)] @ color: RED, points: false, lineWidth: 4
-    B = [(cos(ang), 0), P] @ color: BLUE, points: false, lineWidth: 4
+    A = [(0, 0), (cos(ang), 0)] @ color: RED, lines, points: false, lineWidth: 4
+    B = [(cos(ang), 0), P] @ color: BLUE, lines, points: false, lineWidth: 4
     (cos(ang), 0) @{
         color: RED
         pointSize: 14
@@ -48,6 +48,7 @@ folder "Unrolled onto the wave" {
     (ang + 3, sin(ang)) @ color: BLUE, pointSize: 16
     T = [P, (ang + 3, sin(ang))] @{
         color: BLUE
+        lines
         points: false
         lineStyle: DOTTED
         lineOpacity: 0.6

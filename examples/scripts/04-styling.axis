@@ -30,10 +30,12 @@ folder "Point style" {
 }
 
 folder "Fills" {
-    "fill shades the inside of a closed curve"
-    x ^ 2 + y ^ 2 = 9 @ color: BLUE, fill, fillOpacity: 0.25
+    "fill shades the inside of a closed parametric curve or a polygon"
+    (3cos(t), 3sin(t)) @ color: BLUE, fill, fillOpacity: 0.25, domain: 0..tau
     "lines: false keeps the fill and drops the outline"
-    (x - 6) ^ 2 + y ^ 2 = 4 @ color: RED, fill, fillOpacity: 0.5, lines: false
+    (6 + 2cos(t), 2sin(t)) @ color: RED, fill, fillOpacity: 0.5, lines: false, domain: 0..tau
+    "An inequality shades itself; fillOpacity says how strongly"
+    (x + 6) ^ 2 + y ^ 2 <= 4 @ color: GREEN, fillOpacity: 0.3
 }
 
 folder "Labels" {
@@ -51,10 +53,10 @@ folder "Labels" {
 }
 
 folder "Points or lines only" {
-    "A list of points draws both by default"
+    "A list of points draws its points and nothing between them"
     A = [(-5, -6), (-3, -5), (-1, -6), (1, -5)] @ color: ORANGE
-    "points: false leaves the connecting path"
-    B = [(-5, -8), (-3, -7), (-1, -8), (1, -7)] @ color: BLUE, points: false
-    "lines: false leaves the points"
-    C = [(-5, -10), (-3, -9), (-1, -10), (1, -9)] @ color: GREEN, lines: false
+    "lines joins them up, in order"
+    B = [(-5, -8), (-3, -7), (-1, -8), (1, -7)] @ color: BLUE, lines
+    "and with points: false only the path is left"
+    C = [(-5, -10), (-3, -9), (-1, -10), (1, -9)] @ color: GREEN, lines, points: false
 }

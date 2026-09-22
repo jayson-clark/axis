@@ -29,7 +29,9 @@ ratio = diff / small @ hidden
 
 trace(t) = (diff * cos(t) + pen * cos(ratio * t), diff * sin(t) - pen * sin(ratio * t)) @ hidden
 
-trace(t) @ color: ORANGE, lineWidth: 2
+// The pattern closes once the small circle has rolled round `small` times, so
+// that is how far t has to run for the whole of it to be drawn.
+trace(t) @ color: ORANGE, lineWidth: 2, domain: 0..small * tau
 
 folder "The rolling circles" {
     "The fixed outer circle."
@@ -38,11 +40,12 @@ folder "The rolling circles" {
     w = 0 @ slider: 0..2pi step 0.005, playing
     centre = (diff * cos(w), diff * sin(w)) @ color: PURPLE, pointSize: 10
     (centre.x + small * cos(t), centre.y + small * sin(t)) @{
+        domain: 0..tau
         color: PURPLE
         lineWidth: 2
         lineOpacity: 0.6
     }
     "The pen, riding the small circle."
     tip = trace(w) @ color: ORANGE, pointSize: 16
-    arm = [centre, tip] @ color: ORANGE, points: false, lineOpacity: 0.7
+    arm = [centre, tip] @ color: ORANGE, lines, points: false, lineOpacity: 0.7
 }
