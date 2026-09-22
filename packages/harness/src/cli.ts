@@ -8,12 +8,14 @@
 // verdict Desmos reached on it, the graph state, and any errors. `--json` makes
 // that machine-readable; the default is a summary meant to be read.
 //
-// Exit code 1 means the graph has errors, so it works in a check without
-// anybody having to parse the output.
+// Exit code 1 means the script has errors - the compiler's or Desmos' - so it
+// works in a check without anybody having to parse the output.
 
+import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { createImageResolver, loadImages } from '@axis-dsl/compiler';
+import { type Diagnostic, lineIndex } from '@axis-dsl/syntax';
 import { AxisCalculator, Inspection, InspectedExpression, withCalculator } from './calculator';
 import { nodeImageHost, readAxisFile } from './files';
 
@@ -47,7 +49,7 @@ Options
   --offline               fail rather than fetch from desmos.com
   -h, --help              show this
 
-Exits 1 if any expression is in error.`;
+Exits 1 if the compiler reports an error or any expression is in error.`;
 
 function parseArgs(argv: string[]): Args {
     const args: Args = {
@@ -178,9 +180,43 @@ function describe(expression: InspectedExpression): string {
     return `  ${expression.index}  ${kind.padEnd(10)} ${label}${evaluated}`;
 }
 
-function report(name: string, inspection: Inspection, evaluated: [string, unknown][]): void {
+/**
+ * `file:line:column  code  message`, as an editor would point at it. An
+ * imported file's diagnostic carries its path, and its lines are counted in
+ * that file rather than in the script.
+ */
+function formatDiagnostic(diagnostic: Diagnostic, name: string, source: string): string {
+    let text = source;
+    if (diagnostic.path !== undefined) {
+        try {
+            text = readFileSync(diagnostic.path, 'utf8');
+        } catch {
+            text = '';
+        }
+    }
+    const { line, character } = lineIndex(text).positionAt(diagnostic.span.start);
+    const where = `${diagnostic.path ?? name}:${line + 1}:${character + 1}`;
+    return `  ${where}  ${diagnostic.severity} ${diagnostic.code}\n        ↳ ${diagnostic.message}`;
+}
+
+function report(
+    name: string,
+    inspection: Inspection,
+    evaluated: [string, unknown][],
+    diagnostics: string[],
+): void {
     const { expressions, errors, consoleErrors } = inspection;
-    console.log(`${name} — ${expressions.length} expressions, ${errors.length} errors\n`);
+    console.log(
+        `${name} — ${expressions.length} expressions, ${diagnostics.length} diagnostics, ${errors.length} errors\n`,
+    );
+
+    if (diagnostics.length > 0) {
+        console.log('Compiler');
+        for (const diagnostic of diagnostics) {
+            console.log(diagnostic);
+        }
+        console.log('\nDesmos');
+    }
 
     for (const expression of expressions) {
         console.log(describe(expression));
@@ -234,11 +270,17 @@ async function main(): Promise<number> {
 
     return withCalculator(
         async calculator => {
-            await calculator.load(script.source, {
+            const compiled = await calculator.load(script.source, {
                 path: 'path' in script ? script.path : undefined,
                 resolveImport: script.resolveImport,
                 resolveImage: script.resolveImage,
             });
+            const diagnostics = compiled.diagnostics.map(diagnostic =>
+                formatDiagnostic(diagnostic, script.name, script.source),
+            );
+            const compileErrors = compiled.diagnostics.filter(
+                diagnostic => diagnostic.severity === 'error',
+            );
 
             const inspection = await calculator.inspect();
             const evaluated = await evaluateAll(calculator, args.evaluate);
@@ -254,6 +296,7 @@ async function main(): Promise<number> {
                     JSON.stringify(
                         {
                             file: script.name,
+                            diagnostics: args.errorsOnly ? compileErrors : compiled.diagnostics,
                             ...(args.errorsOnly ? { errors: inspection.errors } : inspection),
                             evaluated: Object.fromEntries(evaluated),
                         },
@@ -262,14 +305,19 @@ async function main(): Promise<number> {
                     ),
                 );
             } else if (args.errorsOnly) {
+                for (const diagnostic of compileErrors) {
+                    console.log(
+                        formatDiagnostic(diagnostic, script.name, script.source).trimStart(),
+                    );
+                }
                 for (const error of inspection.errors) {
                     console.log(`${error.index}  ${error.latex ?? error.id}\n  ↳ ${error.message}`);
                 }
             } else {
-                report(script.name, inspection, evaluated);
+                report(script.name, inspection, evaluated, diagnostics);
             }
 
-            return inspection.errors.length > 0 ? 1 : 0;
+            return inspection.errors.length > 0 || compileErrors.length > 0 ? 1 : 0;
         },
         { apiKey: args.apiKey, offline: args.offline },
     );

@@ -30,14 +30,8 @@ import {
     MathBounds,
     Point,
 } from '@axis-dsl/desmos';
-import {
-    CompilationResult,
-    CompiledGraph,
-    CompileOptions,
-    compileAxis,
-    convertToLatex,
-    toGraph,
-} from '@axis-dsl/compiler';
+import { CompilationResult, CompileOptions, compileAxis, emitLatex } from '@axis-dsl/compiler';
+import { parseExpression } from '@axis-dsl/syntax';
 import { acquireBrowser, releaseBrowser } from './browser';
 import { HARNESS_URL, installRouting } from './page';
 
@@ -50,6 +44,9 @@ declare global {
 }
 
 const DEFAULT_VIEWPORT: MathBounds = { left: -10, right: 10, bottom: -10, top: 10 };
+
+/** The same framing, as a graph state spells it, for expressions applied by hand. */
+const DEFAULT_STATE_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
 
 export interface AxisCalculatorOptions {
     /** Defaults to Desmos' public demo key, as the rest of Axis does. */
@@ -211,20 +208,26 @@ export class AxisCalculator {
         }
     }
 
-    /** Compile `source` and apply it. The compilation result is handed back. */
+    /**
+     * Compile `source` and apply it. The compilation result is handed back,
+     * diagnostics and all: a script the compiler has something to say about
+     * is still applied, as every host applies it, and a test asserts on the
+     * diagnostics itself when it cares.
+     */
     async load(source: string, options: LoadOptions = {}): Promise<CompilationResult> {
         const compiled = compileAxis(source, options);
-        await this.setGraph(
-            toGraph({ ...compiled, settings: { ...compiled.settings, ...options.settings } }),
-        );
+        await this.setGraph({
+            state: compiled.state,
+            options: { ...compiled.options, ...options.settings },
+        });
         return compiled;
     }
 
     /**
      * Apply expressions directly, for a test that has them already or is
      * checking something the Axis syntax cannot express. They are assembled
-     * into a graph the way a compilation is, so what a test sees here is what
-     * the viewer would show.
+     * into a state the way the compiler assembles one, so what a test sees
+     * here is what the viewer would show.
      */
     async setExpressions(
         expressions: DesmosExpression[],
@@ -233,7 +236,16 @@ export class AxisCalculator {
         state?: GraphStateFlags,
         ticker?: TickerState,
     ): Promise<void> {
-        await this.setGraph(toGraph({ expressions, settings, graph, state, ticker }));
+        await this.setGraph({
+            state: {
+                version: 11,
+                ...state,
+                doNotMigrateMovablePointStyle: true,
+                graph: { ...graph, viewport: { ...DEFAULT_STATE_VIEWPORT, ...graph?.viewport } },
+                expressions: { list: expressions, ...(ticker && { ticker }) },
+            },
+            options: settings ?? {},
+        });
     }
 
     /**
@@ -244,7 +256,10 @@ export class AxisCalculator {
      * harness than in the viewer would make every answer the harness gives
      * about it an answer about some other graph.
      */
-    async setGraph({ state, options }: CompiledGraph): Promise<void> {
+    async setGraph({
+        state,
+        options,
+    }: Pick<CompilationResult, 'state' | 'options'>): Promise<void> {
         await this.page.evaluate(
             ([graphState, calculatorOptions]) => {
                 const { calculator } = window.__axisHarness!;
@@ -349,7 +364,11 @@ export class AxisCalculator {
      * variables multiplied together. {@link evaluateLatex} takes it verbatim.
      */
     evaluate(expression: string, timeout?: number): Promise<EvaluatedValue> {
-        return this.evaluateLatex(convertToLatex(expression), timeout);
+        const parsed = parseExpression(expression);
+        if (parsed.diagnostics.length > 0) {
+            throw new Error(`Cannot read \`${expression}\`: ${parsed.diagnostics[0].message}`);
+        }
+        return this.evaluateLatex(emitLatex(parsed.expression), timeout);
     }
 
     /** {@link evaluate}, given latex that is already latex. */

@@ -71,7 +71,7 @@ describe('the ticker', { skip }, () => {
         // decides that from the expression list — which the ticker is not in.
         // So a graph whose only action is its ticker is left with actions off
         // and silently never ticks; the compiler turns them on for that reason.
-        assert.deepEqual(compileAxis('a = 0\nticker a -> a + 1').settings, {
+        assert.deepEqual(compileAxis('a = 0\nticker a -> a + 1').options, {
             ...AXIS_DEFAULT_CONFIG,
             actions: true,
         });
@@ -83,7 +83,7 @@ describe('the ticker', { skip }, () => {
     test('a script that switches actions off keeps them off', async () => {
         const source = 'config {\n    actions: false\n}\na = 0\nticker a -> a + 1 # playing: true';
 
-        assert.deepEqual(compileAxis(source).settings, {
+        assert.deepEqual(compileAxis(source).options, {
             ...AXIS_DEFAULT_CONFIG,
             actions: false,
         });

@@ -15,6 +15,7 @@
         "@axis-dsl/compiler": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
         "@axis-dsl/language": "workspace:*",
+        "@axis-dsl/syntax": "workspace:*",
         "playwright-core": "catalog:"
     },
     "devDependencies": {
