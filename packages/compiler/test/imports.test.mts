@@ -1,249 +1,277 @@
+// ═════════════════════════════════════════════════════════════════════════════
+// Imports - a script built out of several files
+// ═════════════════════════════════════════════════════════════════════════════
+//
+// Spec §7: an imported file lands in one folder of its own, flattened; an
+// import inside a folder joins that folder; the entry's config and ticker win;
+// a cycle is an error. And spec §6 and §4.5: macros and styles are in scope
+// across the whole import graph.
+
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { compileAxis, createImportResolver, findImports, loadImports } from '../dist/index.js';
-import { AXIS_DEFAULT_CONFIG } from '@axis-dsl/language';
-import type { DesmosExpression, Expression, Folder, Note, Table } from '@axis-dsl/desmos';
+import type { Expression, Folder, Note, Table } from '@axis-dsl/desmos';
+import { AXIS_DEFAULT_CONFIG } from '@axis-dsl/syntax';
+import { createImportResolver, findImports, loadImports } from '../dist/index.js';
+import {
+    compileAxis,
+    compileWith,
+    ENTRY,
+    resolvePath,
+    withExtension,
+    type CompilationResult,
+} from './support/compile.mts';
 
-/** Posix-ish resolution: relative to the importing file, `.axis` implied. */
-const resolve = (specifier: string, from: string): string => {
-    const target = specifier.endsWith('.axis') ? specifier : `${specifier}.axis`;
-    const segments = [...from.split('/').slice(0, -1), ...target.split('/')];
-    const path: string[] = [];
-
-    for (const segment of segments) {
-        if (segment === '' || segment === '.') continue;
-        if (segment === '..') path.pop();
-        else path.push(segment);
-    }
-
-    return `/${path.join('/')}`;
-};
-
-const ENTRY = '/main.axis';
-
-/** Compile `script` as `/main.axis`, with `files` on disk beside it. */
-const compile = (script: string, files: Record<string, string> = {}) =>
-    compileAxis(script, {
-        path: ENTRY,
-        resolveImport: createImportResolver(new Map(Object.entries(files)), resolve),
-    });
-
-const titles = (result: { expressions: DesmosExpression[] }) =>
-    result.expressions.filter(e => e.type === 'folder').map(e => (e as Folder).title);
+const list = (result: CompilationResult) => result.state.expressions?.list ?? [];
+const titles = (result: CompilationResult) =>
+    list(result)
+        .filter(item => item.type === 'folder')
+        .map(item => (item as Folder).title);
+const latex = (result: CompilationResult) =>
+    list(result)
+        .filter(item => item.type === 'expression')
+        .map(item => (item as Expression).latex);
 
 describe('imports', () => {
-    test('drops an imported script into a folder named after the file', () => {
-        const result = compile('import "./lib/curves.axis"', { '/lib/curves.axis': 'y = x^2' });
-        const [folder, expression] = result.expressions as [Folder, Expression];
+    test('drop an imported script into a folder named after the file', () => {
+        const result = compileWith('import "./lib/curves.axis"', { '/lib/curves.axis': 'y = x^2' });
+        const [folder, expression] = list(result) as [Folder, Expression];
 
-        assert.equal(folder.type, 'folder');
         assert.equal(folder.title, 'curves');
-        assert.equal(expression.latex, 'y=x^2');
+        assert.equal(expression.latex, 'y=x^{2}');
         assert.equal(expression.folderId, folder.id);
+        assert.deepEqual(result.diagnostics, []);
     });
 
-    test('implies the .axis extension', () => {
-        const result = compile('import "./curves"', { '/curves.axis': 'y = x' });
-        assert.deepEqual(titles(result), ['curves']);
+    test('imply the .axis extension', () => {
+        assert.deepEqual(titles(compileWith('import "./curves"', { '/curves.axis': 'y = x' })), [
+            'curves',
+        ]);
     });
 
-    test('takes its folder name from `as`, and its metadata from the statement', () => {
-        const result = compile('import "./curves.axis" as "Nice curves" # secret: true', {
+    test('take the folder’s title from `as`, and its metadata from the statement', () => {
+        const result = compileWith('import "./curves" as "Nice curves" @ secret, hidden', {
             '/curves.axis': 'y = x',
         });
-        const folder = result.expressions[0] as Folder;
+        const folder = list(result)[0] as Folder;
 
         assert.equal(folder.title, 'Nice curves');
         assert.equal(folder.secret, true);
+        assert.equal(folder.hidden, true);
     });
 
-    test('starts the folder collapsed, unless the import says otherwise', () => {
+    test('start the folder collapsed, unless the import says otherwise', () => {
         const files = { '/curves.axis': 'y = x' };
-        const collapsed = (source: string) =>
-            (compile(source, files).expressions[0] as Folder).collapsed;
-
-        assert.equal(collapsed('import "./curves.axis"'), true);
+        assert.equal((list(compileWith('import "./curves"', files))[0] as Folder).collapsed, true);
         // A folder Desmos does not collapse carries no `collapsed` at all.
-        assert.equal(collapsed('import "./curves.axis" # collapsed: false'), undefined);
+        assert.ok(
+            !('collapsed' in list(compileWith('import "./curves" @ collapsed: false', files))[0]),
+        );
     });
 
-    test('flattens the folders inside the imported file away', () => {
-        const result = compile('import "./lib.axis"', {
-            '/lib.axis': 'a = 1\nfolder "Inner" {\n    b = 2\n    "note"\n}\nc = 3',
+    test('flatten the folders inside the imported file away', () => {
+        const result = compileWith('import "./lib"', {
+            '/lib.axis': 'a = 1\nfolder "Inner" {\n    b = 2\n    "note"\n}\nfolder { c = 3 }',
         });
 
         assert.deepEqual(titles(result), ['lib']);
-        const folderId = result.expressions[0].id;
+        const [folder, ...rest] = list(result);
         assert.deepEqual(
-            result.expressions.slice(1).map(e => (e as Expression).folderId),
-            [folderId, folderId, folderId, folderId],
+            rest.map(item => (item as Expression).folderId),
+            [folder.id, folder.id, folder.id, folder.id],
         );
-        assert.equal((result.expressions[3] as Note).text, 'note');
+        assert.equal((rest[2] as Note).text, 'note');
     });
 
-    test('keeps everything an imported file makes, tables included', () => {
-        const result = compile('import "./lib.axis"', {
-            '/lib.axis': 'table {\n    x = [1, 2],\n    y = [1, 4]\n}',
-        });
-        const [folder, table] = result.expressions as [Folder, Table];
+    test('keep everything an imported file makes, tables included', () => {
+        const [folder, table] = list(
+            compileWith('import "./lib"', { '/lib.axis': 'table { x = [1, 2]; y = [1, 4] }' }),
+        ) as [Folder, Table];
 
         assert.equal(table.type, 'table');
         assert.equal(table.folderId, folder.id);
-        assert.equal(table.columns.length, 2);
     });
 
-    test('merges into the folder it is imported into, rather than nesting', () => {
-        const result = compile('folder "Outer" {\n    import "./lib.axis"\n}', {
+    test('join the folder they are imported into, rather than nesting', () => {
+        const result = compileWith('folder "Outer" {\n    import "./lib"\n}', {
             '/lib.axis': 'y = x',
         });
+        const [outer, curve] = list(result) as [Folder, Expression];
 
         assert.deepEqual(titles(result), ['Outer']);
-        const [outer, curve] = result.expressions as [Folder, Expression];
         assert.equal(curve.folderId, outer.id);
     });
 
-    test('flattens a transitive import into the same folder', () => {
-        const result = compile('import "./a.axis"', {
-            '/a.axis': 'a = 1\nimport "./b.axis"',
+    test('flatten a transitive import into the same folder', () => {
+        const result = compileWith('import "./a"', {
+            '/a.axis': 'a = 1\nimport "./b"',
             '/b.axis': 'b = 2',
         });
 
         assert.deepEqual(titles(result), ['a']);
-        const folderId = result.expressions[0].id;
-        assert.deepEqual(
-            result.expressions.slice(1).map(e => (e as Expression).latex),
-            ['a=1', 'b=2'],
-        );
-        assert.ok(result.expressions.slice(1).every(e => (e as Expression).folderId === folderId));
+        const [folder, ...rest] = list(result);
+        assert.deepEqual(latex(result), ['a=1', 'b=2']);
+        assert.ok(rest.every(item => (item as Expression).folderId === folder.id));
     });
 
-    test('reports every file it read, transitively', () => {
-        const result = compile('import "./a.axis"\nimport "./a.axis" as "Again"', {
-            '/a.axis': 'import "./nested/b.axis"',
+    test('include a file imported twice once', () => {
+        // The second copy would define every name again, which Desmos rejects.
+        const result = compileWith('import "./a"\nimport "./b"', {
+            '/a.axis': 'import "./lib"',
+            '/b.axis': 'import "./lib"',
+            '/lib.axis': 'k = 1',
+        });
+
+        assert.deepEqual(latex(result), ['k=1']);
+        assert.deepEqual(result.diagnostics, []);
+    });
+
+    test('report every file read, transitively, as a dependency', () => {
+        const result = compileWith('import "./a"\nimport "./a" as "Again"', {
+            '/a.axis': 'import "./nested/b"',
             '/nested/b.axis': 'b = 2',
         });
-
-        assert.deepEqual(result.imports, ['/a.axis', '/nested/b.axis']);
+        assert.deepEqual(result.dependencies.imports, ['/a.axis', '/nested/b.axis']);
     });
 
-    test('lets the importing script override an imported config', () => {
-        const result = compile('config {\n    degreeMode: false\n}\nimport "./a.axis"', {
-            '/a.axis': 'config {\n    degreeMode: true,\n    showGrid: false\n}',
+    test('let the importing script override an imported config', () => {
+        const result = compileWith('config { degreeMode: false }\nimport "./a"', {
+            '/a.axis': 'config {\n    degreeMode: true\n    showGrid: false\n    xmin: 0\n}',
         });
 
-        assert.deepEqual(result.settings, {
+        assert.deepEqual(result.options, {
             ...AXIS_DEFAULT_CONFIG,
             degreeMode: false,
             showGrid: false,
         });
+        assert.equal(result.state.graph?.viewport?.xmin, 0);
+        assert.equal(result.configOrigin?.path, ENTRY);
     });
 
-    test('numbers expressions across files without collision', () => {
-        const result = compile('y = x\nimport "./a.axis"', { '/a.axis': 'z = 1\nw = 2' });
-        assert.equal(new Set(result.expressions.map(e => e.id)).size, result.expressions.length);
+    test('number items across files without collision', () => {
+        const result = compileWith('y = x\nimport "./a"', { '/a.axis': 'z = 1\nw = 2' });
+        const ids = list(result).map(item => item.id);
+        assert.equal(new Set(ids).size, ids.length);
     });
 
-    test('fails on an import that cannot be resolved', () => {
-        assert.throws(() => compile('import "./missing.axis"'), /Cannot resolve import/);
+    test('put an imported file’s definitions in scope for the script', () => {
+        const result = compileWith('import "./lib"\ny = wave(x)', {
+            '/lib.axis': 'wave(x) = sin(x)',
+        });
+        assert.deepEqual(result.diagnostics, []);
     });
 
-    test('fails when the host offers no way to resolve imports at all', () => {
-        assert.throws(() => compileAxis('import "./a.axis"'), /Cannot resolve import/);
+    test('report an imported file’s own problems against it', () => {
+        const result = compileWith('import "./lib"', { '/lib.axis': '\ny = nope(x, 1)' });
+        const [diagnostic] = result.diagnostics;
+
+        assert.equal(diagnostic.code, 'unknown-function');
+        assert.equal(diagnostic.path, '/lib.axis');
+    });
+});
+
+describe('an import that goes wrong', () => {
+    test('is a diagnostic when it cannot be resolved', () => {
+        const result = compileWith('y = x\nimport "./missing"');
+        const [diagnostic] = result.diagnostics;
+
+        assert.equal(diagnostic.code, 'unresolved-import');
+        assert.match(diagnostic.message, /Cannot resolve import "\.\/missing" from \/main\.axis/);
+        assert.equal(diagnostic.path, undefined);
+        // And the rest of the script still compiles.
+        assert.deepEqual(latex(result), ['y=x']);
     });
 
-    test('fails on a malformed import', () => {
-        assert.throws(() => compile('import ./a.axis'), /not a valid import/);
-    });
-
-    test('reports a cycle rather than following it', () => {
-        // A file that imports the entry back is resolvable — loadImports hands
-        // it over for exactly this reason — so the cycle is what stops it.
-        const source = 'import "./a.axis"';
-        assert.throws(
-            () => compile(source, { '/a.axis': 'import "./main.axis"', '/main.axis': source }),
-            /Import cycle: \/main\.axis -> \/a\.axis -> \/main\.axis/,
+    test('is a diagnostic when the host gave no way to resolve imports at all', () => {
+        assert.deepEqual(
+            compileAxis('import "./a"').diagnostics.map(diagnostic => diagnostic.code),
+            ['unresolved-import'],
         );
     });
 
+    test('reports a cycle against the import that closes it', () => {
+        const source = 'import "./a"';
+        const result = compileWith(source, { '/a.axis': 'import "./main"', '/main.axis': source });
+        const [diagnostic] = result.diagnostics;
+
+        assert.equal(diagnostic.code, 'import-cycle');
+        assert.match(diagnostic.message, /\/main\.axis -> \/a\.axis -> \/main\.axis/);
+        assert.equal(diagnostic.path, '/a.axis');
+    });
+
     test('reports a file that imports itself', () => {
-        assert.throws(
-            () => compile('import "./a.axis"', { '/a.axis': 'import "./a.axis"' }),
-            /Import cycle/,
+        const result = compileWith('import "./a"', { '/a.axis': 'import "./a"' });
+        assert.deepEqual(
+            result.diagnostics.map(diagnostic => diagnostic.code),
+            ['import-cycle'],
         );
     });
 });
 
-describe('macros across imports', () => {
-    const latex = (result: { expressions: DesmosExpression[] }) =>
-        result.expressions.filter(e => e.type === 'expression').map(e => (e as Expression).latex);
-
+describe('macros and styles across imports', () => {
     test('an imported file brings its macros with it', () => {
-        const result = compile('import "./lib.axis"\ny = TAU * x', {
-            '/lib.axis': 'macro TAU 6.28',
+        const result = compileWith('import "./lib"\ny = TAU * x', {
+            '/lib.axis': 'macro TAU = 6.28',
         });
         assert.deepEqual(latex(result), ['y=6.28\\cdot x']);
     });
 
-    test('they are in scope above the import, since definitions are hoisted', () => {
-        const result = compile('y = TAU\nimport "./lib.axis"', { '/lib.axis': 'macro TAU 6.28' });
+    test('they are in scope above the import', () => {
+        const result = compileWith('y = TAU\nimport "./lib"', { '/lib.axis': 'macro TAU = 6.28' });
         assert.deepEqual(latex(result), ['y=6.28']);
     });
 
     test('a macro reaches through an import of an import', () => {
-        const result = compile('import "./a.axis"\ny = TAU', {
-            '/a.axis': 'import "./b.axis"',
-            '/b.axis': 'macro TAU 6.28',
+        const result = compileWith('import "./a"\ny = TAU', {
+            '/a.axis': 'import "./b"',
+            '/b.axis': 'macro TAU = 6.28',
         });
         assert.deepEqual(latex(result), ['y=6.28']);
     });
 
-    test('the entry script may use a macro the import itself uses', () => {
-        const result = compile('import "./lib.axis"\nz = D(2)', {
-            '/lib.axis': 'macro D(x) 2 * x\ny = D(x)',
+    test('an imported file may use a macro the entry defines', () => {
+        const result = compileWith('macro D(v) = 2 * v\nimport "./lib"', {
+            '/lib.axis': 'y = D(x)',
         });
-        assert.deepEqual(latex(result), ['y=2\\cdot x', 'z=2\\cdot2']);
+        assert.deepEqual(latex(result), ['y=2\\cdot x']);
     });
 
-    test('refuses two files that define one macro differently', () => {
-        assert.throws(
-            () =>
-                compile('import "./a.axis"\nimport "./b.axis"', {
-                    '/a.axis': 'macro TAU 6.28',
-                    '/b.axis': 'macro TAU 6.29',
-                }),
-            /defined twice/,
-        );
-    });
-
-    test('a file imported twice defines its macros once', () => {
-        const result = compile('import "./a.axis"\nimport "./b.axis"\ny = TAU', {
-            '/a.axis': 'import "./lib.axis"',
-            '/b.axis': 'import "./lib.axis"',
-            '/lib.axis': 'macro TAU 6.28',
+    test('two files defining one macro is an error, even alike', () => {
+        const result = compileWith('import "./a"\nimport "./b"', {
+            '/a.axis': 'macro TAU = 6.28',
+            '/b.axis': 'macro TAU = 6.28',
         });
-        assert.deepEqual(latex(result), ['y=6.28']);
+        const [diagnostic] = result.diagnostics;
+
+        assert.equal(diagnostic.code, 'duplicate-macro');
+        assert.equal(diagnostic.path, '/b.axis');
+        assert.match(diagnostic.message, /first in \/a\.axis/);
     });
 
-    test('an import that does not resolve is still reported as one', () => {
-        assert.throws(() => compile('import "./missing.axis"'), /Cannot resolve import/);
+    test('a style defined in an import is used in the script', () => {
+        const result = compileWith('import "./lib"\ny = x @ use: loud', {
+            '/lib.axis': 'style loud { color: RED; lineWidth: 5 }',
+        });
+        const curve = list(result).at(-1) as Expression;
+
+        assert.equal(curve.color, '#c74440');
+        assert.equal(curve.lineWidth, '5');
     });
 });
 
 describe('finding imports', () => {
     test('finds them wherever they are written', () => {
-        const source = 'y = x\nimport "./a.axis"\nfolder "F" { import "./b.axis" }';
-        assert.deepEqual(findImports(source), ['./a.axis', './b.axis']);
+        const source = 'y = x\nimport "./a.axis"\nfolder "F" { import "./b" }';
+        assert.deepEqual(findImports(source), ['./a.axis', './b']);
     });
 
     test('is not fooled by a note or a name that starts with the word', () => {
-        assert.deepEqual(findImports('"import me"\nimportant = 1'), []);
+        assert.deepEqual(findImports('"import me"\nimportant = 1\n// import "x"'), []);
     });
 });
 
 describe('loading imports', () => {
-    /** A host over an in-memory set of files. */
     const hostFor = (files: Record<string, string>) => ({
-        resolve,
+        resolve: (specifier: string, from: string) => resolvePath(withExtension(specifier), from),
         read: async (path: string) => {
             const source = files[path];
             if (source === undefined) {
@@ -254,36 +282,41 @@ describe('loading imports', () => {
     });
 
     test('walks the graph and hands the compiler what it needs', async () => {
-        const files = { '/a.axis': 'import "./nested/b.axis"', '/nested/b.axis': 'b = 2' };
-        const source = 'import "./a.axis"';
+        const files = { '/a.axis': 'import "./nested/b"', '/nested/b.axis': 'b = 2' };
+        const source = 'import "./a"';
+        const host = hostFor(files);
 
-        const loaded = await loadImports({ path: ENTRY, source }, hostFor(files));
+        const loaded = await loadImports({ path: ENTRY, source }, host);
         assert.deepEqual([...loaded.keys()], ['/a.axis', '/nested/b.axis']);
 
         const result = compileAxis(source, {
             path: ENTRY,
-            resolveImport: createImportResolver(loaded, resolve),
+            resolveImport: createImportResolver(loaded, host.resolve),
         });
         assert.deepEqual(
-            result.expressions.map(e => e.type),
+            list(result).map(item => item.type),
             ['folder', 'expression'],
         );
     });
 
-    test('names the file that asked for a missing import', async () => {
-        await assert.rejects(
-            loadImports({ path: ENTRY, source: 'import "./a.axis"' }, hostFor({})),
-            /Cannot read "\.\/a\.axis", imported by \/main\.axis/,
-        );
+    test('leaves a file it cannot read to the compiler, which says where it was imported', async () => {
+        const host = hostFor({});
+        const source = 'import "./a"';
+        const loaded = await loadImports({ path: ENTRY, source }, host);
+
+        assert.equal(loaded.size, 0);
+        const result = compileAxis(source, {
+            path: ENTRY,
+            resolveImport: createImportResolver(loaded, host.resolve),
+        });
+        assert.equal(result.diagnostics[0].code, 'unresolved-import');
     });
 
     test('terminates on a cycle, leaving the compiler to report it', async () => {
-        const files = { '/a.axis': 'import "./main.axis"' };
         const loaded = await loadImports(
-            { path: ENTRY, source: 'import "./a.axis"' },
-            hostFor(files),
+            { path: ENTRY, source: 'import "./a"' },
+            hostFor({ '/a.axis': 'import "./main"' }),
         );
-
         assert.deepEqual([...loaded.keys()].sort(), ['/a.axis', '/main.axis']);
     });
 });
