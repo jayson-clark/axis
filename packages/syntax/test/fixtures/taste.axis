@@ -1,0 +1,21 @@
+// A comment runs to the end of the line.
+config { showGrid: true; xmin: -7; xmax: 7 }
+
+style emphasis { color: RED; lineWidth: 4 }
+macro wave(k, phase) = sin(k * x + phase)
+
+"A note"
+
+folder "Waves" { @ collapsed
+    a = 1 @ slider: -5..5 step 0.5
+    y = a * wave(2, tau / 4) @ use: emphasis
+    y = wave(1, 0) @{
+        color: rgb(40, 120, 200)
+        lineStyle: DASHED
+    }
+}
+
+table { x = [1, 2, 3]; y = [1, 4, 9] @ lines }
+
+n = 0
+ticker n -> n + dt @ minStep: 50, playing
