@@ -17,13 +17,13 @@ import { compileAxis, type CompileOptions } from '@axis-dsl/compiler';
 import type { AxisCalculator } from '../dist/index.js';
 import { skip, useCalculator } from './support.mts';
 
-/** Load a clean script and hand back its applied list. */
+/** Load clean source and hand back its applied list. */
 async function loadClean(calculator: AxisCalculator, source: string, options?: CompileOptions) {
     const { diagnostics } = await calculator.load(source, options);
     assert.deepEqual(
         diagnostics.map(diagnostic => `${diagnostic.code}: ${diagnostic.message}`),
         [],
-        `${source} is not a clean script`,
+        `${source} is not clean`,
     );
     return ((await calculator.getState()).expressions?.list ?? []) as Expression[];
 }
@@ -197,7 +197,7 @@ describe('styles', { skip }, () => {
         assert.equal(curve.lineWidth, '7');
     });
 
-    test('a style defined in an import is used in the script', async () => {
+    test('a style defined in an import is used in the file', async () => {
         const list = await loadClean(calculator(), 'import "styles"\ny = x @ use: shared', {
             path: '/graph.axis',
             resolveImport: () => ({

@@ -1,9 +1,14 @@
 # Working on Axis
 
-Axis is a scripting language that compiles to Desmos graphs. `.axis` source in,
+Axis is a declarative DSL that compiles to Desmos graphs. `.axis` source in,
 the expressions/folders/tables/settings a graph is made of out.
 [`docs/spec.md`](./docs/spec.md) is the language: where the code and it
 disagree, one of them is a bug.
+
+Nothing in a `.axis` file runs: it describes a graph, and Desmos does any
+running. So Axis is not a scripting language and a `.axis` file is not a
+script. Call it a _file_, or its _source_ where it isn't on disk, and write "a
+language for Desmos graphs" wherever a user will read it.
 
 ## Packages
 
@@ -15,7 +20,7 @@ disagree, one of them is a bug.
 | `@axis-dsl/language-server`     | The language service over LSP, with imports and images read off disk                                |
 | `@axis-dsl/viewer`              | React components - the graph and the JSON inspector - and, under `./protocol`, the messages to them |
 | `@axis-dsl/desmos`              | The Desmos calculator API, typed by hand                                                            |
-| `@axis-dsl/harness`             | Runs a script against a real headless Desmos calculator                                             |
+| `@axis-dsl/harness`             | Runs a file against a real headless Desmos calculator                                               |
 | `axis-dsl` (extension)          | The VSCode extension: an LSP client for the server, and the preview                                 |
 | `@axis-dsl/site` (`docs/site/`) | The docs site: Astro Starlight, its reference generated from the manifest and the catalogues        |
 
@@ -29,7 +34,7 @@ is `node scripts/release.mjs 2.2.0`, a commit and a `v2.2.0` tag, and
 
 ### Where each stage lives
 
-Forwards, a script goes `lexer.ts` → `parser.ts` (both in syntax) → the
+Forwards, a file goes `lexer.ts` → `parser.ts` (both in syntax) → the
 compiler's `program.ts`, which reads the import graph → `symbols.ts` →
 `check.ts` → `macros.ts`, which expands on trees, and `styles.ts`, which
 resolves `use:` away → `lower.ts`, which builds the graph state and the source
@@ -37,7 +42,7 @@ map, with `latex/emit.ts` writing each expression.
 
 Backwards, `latex/parse.ts` reads Desmos' latex into a tree, `decompile.ts`
 builds statements out of a graph state, and `readback.ts` and `writeback.ts`
-turn a change made on a calculator into an edit to the script. All of them
+turn a change made on a calculator into an edit to the file. All of them
 print through syntax's `print.ts`, so generated source is laid out exactly as
 the formatter would lay it out.
 
@@ -71,7 +76,7 @@ looked fine in the compiler's own output.
 So when you touch anything that ends up in a graph, **ask a real calculator**:
 
 ```sh
-node packages/harness/dist/cli.js examples/scripts/06-sliders-and-animation.axis
+node packages/harness/dist/cli.js examples/graphs/06-sliders-and-animation.axis
 ```
 
 ```
@@ -134,21 +139,21 @@ in `packages/language-service/test`; the LSP wiring in
 `packages/language-server/test`. Anything about what Desmos _does_ with the
 result goes in `packages/harness/test`:
 
-| File                   | What it pins                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------ |
-| `metadata.test.mts`    | every `@` property, placement by placement, read back off the applied graph    |
-| `config.test.mts`      | every `config { … }` property, read back off `calculator.settings`             |
-| `language.test.mts`    | every function and constant in the manifest, plus the operators                |
-| `expressions.test.mts` | emitted latex, evaluated by Desmos and compared with the tree's own value      |
-| `styles.test.mts`      | how `use:` combines styles, checked on the graph they style                    |
-| `diagnostics.test.mts` | a script with a mistake in it: what is reported, and that the rest still draws |
-| `graph.test.mts`       | folders, tables, notes, imports, images, and every example script              |
-| `ticker.test.mts`      | the `ticker` statement, and that a playing one actually ticks                  |
-| `macros.test.mts`      | what a `macro` expands to, evaluated rather than just compiled                 |
-| `decompile.test.mts`   | decompiling the graph state a real calculator hands back                       |
-| `writeback.test.mts`   | changes made to a live graph, written back into the script                     |
-| `docs.test.mts`        | every manifest example and every `axis` block in the docs, drawn cleanly       |
-| `harness.test.mts`     | the harness itself                                                             |
+| File                   | What it pins                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `metadata.test.mts`    | every `@` property, placement by placement, read back off the applied graph  |
+| `config.test.mts`      | every `config { … }` property, read back off `calculator.settings`           |
+| `language.test.mts`    | every function and constant in the manifest, plus the operators              |
+| `expressions.test.mts` | emitted latex, evaluated by Desmos and compared with the tree's own value    |
+| `styles.test.mts`      | how `use:` combines styles, checked on the graph they style                  |
+| `diagnostics.test.mts` | a file with a mistake in it: what is reported, and that the rest still draws |
+| `graph.test.mts`       | folders, tables, notes, imports, images, and every example graph             |
+| `ticker.test.mts`      | the `ticker` statement, and that a playing one actually ticks                |
+| `macros.test.mts`      | what a `macro` expands to, evaluated rather than just compiled               |
+| `decompile.test.mts`   | decompiling the graph state a real calculator hands back                     |
+| `writeback.test.mts`   | changes made to a live graph, written back into the file                     |
+| `docs.test.mts`        | every manifest example and every `axis` block in the docs, drawn cleanly     |
+| `harness.test.mts`     | the harness itself                                                           |
 
 **Adding a name to the manifest means adding a test.** The first three suites
 are driven from `@axis-dsl/syntax`'s manifest and have guard tests that fail
@@ -163,7 +168,7 @@ lose it. That is deliberate, and the fix is a test, not an exemption.
 an `example` - the type will not compile without one - and may have
 `documentation` beyond its `detail`. Hover shows both, and the docs site's
 reference is generated from them and nothing else. An example is a whole
-script, read as though it sat in `examples/scripts/`; the compiler's
+file, read as though it sat in `examples/graphs/`; the compiler's
 `manifest.test.mts` compiles each one clean and checks it uses the name it
 documents, and the harness' `docs.test.mts` draws it on a calculator.
 
@@ -172,7 +177,7 @@ block written by hand - on the site, in the spec, in `KEYWORD_INFO` - is
 gathered by `docs/site/scripts/blocks.mts`, compiled clean by the compiler's
 `docs.test.mts` and drawn by the harness'. A block that shows a mistake says
 so, ` ```axis error="unknown-function" `, and must raise exactly that. A
-fragment that is not a whole script gets a plain fence.
+fragment that is not a whole file gets a plain fence.
 
 **A new diagnostic code means a catalogue entry.** `SYNTAX_DIAGNOSTICS` in
 syntax and `COMPILER_DIAGNOSTICS`/`DECOMPILER_DIAGNOSTICS` in the compiler
@@ -239,7 +244,7 @@ one you touched is the quick version.
   value to the step's grid, counted from its `min`, so `a = 1` with a step of
   0.3 from -3 starts at 0.9.
 - **`evaluate` takes Axis, not latex.** `evaluate('amp')` asks about the
-  variable the script calls `amp`; the raw latex `amp` is three variables
+  variable the file calls `amp`; the raw latex `amp` is three variables
   multiplied. `evaluateLatex` takes it verbatim.
 - **A config option can gate another.** `logScales: false` forces
   `xAxisScale` back to linear, so config properties are tested one at a time
@@ -247,11 +252,11 @@ one you touched is the quick version.
 - **`actions: auto` cannot see a ticker.** Desmos decides `auto` from the
   expression list, and the ticker is not in it - so a graph whose only action is
   its ticker gets actions switched off and simply never ticks. The compiler sets
-  `actions: true` for a script with a ticker for that reason.
+  `actions: true` for a file with a ticker for that reason.
 - **A macro is expanded and then forgotten.** It is substituted into the tree
   before lowering, so nothing about one survives into the graph and there is
   nothing for the decompiler to read back - which is why the round trip holds
-  over a script full of them without the decompiler knowing the word. A style
+  over a file full of them without the decompiler knowing the word. A style
   is the same. The other side of it: the checker reads the tree _before_
   expansion, so a diagnostic points at text the author wrote, and a statement
   a macro expanded into is marked unwritable in the source map, since writing
@@ -259,7 +264,7 @@ one you touched is the quick version.
 - **An image from a file is read before the compiler runs.** `image "./a.png"`
   is resolved the way an import is - a host walks the graph with `loadImages`,
   the compiler asks a synchronous `resolveImage` and inlines a `data:` URI - so
-  a new host has to do both walks, and a test that compiles a script drawing a
+  a new host has to do both walks, and a test that compiles a file drawing a
   picture has to hand it a `resolveImage`. A URL or a `data:` URI is passed
   through untouched and needs neither.
 - **Desmos normalises what you give it.** It leaves a property off the state
@@ -271,7 +276,7 @@ one you touched is the quick version.
   same normalisation, from the other side: a slider given both its bounds comes
   back carrying only the `min`, because the `max` matched Desmos' own default.
   Anything writing a graph back to source has to merge the _change_ onto what
-  the script said rather than take the calculator's answer whole, or dragging
+  the file said rather than take the calculator's answer whole, or dragging
   that slider deletes the top of `0..10` from somebody's file. `writeBackGraph`
   does; the harness test for it is the only thing that could have caught it.
 - **A graph does not remember where its pictures came from.** `image

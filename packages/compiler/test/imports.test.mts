@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Imports - a script built out of several files
+// Imports - a file built out of several files
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // Spec §7: an imported file lands in one folder of its own, flattened; an
@@ -32,7 +32,7 @@ const latex = (result: CompilationResult) =>
         .map(item => (item as Expression).latex);
 
 describe('imports', () => {
-    test('drop an imported script into a folder named after the file', () => {
+    test('drop an imported file into a folder named after it', () => {
         const result = compileWith('import "./lib/curves.axis"', { '/lib/curves.axis': 'y = x^2' });
         const [folder, expression] = list(result) as [Folder, Expression];
 
@@ -133,7 +133,7 @@ describe('imports', () => {
         assert.deepEqual(result.dependencies.imports, ['/a.axis', '/nested/b.axis']);
     });
 
-    test('let the importing script override an imported config', () => {
+    test('let the importing file override an imported config', () => {
         const result = compileWith('config { degreeMode: false }\nimport "./a"', {
             '/a.axis': 'config {\n    degreeMode: true\n    showGrid: false\n    xmin: 0\n}',
         });
@@ -153,7 +153,7 @@ describe('imports', () => {
         assert.equal(new Set(ids).size, ids.length);
     });
 
-    test('put an imported file’s definitions in scope for the script', () => {
+    test('put an imported file’s definitions in scope for the importing file', () => {
         const result = compileWith('import "./lib"\ny = wave(x)', {
             '/lib.axis': 'wave(x) = sin(x)',
         });
@@ -177,7 +177,7 @@ describe('an import that goes wrong', () => {
         assert.equal(diagnostic.code, 'unresolved-import');
         assert.match(diagnostic.message, /Cannot resolve import "\.\/missing" from \/main\.axis/);
         assert.equal(diagnostic.path, undefined);
-        // And the rest of the script still compiles.
+        // And the rest of the file still compiles.
         assert.deepEqual(latex(result), ['y=x']);
     });
 
@@ -247,7 +247,7 @@ describe('macros and styles across imports', () => {
         assert.match(diagnostic.message, /first in \/a\.axis/);
     });
 
-    test('a style defined in an import is used in the script', () => {
+    test('a style defined in an import is used in the file', () => {
         const result = compileWith('import "./lib"\ny = x @ use: loud', {
             '/lib.axis': 'style loud { color: RED; lineWidth: 5 }',
         });

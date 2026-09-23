@@ -2,7 +2,7 @@
 // Imports - building a graph out of several files
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// `import "./file.axis"` drops the whole of another script in, exactly as if it
+// `import "./file.axis"` drops the whole of another file in, exactly as if it
 // had been typed here, and puts it in a folder of its own. The path is relative
 // to this file, and the `.axis` may be left off.
 //

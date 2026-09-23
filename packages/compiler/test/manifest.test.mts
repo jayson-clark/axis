@@ -1,10 +1,10 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// The manifest's examples - every one a script the compiler has nothing to say about
+// The manifest's examples - every one a file the compiler has nothing to say about
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // Hover shows them and the docs site's reference is built from them, so an
 // example that no longer compiles is documentation that lies. Each is compiled
-// as though it sat in `examples/scripts/`, where its imports and images are.
+// as though it sat in `examples/graphs/`, where its imports and images are.
 // Whether Desmos accepts what comes out is the harness' question
 // (`packages/harness/test/docs.test.mts`).
 

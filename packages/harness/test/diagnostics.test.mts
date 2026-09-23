@@ -1,10 +1,10 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Diagnostics, and the graph a script with a mistake in it still makes
+// Diagnostics, and the graph a file with a mistake in it still makes
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The compiler never throws on anything a script can say (spec §8): it reports
+// The compiler never throws on anything a file can say (spec §8): it reports
 // every problem it finds and hands back whatever graph it could still build, so
-// a preview keeps drawing the parts of a script that are fine while one line
+// a preview keeps drawing the parts of a file that are fine while one line
 // is being typed. Both halves of that are promises, and the second is only
 // checkable against a calculator - a value that is wrong has to be *left off*,
 // not written out for Desmos to choke on, and one bad statement must not take
@@ -244,14 +244,14 @@ describe('diagnostics', { skip }, () => {
     const calculator = useCalculator();
 
     for (const [name, { source, expected, rejected, options }] of Object.entries(CASES)) {
-        test(`${name}: reported, and the rest of the script still graphs`, async () => {
-            const script = `${source}\n${REMAINDER}`;
-            const { diagnostics } = await calculator().load(script, options);
+        test(`${name}: reported, and the rest of the file still graphs`, async () => {
+            const whole = `${source}\n${REMAINDER}`;
+            const { diagnostics } = await calculator().load(whole, options);
 
             assert.deepEqual(
                 diagnostics.map(diagnostic => [
                     diagnostic.code,
-                    script.slice(diagnostic.span.start, diagnostic.span.end),
+                    whole.slice(diagnostic.span.start, diagnostic.span.end),
                 ]),
                 expected,
             );
@@ -339,7 +339,7 @@ describe('diagnostics', { skip }, () => {
         assert.equal((await calculator().evaluate('ok')).numericValue, 42);
     });
 
-    test('an undefined variable is not a mistake of the script\u2019s', async () => {
+    test('an undefined variable is not a mistake of the file\u2019s', async () => {
         // Desmos flags it until it is defined, and offers to define it as a
         // slider - which is the author's move to make, not the compiler's.
         const { diagnostics } = await calculator().load('y = m * x');

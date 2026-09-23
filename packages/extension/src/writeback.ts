@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Write-back - a change made to the graph, made to the script
+// Write-back - a change made to the graph, made to the file
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // Drag a point, move a slider, recolour a curve in the preview, and the
@@ -19,7 +19,7 @@ export interface Compiled {
 }
 
 /**
- * Write the change between `before` and `after` into the script at `uri`.
+ * Write the change between `before` and `after` into the file at `uri`.
  *
  * Only against the text `compiled` came from. The preview compiles what is
  * saved, and the editor holds what is typed: once the two differ, the spans in
@@ -28,7 +28,7 @@ export interface Compiled {
  * refused instead, and the next save - which recompiles, and so resets the
  * graph - is where the two agree again.
  *
- * @returns the script's new text when anything was written, for the caller
+ * @returns the file's new text when anything was written, for the caller
  *          to recompile the preview from; undefined when nothing was.
  */
 export async function writeBack(
@@ -41,7 +41,7 @@ export async function writeBack(
     const name = vscode.workspace.asRelativePath(uri);
 
     if (document.getText() !== compiled.source) {
-        refuse(log, name, ['the script has changed since this graph was compiled - save it']);
+        refuse(log, name, ['the file has changed since this graph was compiled - save it']);
         return undefined;
     }
 
@@ -60,7 +60,7 @@ export async function writeBack(
         skipped.map(({ reason }) => reason),
     );
 
-    // Only the script is edited: an expression an import drew is skipped by
+    // Only the file itself is edited: an expression an import drew is skipped by
     // the compiler with a reason, so every edit here should be for `path`.
     const mine = edits.filter(edit => edit.path === path);
     if (mine.length === 0) {

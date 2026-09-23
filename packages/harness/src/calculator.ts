@@ -117,7 +117,7 @@ export interface EvaluatedValue {
 }
 
 export interface LoadOptions extends CompileOptions {
-    /** Applied over any `config { … }` block the script compiled to. */
+    /** Applied over any `config { … }` block the source compiled to. */
     settings?: CalculatorOptions;
 }
 
@@ -210,7 +210,7 @@ export class AxisCalculator {
 
     /**
      * Compile `source` and apply it. The compilation result is handed back,
-     * diagnostics and all: a script the compiler has something to say about
+     * diagnostics and all: source the compiler has something to say about
      * is still applied, as every host applies it, and a test asserts on the
      * diagnostics itself when it cares.
      */
@@ -372,7 +372,7 @@ export class AxisCalculator {
      * assert on what a function or a slider-driven definition comes out to.
      *
      * The expression is Axis, not latex — `evaluate('amp')` asks about the
-     * variable the script calls `amp`, where the raw latex `amp` would be three
+     * variable the file calls `amp`, where the raw latex `amp` would be three
      * variables multiplied together. {@link evaluateLatex} takes it verbatim.
      */
     evaluate(expression: string, timeout?: number): Promise<EvaluatedValue> {

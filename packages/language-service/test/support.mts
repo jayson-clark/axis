@@ -1,5 +1,5 @@
 // Shared helpers for the language service suites: a cursor written into the
-// source as `|`, and the example scripts.
+// source as `|`, and the example graphs.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import type { Position, Range } from '../dist/index.js';
@@ -41,9 +41,9 @@ export function textOf(source: string, range: Range): string {
     return source.slice(offset(range.start), offset(range.end));
 }
 
-const EXAMPLES = new URL('../../../examples/scripts/', import.meta.url);
+const EXAMPLES = new URL('../../../examples/graphs/', import.meta.url);
 
-/** Every example script, and the libraries they import. */
+/** Every example graph, and the libraries they import. */
 export const examples: { name: string; source: string }[] = [
     ...readdirSync(EXAMPLES)
         .filter(name => name.endsWith('.axis'))

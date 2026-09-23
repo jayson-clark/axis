@@ -298,7 +298,7 @@ function settings() {
         'Settings',
         `The ${settings.length} calculator settings a config block takes.`,
         4,
-        `A script's ${code('config { … }')} block sets up the calculator: the viewport, the grid, what the reader may change. It is written once, at the top level, one ${code('key: value')} to an entry.
+        `A file's ${code('config { … }')} block sets up the calculator: the viewport, the grid, what the reader may change. It is written once, at the top level, one ${code('key: value')} to an entry.
 
 ${axis('config {\n    showGrid: false\n    xmin: -10; xmax: 10\n}\ny = sin(x)')}
 
@@ -330,13 +330,13 @@ function diagnostics() {
     const decompiler = Object.entries(DECOMPILER_DIAGNOSTICS);
     return page(
         'Diagnostics',
-        'Every problem Axis reports, by its code, with a script that causes it.',
+        'Every problem Axis reports, by its code, with a file that causes it.',
         5,
-        `Every problem is a diagnostic with a stable code, a message and the span of source it is about. None stops the rest of a script compiling: a value that is wrong is left off, a statement that cannot be written is left out, and the graph draws everything else.
+        `Every problem is a diagnostic with a stable code, a message and the span of source it is about. None stops the rest of a file compiling: a value that is wrong is left off, a statement that cannot be written is left out, and the graph draws everything else.
 
 Much of what is reported here is something Desmos would accept without a word - an unknown function name is a product of variables to it, and a colour it cannot read is ignored - which is why Axis says so instead.
 
-## Reading the script
+## Reading the file
 
 What the lexer and the parser report. After one of these, the parser picks up again at the next line.
 
@@ -344,7 +344,7 @@ ${syntax.map(([name, info]) => diagnostic(name, info)).join('\n\n')}
 
 ## Checking it
 
-What the checker and the compiler report about a script that reads, but does not mean anything Desmos can draw.
+What the checker and the compiler report about a file that reads, but does not mean anything Desmos can draw.
 
 ${compiler.map(([name, info]) => diagnostic(name, info)).join('\n\n')}
 

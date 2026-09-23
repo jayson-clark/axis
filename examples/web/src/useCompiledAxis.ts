@@ -15,7 +15,7 @@ export interface CompiledAxis {
     isStale: boolean;
     /**
      * The whole compilation and the source it was compiled from - what writing
-     * a change made in the graph back into the script needs, since the source
+     * a change made in the graph back into the source needs, since the source
      * map's spans are only good for the text they were read from.
      */
     compiled: { source: string; compilation: CompilationResult } | null;
@@ -26,8 +26,8 @@ const DEBOUNCE_MS = 250;
 /**
  * Compiles `source` on a debounce.
  *
- * The compiler never throws on a script: a mistake is a diagnostic, and the
- * graph it hands back alongside is everything the rest of the script still
+ * The compiler never throws on any source: a mistake is a diagnostic, and the
+ * graph it hands back alongside is everything the rest of the source still
  * makes. So the preview keeps drawing while a line is half typed, and the
  * first error is surfaced beside it.
  *
@@ -73,7 +73,7 @@ export function useCompiledAxis(source: string, compileOptions?: CompileOptions)
     return { ...result, isStale };
 }
 
-/** `line 3: \`sine\` is not a function… (and 2 more)`, or null for a clean script. */
+/** `line 3: \`sine\` is not a function… (and 2 more)`, or null for clean source. */
 function describeErrors(
     diagnostics: CompilationResult['diagnostics'],
     source: string,

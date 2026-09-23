@@ -1,24 +1,24 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// The example scripts' directory, bundled into the page
+// The examples' directory, bundled into the page
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// Every example on the site is written as though it sat in `examples/scripts/`
+// Every example on the site is written as though it sat in `examples/graphs/`
 // - which is where the tests compile it - so it may import `./lib/waves` or
 // draw `./images/wave.png`. The playground has no disk to read them from, so
 // Vite bundles the library and the pictures in, and these resolvers answer
-// from that: a script in the playground is `examples/scripts/playground.axis`.
+// from that: the source in the playground is `examples/graphs/playground.axis`.
 
 import type { CompileOptions } from '@axis-dsl/compiler';
 import { imageMediaType, withAxisExtension } from '@axis-dsl/syntax';
 
-const ROOT = '/examples/scripts/';
+const ROOT = '/examples/graphs/';
 
-/** `../../examples/scripts/lib/waves.axis` as `/examples/scripts/lib/waves.axis`. */
-const key = (path: string) => ROOT + path.slice(path.indexOf('/examples/scripts/') + ROOT.length);
+/** `../../examples/graphs/lib/waves.axis` as `/examples/graphs/lib/waves.axis`. */
+const key = (path: string) => ROOT + path.slice(path.indexOf('/examples/graphs/') + ROOT.length);
 
-const scripts = Object.fromEntries(
+const sources = Object.fromEntries(
     Object.entries(
-        import.meta.glob<string>('../../../../examples/scripts/lib/**/*.axis', {
+        import.meta.glob<string>('../../../../examples/graphs/lib/**/*.axis', {
             query: '?raw',
             import: 'default',
             eager: true,
@@ -28,7 +28,7 @@ const scripts = Object.fromEntries(
 
 const pictures = Object.fromEntries(
     Object.entries(
-        import.meta.glob<string>('../../../../examples/scripts/images/**/*', {
+        import.meta.glob<string>('../../../../examples/graphs/images/**/*', {
             query: '?inline',
             import: 'default',
             eager: true,
@@ -36,7 +36,7 @@ const pictures = Object.fromEntries(
     ).map(([path, dataUri]) => [key(path), dataUri]),
 );
 
-/** `./lib/waves` from `/examples/scripts/playground.axis`, as a path in the bundle. */
+/** `./lib/waves` from `/examples/graphs/playground.axis`, as a path in the bundle. */
 function resolve(specifier: string, from: string): string {
     const segments = specifier.startsWith('/')
         ? [...ROOT.split('/'), ...specifier.slice(1).split('/')]
@@ -50,12 +50,12 @@ function resolve(specifier: string, from: string): string {
     return `/${path.join('/')}`;
 }
 
-/** What to compile a script in the playground with. One object, so it never recompiles for nothing. */
+/** What to compile the playground's source with. One object, so it never recompiles for nothing. */
 export const PLAYGROUND_OPTIONS: CompileOptions = {
     path: `${ROOT}playground.axis`,
     resolveImport: (specifier, from) => {
         const path = resolve(withAxisExtension(specifier), from);
-        const source = scripts[path];
+        const source = sources[path];
         return source === undefined ? undefined : { path, source };
     },
     resolveImage: (url, from) => {

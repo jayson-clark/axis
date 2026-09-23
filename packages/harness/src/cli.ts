@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // ═════════════════════════════════════════════════════════════════════════════
-// axis-inspect — what does Desmos actually make of this script?
+// axis-inspect — what does Desmos actually make of this file?
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The command an agent runs. It compiles a script, loads it into a real
+// The command an agent runs. It compiles a file, loads it into a real
 // headless calculator, and prints what came back: every expression with the
 // verdict Desmos reached on it, the graph state, and any errors. `--json` makes
 // that machine-readable; the default is a summary meant to be read.
 //
-// Exit code 1 means the script has errors - the compiler's or Desmos' - so it
+// Exit code 1 means the file has errors - the compiler's or Desmos' - so it
 // works in a check without anybody having to parse the output.
 
 import { readFileSync } from 'node:fs';
@@ -31,17 +31,17 @@ interface Args {
     help: boolean;
 }
 
-const USAGE = `axis-inspect — run an Axis script against a real headless Desmos calculator
+const USAGE = `axis-inspect — run an Axis file against a real headless Desmos calculator
 
 Usage
   axis-inspect <file.axis> [options]
-  axis-inspect -e '<source>' [options]   compile a script given inline
-  axis-inspect - [options]            read the script from stdin
+  axis-inspect -e '<source>' [options]   compile source given inline
+  axis-inspect - [options]            read the source from stdin
 
 Options
   --json                  print the whole inspection as JSON
   --errors-only           print only what Desmos rejected
-  -e, --source <source>   the script itself, instead of a file
+  -e, --source <source>   the source itself, instead of a file
       --eval <expr>       also evaluate an Axis expression against the loaded
                           graph, e.g. --eval 'f(20)' (repeatable)
   --screenshot <file>     write a PNG of the graphpaper
@@ -118,7 +118,7 @@ async function readStdin(): Promise<string> {
 }
 
 /**
- * A script with no file of its own still draws pictures that have one, so its
+ * Source with no file of its own still draws pictures that have one, so its
  * images are read relative to the working directory.
  */
 async function resolveLooseImages(source: string) {
@@ -129,8 +129,8 @@ async function resolveLooseImages(source: string) {
     );
 }
 
-/** The script to run, however it was named, with its imports and images resolved. */
-async function resolveScript(args: Args) {
+/** The source to run, however it was named, with its imports and images resolved. */
+async function resolveSource(args: Args) {
     if (args.source !== undefined) {
         return {
             name: '<inline>',
@@ -183,7 +183,7 @@ function describe(expression: InspectedExpression): string {
 /**
  * `file:line:column  code  message`, as an editor would point at it. An
  * imported file's diagnostic carries its path, and its lines are counted in
- * that file rather than in the script.
+ * that file rather than in the one being run.
  */
 function formatDiagnostic(diagnostic: Diagnostic, name: string, source: string): string {
     let text = source;
@@ -226,7 +226,7 @@ function report(
     }
 
     // The ticker is in the graph but not in the list, so it would otherwise be
-    // the one thing a script can say that this report never mentions.
+    // the one thing a file can say that this report never mentions.
     const ticker = inspection.state.expressions?.ticker;
     if (ticker?.handlerLatex) {
         const paced = ticker.minStepLatex ? ` every ${ticker.minStepLatex}ms` : '';
@@ -269,17 +269,17 @@ async function main(): Promise<number> {
         return 0;
     }
 
-    const script = await resolveScript(args);
+    const input = await resolveSource(args);
 
     return withCalculator(
         async calculator => {
-            const compiled = await calculator.load(script.source, {
-                path: 'path' in script ? script.path : undefined,
-                resolveImport: script.resolveImport,
-                resolveImage: script.resolveImage,
+            const compiled = await calculator.load(input.source, {
+                path: 'path' in input ? input.path : undefined,
+                resolveImport: input.resolveImport,
+                resolveImage: input.resolveImage,
             });
             const diagnostics = compiled.diagnostics.map(diagnostic =>
-                formatDiagnostic(diagnostic, script.name, script.source),
+                formatDiagnostic(diagnostic, input.name, input.source),
             );
             const compileErrors = compiled.diagnostics.filter(
                 diagnostic => diagnostic.severity === 'error',
@@ -298,7 +298,7 @@ async function main(): Promise<number> {
                 console.log(
                     JSON.stringify(
                         {
-                            file: script.name,
+                            file: input.name,
                             diagnostics: args.errorsOnly ? compileErrors : compiled.diagnostics,
                             ...(args.errorsOnly ? { errors: inspection.errors } : inspection),
                             evaluated: Object.fromEntries(evaluated),
@@ -309,15 +309,13 @@ async function main(): Promise<number> {
                 );
             } else if (args.errorsOnly) {
                 for (const diagnostic of compileErrors) {
-                    console.log(
-                        formatDiagnostic(diagnostic, script.name, script.source).trimStart(),
-                    );
+                    console.log(formatDiagnostic(diagnostic, input.name, input.source).trimStart());
                 }
                 for (const error of inspection.errors) {
                     console.log(`${error.index}  ${error.latex ?? error.id}\n  ↳ ${error.message}`);
                 }
             } else {
-                report(script.name, inspection, evaluated, diagnostics);
+                report(input.name, inspection, evaluated, diagnostics);
             }
 
             return inspection.errors.length > 0 || compileErrors.length > 0 ? 1 : 0;

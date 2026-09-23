@@ -26,7 +26,7 @@ describe('what an import names', () => {
 });
 
 describe('what an image names', () => {
-    test('tells a URL Desmos can load from a path beside the script', () => {
+    test('tells a URL Desmos can load from a path beside the file', () => {
         assert.equal(isImageUrl('https://example.com/a.png'), true);
         assert.equal(isImageUrl('data:image/png;base64,AQID'), true);
         assert.equal(isImageUrl('//example.com/a.png'), true);

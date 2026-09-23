@@ -2,7 +2,7 @@
 
 Runs [Axis](https://github.com/jayson-clark/axis) source against a **real
 Desmos calculator**, headless, so a test — or an agent — can read what Desmos
-actually made of a script rather than what the compiler hoped it would.
+actually made of a file rather than what the compiler hoped it would.
 
 ```sh
 npm install --save-dev @axis-dsl/harness
@@ -81,12 +81,12 @@ closes it again.
 | `consoleErrors()`                                          | anything the page logged as an error                                                             |
 | `page`                                                     | the Playwright `Page`, for whatever this does not cover                                          |
 
-`load` applies a script the compiler had something to say about all the same,
+`load` applies source the compiler had something to say about all the same,
 as every host does, and hands the diagnostics back rather than throwing: a test
 that cares asserts on them itself.
 
 `evaluate` takes **Axis**, not latex: `evaluate('amp')` asks about the variable
-the script calls `amp`, where the raw latex `amp` would be three variables
+the file calls `amp`, where the raw latex `amp` would be three variables
 multiplied together. `evaluateLatex` takes it verbatim.
 
 `click` is how an `onClick` action gets tested — Desmos exposes no way to fire
@@ -108,13 +108,13 @@ the page itself.
 
 ## axis-inspect
 
-The command an agent runs. It compiles a script, loads it into a real
+The command an agent runs. It compiles a file, loads it into a real
 calculator, and prints the compiler's diagnostics beside the verdict Desmos
 reached on every expression. It exits `1` if either found an error, so it works
 in a check without anybody parsing the output.
 
 ```sh
-$ npx axis-inspect examples/scripts/01-basics.axis
+$ npx axis-inspect examples/graphs/01-basics.axis
 01-basics.axis — 14 expressions, 0 diagnostics, 0 errors
 
   0  text       Basics
@@ -137,7 +137,7 @@ axis-inspect - < graph.axis           # source on stdin
 ```
 
 A file is read with its imports and images resolved from disk, relative to the
-script, with a leading `/` relative to the script's own directory. The same
+file, with a leading `/` relative to the file's own directory. The same
 reading is exported for a test or a tool of your own: `readAxisFile(path)`
 hands back `{ path, source, resolveImport, resolveImage }`, ready to spread into
 `load` or `compileAxis`; `loadAxisSource(source, path)` does the same for source
@@ -147,7 +147,7 @@ already in hand, as though it were the file at `path`; and
 ```ts
 import { createCalculator, readAxisFile } from '@axis-dsl/harness';
 
-const { source, ...options } = await readAxisFile('examples/scripts/16-imports.axis');
+const { source, ...options } = await readAxisFile('examples/graphs/16-imports.axis');
 const { diagnostics } = await calculator.load(source, options);
 ```
 
@@ -161,14 +161,14 @@ has to accept it, rather than against the compiler's own idea of itself:
 | `metadata`    | every `@ key: value` property in every placement it is legal in, read back off the graph; ranges, colours, flags |
 | `config`      | every `config { … }` entry, off `calculator.settings` and the graph state                                        |
 | `language`    | every function, operator and constant in the manifest is one Desmos knows, and comes to what it should           |
-| `graph`       | folders, tables, notes, imports, images, `;`, and every example script: no diagnostics, no errors                |
+| `graph`       | folders, tables, notes, imports, images, `;`, and every example file: no diagnostics, no errors                  |
 | `ticker`      | every `ticker` property, and that a playing ticker, its runs and `dt` actually tick                              |
 | `macros`      | what a `macro` expands to, evaluated rather than just compiled                                                   |
 | `styles`      | how `use:` styles combine: composition, precedence, a style carrying a slider                                    |
-| `diagnostics` | each compile diagnostic for a representative mistake, and that the rest of the script still graphs               |
+| `diagnostics` | each compile diagnostic for a representative mistake, and that the rest of the file still graphs                 |
 | `expressions` | emitted latex evaluated against a plain evaluator of the same tree                                               |
 | `decompile`   | decompiling the graph state a real calculator hands back                                                         |
-| `writeback`   | changes made to a live graph, written back into the script                                                       |
+| `writeback`   | changes made to a live graph, written back into the file                                                         |
 | `docs`        | every example in the manifest, drawn on a calculator with no expression in error                                 |
 | `harness`     | the harness itself, and `axis-inspect`                                                                           |
 

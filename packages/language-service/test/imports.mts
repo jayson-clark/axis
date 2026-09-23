@@ -1,5 +1,5 @@
 // Resolvers for the suites that follow imports: one over a Map of sources, and
-// one over the example scripts on disk, both as the compiler takes them.
+// one over the example graphs on disk, both as the compiler takes them.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -24,9 +24,9 @@ export function resolveFrom(files: Record<string, string>): Resolver {
     };
 }
 
-const EXAMPLES = fileURLToPath(new URL('../../../examples/scripts/', import.meta.url));
+const EXAMPLES = fileURLToPath(new URL('../../../examples/graphs/', import.meta.url));
 
-/** The options that compile an example script the way the CLI would: from its file. */
+/** The options that compile an example graph the way the CLI would: from its file. */
 export function resolveExample(name: string) {
     return {
         path: `${EXAMPLES}${name}`,

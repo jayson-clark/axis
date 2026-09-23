@@ -30,7 +30,7 @@ table { x = [0, 1, 2, 3]; y = [0, 1, 4, 9] @ color: BLUE, lines }
 
 A table can have as many columns as it likes, each plotted against the first,
 and the names need not be `x` and `y` - a column is named whatever its header
-says, and the rest of the script can use it like any list:
+says, and the rest of the file can use it like any list:
 
 ```axis
 table {

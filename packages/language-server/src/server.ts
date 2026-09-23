@@ -74,7 +74,7 @@ export interface AxisInitializationOptions {
 /** The characters that open a context of their own: metadata, a property's value, a member, a path and its next segment. */
 const TRIGGER_CHARACTERS = ['@', ':', '.', '"', '/'];
 
-/** What the file watcher reports on: scripts, and the pictures an `image` draws. */
+/** What the file watcher reports on: Axis files, and the pictures an `image` draws. */
 const WATCHED_FILES = `**/*.{axis,${AXIS_IMAGE_EXTENSIONS.join(',')}}`;
 
 /**

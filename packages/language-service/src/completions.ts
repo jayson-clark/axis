@@ -93,7 +93,7 @@ interface Request {
     options: ProgramOptions;
 }
 
-// Relevance, most first: what the script itself defines is what is most often
+// Relevance, most first: what the file itself defines is what is most often
 // meant, then what the grammar expects at this point, then the builtins.
 const RANK = {
     parameter: '0',

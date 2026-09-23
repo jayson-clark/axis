@@ -3,7 +3,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // `import "./curves.axis"` and `image "./beach.png"` both name a file, and both
-// are worth being able to open from the script that names them. Which file a
+// are worth being able to open from the file that names them. Which file a
 // path names is the host's to say, so what lives here is the finding: where
 // each path sits, and what kind of thing it points at.
 

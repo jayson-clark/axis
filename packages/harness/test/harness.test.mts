@@ -64,14 +64,14 @@ describe('a real Desmos calculator', { skip }, () => {
             });
         });
 
-        test('resolves a function defined earlier in the script', async () => {
+        test('resolves a function defined earlier in the file', async () => {
             await calculator().load('f(x) = 2x + 1\ny = f(x)');
             const errors = await calculator().getErrors();
 
             assert.deepEqual(errors, []);
         });
 
-        test('catches a reference to something the script never defines', async () => {
+        test('catches a reference to something the file never defines', async () => {
             // The checker reports it too (`unknown-function`); the graph is
             // still applied, and Desmos rejects the expression on its own.
             const { diagnostics } = await calculator().load('y = undefinedFunction(x)');
@@ -95,7 +95,7 @@ describe('a real Desmos calculator', { skip }, () => {
             assert.equal((await calculator().evaluate('a')).numericValue, 1);
         });
 
-        test('applies a script with diagnostics, as every host does', async () => {
+        test('applies a file with diagnostics, as every host does', async () => {
             const { diagnostics } = await calculator().load('y = x @ color: red\nk = 5');
 
             assert.deepEqual(
@@ -105,7 +105,7 @@ describe('a real Desmos calculator', { skip }, () => {
             assert.equal((await calculator().evaluate('k')).numericValue, 5);
         });
 
-        test('lays settings given to it over the script’s own', async () => {
+        test('lays settings given to it over the file’s own', async () => {
             await calculator().load('config { showGrid: false }\ny = x', {
                 settings: { showGrid: true },
             });
@@ -177,7 +177,7 @@ describe('a real Desmos calculator', { skip }, () => {
         });
     });
 
-    describe('the example scripts', () => {
+    describe('the example files', () => {
         // The tour in examples/ is what a newcomer reads first, so a broken
         // expression in one is worth catching here rather than in a screenshot.
         for (const name of [
@@ -188,11 +188,11 @@ describe('a real Desmos calculator', { skip }, () => {
             '16-imports.axis',
         ]) {
             test(`${name} produces a graph Desmos accepts`, async () => {
-                const script = await readAxisFile(example(name));
-                await calculator().load(script.source, {
-                    path: script.path,
-                    resolveImport: script.resolveImport,
-                    resolveImage: script.resolveImage,
+                const file = await readAxisFile(example(name));
+                await calculator().load(file.source, {
+                    path: file.path,
+                    resolveImport: file.resolveImport,
+                    resolveImage: file.resolveImage,
                 });
 
                 assert.deepEqual(await calculator().getErrors(), []);
@@ -211,7 +211,7 @@ describe('a real Desmos calculator', { skip }, () => {
     });
 
     describe('axis-inspect', () => {
-        test('reports a clean script and exits 0', async () => {
+        test('reports a clean file and exits 0', async () => {
             const { stdout, code } = await inspect('-e', 'y = x ^ 2');
 
             assert.equal(code, 0);

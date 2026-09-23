@@ -6,9 +6,9 @@
 // its Monaco wrapper, its Monaco loader and its compile hook are that app's,
 // imported rather than copied - with the viewer drawing the graph over the
 // same protocol the VSCode preview uses. Dragging something in the graph
-// writes the change back into the script, as it does there.
+// writes the change back into the source, as it does there.
 //
-// The script to open with comes from the page's fragment, `#code=…`, which is
+// The source to open with comes from the page's fragment, `#code=…`, which is
 // what every "Open in playground" link under an example on the site carries.
 
 import { useEffect, useMemo, useState } from 'react';
@@ -56,7 +56,7 @@ function useStarlightTheme(): 'dark' | 'light' {
     return theme;
 }
 
-/** The script the page was opened with, or the starter. */
+/** The source the page was opened with, or the starter. */
 function initialSource(): string {
     return decodeSource(window.location.hash) ?? STARTER;
 }
@@ -87,7 +87,7 @@ export default function Playground() {
         state,
         options,
         status: isStale ? 'Compiling…' : `${count} expression${count === 1 ? '' : 's'}`,
-        // Only against the compilation the graph on screen came from: a script
+        // Only against the compilation the graph on screen came from: a source
         // typed over since has spans that no longer point at anything.
         onGraphChanged: (before, after) => {
             if (!compiled || isStale || compiled.source !== source) return;

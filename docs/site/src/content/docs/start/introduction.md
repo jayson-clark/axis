@@ -1,13 +1,14 @@
 ---
 title: Introduction
-description: What Axis is, why a graph might want to be a script, and what one looks like.
+description: What Axis is, why a graph might want to be written as text, and what one looks like.
 sidebar:
   order: 0
 ---
 
-Axis is a scripting language that compiles to [Desmos](https://www.desmos.com)
-graphs. A `.axis` file goes in; the expressions, folders, tables and settings a
-graph is made of come out, ready for a calculator to draw.
+Axis is a language that compiles to [Desmos](https://www.desmos.com) graphs. A
+`.axis` file goes in; the expressions, folders, tables and settings a graph is
+made of come out, ready for a calculator to draw. Nothing in the file runs: it
+describes a graph, the way an HTML file describes a page.
 
 ```axis
 "A parabola and a wave"
@@ -34,7 +35,7 @@ text already has.
   whatever else it belongs to. A comment explains a line to whoever reads it
   next, and never reaches the graph.
 - **Graphs can be built out of other graphs.** `import "./lib/waves"` drops a
-  whole script into this one as a folder, so a long graph can live in several
+  whole file into this one as a folder, so a long graph can live in several
   files and a useful one can be reused.
 - **Repetition has names.** A `macro` names an expression and a `style` names
   a set of properties. Both are resolved away before Desmos sees anything, so
@@ -44,7 +45,7 @@ text already has.
   mistake. Axis reports each as a diagnostic with a code and the place it was
   written.
 - **The editor knows the language.** The VSCode extension completes, hovers,
-  formats and checks as you type, and previews the graph beside the script.
+  formats and checks as you type, and previews the graph beside the file.
   Drag a point or move a slider in the preview and the statement that drew it
   is rewritten in the editor.
 
@@ -52,9 +53,9 @@ Nothing about Desmos is hidden to make this work. Every statement becomes an
 ordinary expression, folder, table or note, and a compiled graph is one
 anybody can open, change and save at desmos.com. It also runs the other way:
 the [decompiler](../../guide/decompiling/) reads a Desmos graph back into a
-script.
+file.
 
-## A slightly longer script
+## A slightly longer example
 
 ```axis
 config { showGrid: true; xmin: -7; xmax: 7 }

@@ -1,4 +1,4 @@
-# Example scripts
+# Example graphs
 
 Read in order, each file assumes only what came before it.
 
@@ -26,7 +26,7 @@ Read in order, each file assumes only what came before it.
 
 The picture under `images/` is what `18-images.axis` draws. The files under
 `lib/` are what `16-imports.axis` imports. They are ordinary
-scripts — each one graphs on its own — that happen to be written to be reused.
+files — each one graphs on its own — that happen to be written to be reused.
 
 ## Showcases
 

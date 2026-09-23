@@ -1,11 +1,11 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Writing a changed graph back into the script that built it
+// Writing a changed graph back into the file that built it
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// A Desmos graph is not only something a script produces; it is something a
+// A Desmos graph is not only something a file produces; it is something a
 // person edits. Dragging a point moves it, dragging a slider re-numbers it, the
 // colour picker recolours it, the toolbar pans the viewport - and every one of
-// those is a change to the graph that the script it came from now disagrees
+// those is a change to the graph that the file it came from now disagrees
 // with.
 //
 // This closes that loop. Given the compilation a graph was built from, the
@@ -15,7 +15,7 @@
 //
 // **The unit is the statement, never the file.** Decompiling the whole graph
 // and writing that out would be far simpler and would throw away everything a
-// script has that a graph does not: the comments, the blank lines, the macros,
+// file has that a graph does not: the comments, the blank lines, the macros,
 // the styles, the folders an import stands for, the order somebody chose. So an
 // edit here is a span and its replacement, and a statement nobody touched is
 // not in the output at all.
@@ -29,7 +29,7 @@
 // sharing a line through `;` are each as writable as one on a line of its own.
 //
 // **What cannot be written is said rather than done.** A statement a macro
-// expanded into, one in a file this script imports, a graph that is moving by
+// expanded into, one in a file this one imports, a graph that is moving by
 // itself - each of those is reported as a skipped change with a reason.
 // Silently dropping a change the user made with their own hands is the one
 // outcome worth ruling out; quietly writing the wrong thing is the other.
@@ -124,21 +124,21 @@ export interface WriteBackOptions {
      * Which kinds of change to take. Left out, all of them are.
      *
      * Worth setting: `settings` fires on every pan and zoom, which is a change
-     * to the graph but rarely one somebody meant to make to their script.
+     * to the graph but rarely one somebody meant to make to their file.
      */
     include?: Partial<Record<ChangeKind, boolean>>;
     /**
-     * One level of block indentation. Read off the script where it indents
+     * One level of block indentation. Read off the file where it indents
      * anything, and four spaces, as the formatter writes it, where it does not.
      */
     indent?: string;
-    /** The script's path, as it was compiled with, for the edits to carry. */
+    /** The file's path, as it was compiled with, for the edits to carry. */
     path?: string;
 }
 
 export interface WriteBackResult {
     /**
-     * The edits to make to the script, ordered so they can be applied one
+     * The edits to make to the file, ordered so they can be applied one
      * after another without re-counting: latest in the file first.
      */
     edits: SourceEdit[];
@@ -149,7 +149,7 @@ export interface WriteBackResult {
 /**
  * The changes between two snapshots of the same graph, as edits to `source`.
  *
- * `source` is the script `compilation` was compiled from - its spans are what
+ * `source` is the file `compilation` was compiled from - its spans are what
  * say where each statement is. `before` is the graph the calculator handed
  * back immediately after the compilation was applied to it, rather than the
  * compilation itself. That matters: Desmos normalises what it is given -
@@ -409,7 +409,7 @@ class Writer {
         // A playing slider changes its own value several times a second and a
         // running ticker changes whatever it drives, so writing either back
         // means a file that rewrites itself for as long as the tab is open -
-        // hundreds of edits nobody made. The animation is the script working,
+        // hundreds of edits nobody made. The animation is the graph working,
         // not somebody changing it. What a tick assigns to is an action written
         // in latex, and working out which expressions it reaches is not worth
         // half-doing here: a graph whose ticker runs is a graph running.
@@ -434,7 +434,7 @@ class Writer {
         // the same thing: Desmos leaves a property off the state when it
         // matches its own default, so a slider written `0..10` comes back
         // carrying only the min - and rewriting from that would quietly take
-        // the max out of somebody's script as the price of dragging it.
+        // the max out of somebody's file as the price of dragging it.
         const rebuilt = this.rebuild(located.statement, was, now);
         if ('reason' in rebuilt) return this.skip(change, rebuilt.reason);
         for (const note of rebuilt.notes) this.skip(change, note);
@@ -456,7 +456,7 @@ class Writer {
             return 'the ticker is running — pause it to edit from the graph';
         }
         if (tickerOf(this.before)?.playing) {
-            return 'the ticker has been running since the graph was loaded, so this may be its doing — edit the script to take a fresh reading';
+            return 'the ticker has been running since the graph was loaded, so this may be its doing — edit the file to take a fresh reading';
         }
         const slider = (change.after as { slider?: { isPlaying?: boolean } } | undefined)?.slider;
         if (slider?.isPlaying) {
@@ -726,7 +726,7 @@ class Writer {
             }
         }
 
-        // Everything with no folder of its own goes on the end of the script,
+        // Everything with no folder of its own goes on the end of the file,
         // which is the one placement that is always right and never a guess
         // about where it belonged - in the order the graph lists it.
         const order = new Map(listOf(this.after).map((item, index) => [item.id, index]));
@@ -742,7 +742,7 @@ class Writer {
      */
     private made(change: GraphChange, item: DesmosExpression): Statement | null {
         // A picture added in the calculator arrives as its own bytes, and a
-        // script has no statement meaning "these bytes" - only ones that name
+        // file has no statement meaning "these bytes" - only ones that name
         // a file or a URL. Writing it out would put the whole picture,
         // base64'd, into somebody's source.
         if (item.type === 'image' && /^data:/i.test(item.image_url ?? '')) {
@@ -768,7 +768,7 @@ class Writer {
                 change,
                 this.compilation.sourceMap.has(folderId)
                     ? found.reason
-                    : 'this expression is in a folder that is not in this script',
+                    : 'this expression is in a folder that is not in this file',
             );
         }
         const { located } = found;
@@ -779,7 +779,7 @@ class Writer {
             );
         }
         if (located.statement.kind !== 'FolderStatement') {
-            return this.skip(change, 'this expression is in a folder that is not in this script');
+            return this.skip(change, 'this expression is in a folder that is not in this file');
         }
 
         const folder = located.statement;
@@ -814,7 +814,7 @@ class Writer {
         }
     }
 
-    /** A new top-level statement, on the end of the script. */
+    /** A new top-level statement, on the end of the file. */
     private append(statement: Statement, change: GraphChange): void {
         const printed = printStatement(statement, { indent: this.unit });
         const end = this.source.length;
@@ -828,15 +828,15 @@ class Writer {
     // ── Settings ─────────────────────────────────────────────────────────────
 
     /**
-     * The settings that changed, written into the script's own `config`
+     * The settings that changed, written into the file's own `config`
      * block - or into one opened at the top for them.
      *
-     * The viewport is written only for a script that names one. Panning and
+     * The viewport is written only for a file that names one. Panning and
      * zooming are how anybody reads a graph, and they change the viewport
-     * constantly; a script that says nothing about its framing was written by
+     * constantly; a file that says nothing about its framing was written by
      * somebody who did not care about it, and four `xmin`-and-friends lines
      * appearing the first time they scrolled would be the feature writing
-     * something nobody asked for. A script that does name a viewport has an
+     * something nobody asked for. A file that does name a viewport has an
      * author who cares where the graph sits, and for them a pan is an edit.
      */
     settings(change: GraphChange): void {
@@ -845,7 +845,7 @@ class Writer {
         if (origin) {
             const located = this.statements.get(key(origin.span));
             if (located?.statement.kind !== 'ConfigStatement') {
-                return this.skip(change, 'the script has changed since this graph was compiled');
+                return this.skip(change, 'the file has changed since this graph was compiled');
             }
             config = located.statement;
         }
@@ -862,7 +862,7 @@ class Writer {
 
         if (writes.length === 0) {
             if (all.length > 0) {
-                this.skip(change, 'the viewport moved, and this script does not set one');
+                this.skip(change, 'the viewport moved, and this file does not set one');
             }
             return;
         }
@@ -877,7 +877,7 @@ class Writer {
             return this.replace(origin.span, printed, change);
         }
 
-        // A script with no config block gets one at the very top, which is
+        // A file with no config block gets one at the very top, which is
         // where every example keeps it.
         const created: ConfigStatement = {
             kind: 'ConfigStatement',
@@ -891,7 +891,7 @@ class Writer {
     // ── The ticker ───────────────────────────────────────────────────────────
 
     /**
-     * The ticker, written back into the script's `ticker` statement. Its own
+     * The ticker, written back into the file's `ticker` statement. Its own
      * running is the one change refused: a ticker started from the graph is
      * the graph being played with, and it is what makes everything else in it
      * move.
@@ -911,7 +911,7 @@ class Writer {
 
         if (!statement) {
             if (was) {
-                return this.skip(change, 'the ticker is written in a file this script imports');
+                return this.skip(change, 'the ticker is written in a file this one imports');
             }
             if (after?.statement) this.append(after.statement, change);
             return;
@@ -940,16 +940,16 @@ class Writer {
     private origin(id: string): { origin: StatementOrigin; located: Located } | { reason: string } {
         const origin = this.compilation.sourceMap.get(id);
         if (!origin) {
-            return { reason: 'this expression was not compiled from this script' };
+            return { reason: 'this expression was not compiled from this file' };
         }
         if (this.imports.has(origin.path)) {
-            // Only the script handed over is edited. Another file's statement
-            // is somebody else's source, and possibly several scripts'.
-            return { reason: `this is written in ${origin.path}, which this script imports` };
+            // Only the file handed over is edited. Another file's statement
+            // is somebody else's source, and possibly several files'.
+            return { reason: `this is written in ${origin.path}, which this file imports` };
         }
         const located = this.statements.get(key(origin.span));
         if (!located) {
-            return { reason: 'the script has changed since this graph was compiled' };
+            return { reason: 'the file has changed since this graph was compiled' };
         }
         return { origin, located };
     }

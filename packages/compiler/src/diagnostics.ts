@@ -11,8 +11,8 @@
 import type { Diagnostic, DiagnosticInfo, SyntaxDiagnosticCode } from '@axis-dsl/syntax';
 
 /**
- * What the checker and the compiler report about a script. An example is read
- * as though it sat in `examples/scripts/graph.axis`, so it can name an image
+ * What the checker and the compiler report about a file. An example is read
+ * as though it sat in `examples/graphs/graph.axis`, so it can name an image
  * or an import that is not there - or itself.
  */
 export const COMPILER_DIAGNOSTICS = {
@@ -160,7 +160,7 @@ export type CompilerDiagnosticCode = keyof typeof COMPILER_DIAGNOSTICS;
 /**
  * What the decompiler reports about a graph it cannot write all of. Each is a
  * warning, and the statement is written with a comment in its place. There is
- * no script to raise one - the input is a graph - so these carry a summary
+ * no file to raise one - the input is a graph - so these carry a summary
  * alone.
  */
 export const DECOMPILER_DIAGNOSTICS = {

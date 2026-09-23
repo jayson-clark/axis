@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Compiling a script into one graph state
+// Compiling a file into one graph state
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // What `compileAxis` hands a host (spec §9): a state `setState` takes whole,
@@ -27,7 +27,7 @@ import { codes, compileAxis, compileWith, listOf, only } from './support/compile
 
 /**
  * A compilation without its source map: the graph it describes, and nothing
- * about where it was written. Two layouts of one script build the same graph,
+ * about where it was written. Two layouts of one file build the same graph,
  * but they are written on different lines, and should say so.
  */
 const graphOf = (source: string) => {
@@ -48,13 +48,13 @@ describe('the state', () => {
         );
     });
 
-    test('opens a script with no viewport at the default framing', () => {
+    test('opens a file with no viewport at the default framing', () => {
         const { state } = compileAxis('y = x');
         assert.deepEqual(state.graph?.viewport, { xmin: -10, ymin: -10, xmax: 10, ymax: 10 });
     });
 
     test('completes a viewport given in part rather than dropping it', () => {
-        // Desmos ignores a half-written rectangle, so the edges the script left
+        // Desmos ignores a half-written rectangle, so the edges the file left
         // out have to come from somewhere.
         const { state } = compileAxis('config { xmin: 0; squareAxes: false }');
 
@@ -67,7 +67,7 @@ describe('the state', () => {
         assert.ok(compileAxis('a = 0\nticker a -> a + 1').state.expressions?.ticker);
     });
 
-    test('keeps a movable point in the style the script gave it', () => {
+    test('keeps a movable point in the style the file gave it', () => {
         assert.equal(compileAxis('y = x').state.doNotMigrateMovablePointStyle, true);
     });
 
@@ -110,7 +110,7 @@ describe('expressions', () => {
         );
     });
 
-    test('leaves a property the script never set off the expression entirely', () => {
+    test('leaves a property the file never set off the expression entirely', () => {
         // Not `undefined` under the key: Desmos reads the key as present and
         // decides nothing for itself, so a point handed `dragMode: undefined`
         // arrives frozen rather than draggable.
@@ -253,7 +253,7 @@ describe('config', () => {
         assert.deepEqual(options, { ...AXIS_DEFAULT_CONFIG, showGrid: true, fontSize: 16 });
     });
 
-    test('is the Axis defaults for a script with none', () => {
+    test('is the Axis defaults for a file with none', () => {
         assert.deepEqual(compileAxis('y = x').options, AXIS_DEFAULT_CONFIG);
     });
 
@@ -295,7 +295,7 @@ describe('config', () => {
         assert.deepEqual(listOf('config { showGrid: true }'), []);
     });
 
-    test('says where the entry script wrote it', () => {
+    test('says where the entry file wrote it', () => {
         const { configOrigin } = compileAxis('y = x\nconfig {\n    showGrid: true\n}');
         assert.equal(configOrigin?.line, 1);
         assert.equal(configOrigin?.endLine, 3);
@@ -343,7 +343,7 @@ describe('the ticker', () => {
         );
     });
 
-    test('the entry script’s wins over an imported one', () => {
+    test('the entry file’s wins over an imported one', () => {
         const { state } = compileWith('import "lib"\nticker b -> b + 1', {
             '/lib.axis': 'ticker a -> a + 1',
         });
@@ -457,7 +457,7 @@ describe('sliders', () => {
         });
     });
 
-    test('leave an end the script left off to Desmos', () => {
+    test('leave an end the file left off to Desmos', () => {
         assert.deepEqual(only<Expression>('a = 1 @ slider: 0.. step 1').slider, {
             min: '0',
             hardMin: true,
@@ -542,7 +542,7 @@ describe('colours (#2)', () => {
         assert.ok(!('color' in line));
     });
 
-    test('unless the script defines that name, when it is the variable', () => {
+    test('unless the file defines that name, when it is the variable', () => {
         const [, line] = listOf('red = rgb(255, 0, 0)\ny = x @ color: red') as Expression[];
         assert.equal(line.colorLatex, 'r_{ed}');
     });
@@ -647,7 +647,7 @@ describe('the source map', () => {
     });
 });
 
-describe('a script with mistakes in it', () => {
+describe('a file with mistakes in it', () => {
     test('never throws, whatever it is handed', () => {
         for (const source of [
             'y = ',
@@ -731,8 +731,8 @@ describe('layout', () => {
 // The examples are the widest use of the language there is. The harness runs
 // them through a calculator; here they have only to compile without a word.
 
-describe('the example scripts', () => {
-    const directory = fileURLToPath(new URL('../../../examples/scripts/', import.meta.url));
+describe('the examples', () => {
+    const directory = fileURLToPath(new URL('../../../examples/graphs/', import.meta.url));
 
     const resolveImport = (specifier: string, from: string) => {
         const target = specifier.endsWith('.axis') ? specifier : `${specifier}.axis`;

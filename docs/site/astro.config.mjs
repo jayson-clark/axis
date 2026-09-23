@@ -25,7 +25,7 @@ export default defineConfig({
     integrations: [
         starlight({
             title: 'Axis',
-            description: 'A scripting language for Desmos.',
+            description: 'A language for Desmos graphs.',
             logo: { src: './src/assets/axis-mark.svg' },
             favicon: '/favicon.svg',
             social: [
@@ -35,7 +35,7 @@ export default defineConfig({
             customCss: ['./src/styles/axis.css'],
             expressiveCode: {
                 plugins: [playgroundLink(base)],
-                // The grammar VSCode colours a script with, so a block on the
+                // The grammar VSCode colours a file with, so a block on the
                 // site reads exactly as it does in the editor.
                 shiki: {
                     langs: [{ ...grammar, name: 'axis', aliases: ['Axis'] }],

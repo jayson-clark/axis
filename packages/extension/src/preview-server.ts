@@ -45,7 +45,7 @@ const HEARTBEAT_MS = 30_000;
 /**
  * The viewer bundle inside this extension's `dist`, copied there at build time
  * by `scripts/build.mjs`. Deliberately not named after either of the bundles
- * that script writes beside it.
+ * that file writes beside it.
  */
 const VIEWER_BUNDLE = 'viewer.js';
 
@@ -96,7 +96,7 @@ interface Preview {
     clients: Set<http.ServerResponse>;
     subscriptions: vscode.Disposable[];
     /**
-     * A watcher per file the script reads - imported or drawn - keyed by URI.
+     * A watcher per file the file reads - imported or drawn - keyed by URI.
      * The set is rebuilt after every compile, since an edit is what changes
      * which files those are.
      */
@@ -384,7 +384,7 @@ export class PreviewServer implements vscode.Disposable {
     }
 
     /**
-     * A change made to the graph by hand, written back into the script.
+     * A change made to the graph by hand, written back into the file.
      *
      * Once written, the preview is compiled again from the edited text - still
      * unsaved - and sent to the pages. That is what moves the viewer's
@@ -468,8 +468,8 @@ export class PreviewServer implements vscode.Disposable {
      * Watch exactly the files `preview` currently reads: what it imports, and
      * the pictures it draws.
      *
-     * Both are part of what a script is, so saving one has to reload the graph
-     * just as saving the script does — and a file that is no longer named stops
+     * Both are part of what a file is, so saving one has to reload the graph
+     * just as saving the file does — and a file that is no longer named stops
      * being watched, rather than waking the preview for the rest of the session.
      */
     private watchDependencies(preview: Preview, dependencies: string[]): void {
@@ -483,7 +483,7 @@ export class PreviewServer implements vscode.Disposable {
         }
 
         for (const key of wanted) {
-            // The script itself is already watched; a file that imports it back
+            // The file itself is already watched; a file that imports it back
             // does not need watching twice.
             if (preview.dependencies.has(key) || key === preview.uri.toString()) {
                 continue;
@@ -519,7 +519,7 @@ export class PreviewServer implements vscode.Disposable {
         }
     }
 
-    /** Compile `source` as the script `preview` shows, and send the graph to every page on it. */
+    /** Compile `source` as the file `preview` shows, and send the graph to every page on it. */
     private async show(preview: Preview, source: string) {
         const { uri } = preview;
         // Imports and images are read up front so that compilation itself
@@ -537,7 +537,7 @@ export class PreviewServer implements vscode.Disposable {
 
         const { imports, images } = compilation.dependencies;
         this.watchDependencies(preview, [...imports, ...images]);
-        // Applied whatever the compiler had to say: a script with a mistake
+        // Applied whatever the compiler had to say: a file with a mistake
         // in it still draws everything else, which is what keeps a preview
         // useful while a line is half written.
         this.broadcast(preview, {

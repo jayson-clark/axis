@@ -70,7 +70,7 @@ export interface DesmosGraphProps {
  *
  * Desmos fires `change` on every frame of a drag, and a point dragged across
  * the graphpaper is one edit rather than three hundred. Long enough to let go
- * of the mouse, short enough that the script catches up while you are still
+ * of the mouse, short enough that the file catches up while you are still
  * looking at what you did.
  */
 const DEFAULT_CHANGE_DELAY = 400;

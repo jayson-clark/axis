@@ -48,12 +48,12 @@ export function useCalculator(options?: AxisCalculatorOptions): () => AxisCalcul
     };
 }
 
-/** The directory the example scripts live in. */
+/** The directory the example files live in. */
 export function exampleDirectory(): string {
-    return fileURLToPath(new URL('../../../examples/scripts/', import.meta.url));
+    return fileURLToPath(new URL('../../../examples/graphs/', import.meta.url));
 }
 
-/** Path to one of the scripts in `examples/`. */
+/** Path to one of the files in `examples/graphs/`. */
 export function example(name: string): string {
-    return fileURLToPath(new URL(`../../../examples/scripts/${name}`, import.meta.url));
+    return fileURLToPath(new URL(`../../../examples/graphs/${name}`, import.meta.url));
 }

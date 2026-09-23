@@ -127,7 +127,7 @@ describe('macros', { skip }, () => {
         assert.ok((await calculator().evaluate('t')).numericValue > 0, 'dt never added up');
     });
 
-    test('a macro defined in an import is in scope in the script, and back', async () => {
+    test('a macro defined in an import is in scope in the file, and back', async () => {
         const options: CompileOptions = {
             path: '/graph.axis',
             resolveImport: () => ({

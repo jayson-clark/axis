@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// A graph, back into the script that builds it
+// A graph, back into the file that builds it
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // The cases here say what the source looks like; `roundTrip` says it is the
@@ -10,7 +10,7 @@
 //
 // `roundTrip` also holds the decompiled source to being the formatter's own
 // output and to parsing without a word, since the printer is what laid it out
-// and a script the formatter would rewrite is one nobody typed.
+// and a file the formatter would rewrite is one nobody typed.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,7 +42,7 @@ import { compileAxis, type CompileOptions } from './support/compile.mts';
 import { EXAMPLES_DIRECTORY, exampleOptions } from './support/examples.mts';
 
 /**
- * Decompile a script, having checked that what comes back compiles to the graph
+ * Decompile a file, having checked that what comes back compiles to the graph
  * it was read from, is already formatted, and parses cleanly.
  *
  * This is the decompiler's whole contract - `compile ∘ decompile ∘ compile` is
@@ -51,7 +51,7 @@ import { EXAMPLES_DIRECTORY, exampleOptions } from './support/examples.mts';
  */
 function roundTrip(source: string, options: CompileOptions = {}): string {
     const compiled = compileAxis(source, options);
-    assert.deepEqual(compiled.diagnostics, [], `the script itself has problems:\n${source}`);
+    assert.deepEqual(compiled.diagnostics, [], `the file itself has problems:\n${source}`);
 
     const decompiled = decompileAxis(compiled);
     assert.deepEqual(decompiled.diagnostics, []);
@@ -93,16 +93,16 @@ function assertWellFormed(source: string): void {
     assert.equal(format(source), source, 'is not what the formatter writes');
 }
 
-/** The list a script compiles to. */
+/** The list a file compiles to. */
 const listOf = (source: string) => compileAxis(source).state.expressions?.list ?? [];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Every example
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('the example scripts', () => {
+describe('the examples', () => {
     for (const name of readdirSync(EXAMPLES_DIRECTORY).filter(file => file.endsWith('.axis'))) {
-        test(`${name} decompiles to a script that builds the same graph`, () => {
+        test(`${name} decompiles to a file that builds the same graph`, () => {
             const path = resolve(EXAMPLES_DIRECTORY, name);
             roundTrip(readFileSync(path, 'utf8'), exampleOptions(path));
         });
@@ -616,7 +616,7 @@ describe('the ticker', () => {
         assert.equal(roundTrip('a = 0\nticker a -> a + 1').includes('config'), false);
     });
 
-    test('keeps an `actions` the script asked for itself', () => {
+    test('keeps an `actions` the file asked for itself', () => {
         assert.equal(
             roundTrip('config { actions: false }\na = 0\nticker a -> a + 1'),
             'config {\n    actions: false\n}\n\na = 0\nticker a -> a + 1\n',
@@ -816,7 +816,7 @@ describe('a graph written in Desmos rather than in Axis', () => {
     test('reads a point style a calculator stashed as the style it is', () => {
         // Desmos will not draw a movable point as a square, so it hands the
         // style back under a key of its own - and stashes it again when the
-        // script is compiled, so reading it back is what keeps it.
+        // file is compiled, so reading it back is what keeps it.
         const source = fromState(
             items({
                 type: 'expression',

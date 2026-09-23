@@ -1,8 +1,8 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// The checker - what the parser cannot know about a script
+// The checker - what the parser cannot know about a file
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The parser reads any script that is well formed and has no opinion about
+// The parser reads any file that is well formed and has no opinion about
 // what it says. This is where it gets one: whether `notAFunction(x)` names a
 // function, whether `collapsed` belongs on a point, whether `color: red` is a
 // colour, whether a `ticker` is inside a folder. Spec §8 lists the rules and
@@ -117,13 +117,13 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                     if (inFolder) {
                         report(
                             'misplaced-config',
-                            '`config` belongs at the top level of a script, not inside a folder.',
+                            '`config` belongs at the top level of a file, not inside a folder.',
                             keyword(statement.span, 'config'),
                         );
                     } else if (counts.config++ > 0) {
                         report(
                             'duplicate-config',
-                            'A script has one `config` block; merge this one into the first.',
+                            'A file has one `config` block; merge this one into the first.',
                             keyword(statement.span, 'config'),
                         );
                     }
@@ -165,7 +165,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                     if (inFolder) {
                         report(
                             'misplaced-style',
-                            'A `style` belongs at the top level of a script, not inside a folder.',
+                            'A `style` belongs at the top level of a file, not inside a folder.',
                             keyword(statement.span, 'style'),
                         );
                     }
@@ -176,7 +176,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                     if (inFolder) {
                         report(
                             'misplaced-macro',
-                            'A `macro` belongs at the top level of a script, not inside a folder.',
+                            'A `macro` belongs at the top level of a file, not inside a folder.',
                             keyword(statement.span, 'macro'),
                         );
                     }
@@ -195,7 +195,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                     if (inFolder) {
                         report(
                             'misplaced-ticker',
-                            'The `ticker` belongs at the top level of a script, not inside a folder.',
+                            'The `ticker` belongs at the top level of a file, not inside a folder.',
                             keyword(statement.span, 'ticker'),
                         );
                     } else if (counts.ticker++ > 0) {
@@ -376,7 +376,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     };
 
     /**
-     * `f(…)`: a builtin, a function the script defines, a macro - or a product
+     * `f(…)`: a builtin, a function the file defines, a macro - or a product
      * written like a call, which is legal only where it could be one (spec
      * §5.3). A name Desmos would read as a variable and a single argument make
      * a product: `a(b + 1)`, `k(x - 1)`. Anything else is an unknown function,
@@ -431,7 +431,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
             'unknown-function',
             symbols.variables.has(name)
                 ? `\`${name}\` is a variable, not a function, so it cannot be called with ${count(node.arguments.length, 'argument')}.`
-                : `\`${name}\` is not a function - neither a built-in one nor one this script defines.`,
+                : `\`${name}\` is not a function - neither a built-in one nor one this file defines.`,
             node.callee.span,
         );
     };
@@ -650,7 +650,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
             if (AXIS_PALETTE_HEX.has(value.name)) {
                 return;
             }
-            // `red` is not a palette name, and unless the script defines it
+            // `red` is not a palette name, and unless the file defines it
             // is not a colour of any other kind: as an expression it would be
             // r·e·d. Said here rather than left as three sliders.
             const palette = [...AXIS_PALETTE_HEX.keys()].find(
@@ -742,7 +742,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
 
 /**
  * Whether Desmos would read `name(…)` with one argument as a product: a name
- * that is a value rather than a function - a variable the script defines, a
+ * that is a value rather than a function - a variable the file defines, a
  * constant, or a single letter, which is how anybody writes a coefficient.
  * A longer name nobody defined is far more likely a misspelt function.
  */

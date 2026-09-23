@@ -40,17 +40,17 @@ function hostFor(files: Record<string, Uint8Array>, read: string[] = []) {
     };
 }
 
-/** Compile `script` as `/main.axis`, with pictures and scripts on disk beside it. */
+/** Compile `source` as `/main.axis`, with pictures and other files on disk beside it. */
 async function compile(
-    script: string,
+    source: string,
     files: Record<string, Uint8Array> = {},
     imports: Record<string, string> = {},
 ): Promise<CompilationResult> {
     const { host } = hostFor(files);
     const sources = new Map(Object.entries(imports));
-    const images = await loadImages({ path: ENTRY, source: script }, sources, host);
+    const images = await loadImages({ path: ENTRY, source }, sources, host);
 
-    return compileAxis(script, {
+    return compileAxis(source, {
         path: ENTRY,
         resolveImport: createImportResolver(sources, (specifier, from) =>
             resolvePath(withExtension(specifier), from),
@@ -167,14 +167,14 @@ describe('an image that goes wrong', () => {
     });
 
     test('leaves a variable that happens to be called image alone', () => {
-        // `image` is a keyword now, so the name is not one a script can use;
+        // `image` is a keyword now, so the name is not one a file can use;
         // what matters is that the compiler says so rather than throwing.
         assert.doesNotThrow(() => compileAxis('image = 5'));
     });
 });
 
 describe('finding image files', () => {
-    test('finds the files a script draws, wherever they are written', () => {
+    test('finds the pictures a file draws, wherever they are written', () => {
         assert.deepEqual(
             findImageFiles(
                 'image "./a.png"\nfolder "F" { image "./b.png" }\nimage "https://example.com/c.png"',

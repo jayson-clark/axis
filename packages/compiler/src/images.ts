@@ -1,17 +1,17 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Images - turning a file beside the script into something Desmos can draw
+// Images - turning a picture beside the file into something Desmos can draw
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // `image "./beach.png"` names a file the way `import` does, and the compiler
 // reaches it the same way: it never touches a filesystem, it asks for the
 // picture through a {@link ResolveImage} callback and is handed a data URI
 // back. A graph has to carry its pictures with it - Desmos stores an image as
-// its URL, and a path on the machine the script was written on is not one any
+// its URL, and a path on the machine the file was written on is not one any
 // browser can fetch - so the file is read at compile time and inlined.
 //
 // {@link loadImages} is the step that reads them, asynchronously and ahead of
 // time, over whatever notion of "a file" the host has - and over every file the
-// entry script imports as well, since an imported script draws its own images.
+// entry file imports as well, since an imported file draws its own images.
 
 import { imageMediaType, isImageUrl } from '@axis-dsl/syntax';
 import { findStatements, type ResolvedImport } from './imports';
@@ -59,7 +59,7 @@ export interface ImageHost {
 }
 
 /**
- * Read every image file the entry script and its imports draw.
+ * Read every image file the entry file and its imports draw.
  *
  * The result is keyed by resolved path and is what {@link createImageResolver}
  * turns into the synchronous callback the compiler wants. `imported` is what

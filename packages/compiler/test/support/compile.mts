@@ -1,9 +1,9 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Compiling a script in a test
+// Compiling a file in a test
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The shapes every compiler suite reaches for: the list a script lowers to, the
-// one item a one-line script makes, the codes of what the compiler said about
+// The shapes every compiler suite reaches for: the list a file lowers to, the
+// one item a one-line file makes, the codes of what the compiler said about
 // it, and a filesystem of strings to import from.
 
 import type { DesmosExpression } from '@axis-dsl/desmos';
@@ -13,12 +13,12 @@ import type { CompilationResult, CompileOptions } from '../../dist/index.js';
 export { compileAxis };
 export type { CompilationResult, CompileOptions };
 
-/** The expression list a script lowers to. */
+/** The expression list a file lowers to. */
 export function listOf(source: string, options?: CompileOptions): DesmosExpression[] {
     return compileAxis(source, options).state.expressions?.list ?? [];
 }
 
-/** The one item a one-statement script lowers to; the last, for a longer one. */
+/** The one item a one-statement file lowers to; the last, for a longer one. */
 export function only<T>(source: string, options?: CompileOptions): T {
     const list = listOf(source, options);
     return list[list.length - 1] as T;

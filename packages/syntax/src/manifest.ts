@@ -14,7 +14,7 @@
 // Every function, operator and property also carries an `example`, and any of
 // them may carry `documentation` beyond its one-line `detail`: hover shows both,
 // and the reference on the docs site is generated from nothing else. An example
-// is a whole script, read as though it sat in `examples/scripts/` - so it may
+// is a whole file, read as though it sat in `examples/graphs/` - so it may
 // import `./lib/waves` or draw `./images/wave.png` - and the tests compile every
 // one and load it on a real calculator, so the reference cannot show code that
 // does not work.
@@ -30,7 +30,7 @@ export interface FunctionDefinition {
     detail: string;
     /** Markdown beyond {@link detail}, for hover and the reference. */
     documentation?: string;
-    /** A short script that uses it (see the head of this file). */
+    /** A short file that uses it (see the head of this file). */
     example: string;
     snippet?: string;
     category:
@@ -59,7 +59,7 @@ export interface OperatorDefinition {
     detail: string;
     /** Markdown beyond {@link detail}, for hover and the reference. */
     documentation?: string;
-    /** A short script that uses it (see the head of this file). */
+    /** A short file that uses it (see the head of this file). */
     example: string;
     category: 'viewport' | 'list' | 'scope' | 'ticker';
 }
@@ -71,7 +71,7 @@ export interface ConstantDefinition {
     /** Markdown beyond {@link detail}, for hover and the reference. */
     documentation?: string;
     /**
-     * A short script that uses it. Optional here alone: a Greek letter is a
+     * A short file that uses it. Optional here alone: a Greek letter is a
      * name like any other, and has nothing to show that `a` would not.
      */
     example?: string;
@@ -150,7 +150,7 @@ export interface PropertyDefinition {
     detail: string;
     /** Markdown beyond {@link detail}, for hover and the reference. */
     documentation?: string;
-    /** A short script that uses it (see the head of this file). */
+    /** A short file that uses it (see the head of this file). */
     example: string;
     snippet: string;
     valueType: PropertyValueType;
@@ -1956,7 +1956,7 @@ export const AXIS_MANIFEST = {
             name: 'actions',
             detail: 'Allow action expressions [default: auto]',
             documentation:
-                '`auto` decides from the expression list, which cannot see a ticker - so the compiler switches actions on for any script with one.',
+                '`auto` decides from the expression list, which cannot see a ticker - so the compiler switches actions on for any file with one.',
             example: 'config { actions: true }\nn = 0\nticker n -> n + 1 @ playing',
             snippet: 'actions: ${1|true,false,auto|}',
             valueType: 'enum',
@@ -2150,14 +2150,14 @@ export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes', 'userLockedViewport'] as
 export const AXIS_STATE_PROPERTY_NAMES = ['includeFunctionParametersInRandomSeed'] as const;
 
 /**
- * The {@link AXIS_STATE_PROPERTY_NAMES} defaults, for a script that says
+ * The {@link AXIS_STATE_PROPERTY_NAMES} defaults, for a file that says
  * nothing. Separate from {@link AXIS_DEFAULT_CONFIG} because these go somewhere
  * else entirely — that one is calculator options, this one is graph state.
  *
  * Desmos reads a state with no `includeFunctionParametersInRandomSeed` as the
  * legacy randomization behaviour, under which `random()` and `shuffle` inside a
  * function return the same draw for every argument. A graph made at desmos.com
- * today is migrated off that, so a script written today starts off it too — and
+ * today is migrated off that, so a file written today starts off it too — and
  * a legacy graph being decompiled has to say `false` to keep what it had.
  */
 export const AXIS_DEFAULT_STATE: Readonly<Record<string, boolean>> = {
@@ -2165,15 +2165,15 @@ export const AXIS_DEFAULT_STATE: Readonly<Record<string, boolean>> = {
 };
 
 /**
- * The calculator options Axis applies when a script does not say otherwise.
+ * The calculator options Axis applies when a file does not say otherwise.
  *
  * Desmos's own defaults are those of the full editor at desmos.com - the
  * expression list open beside the graph, the settings menu, the zoom buttons
- * and a border around the lot. A compiled Axis script is a *finished* graph
+ * and a border around the lot. A compiled Axis file is a *finished* graph
  * rather than something to be edited in place, so it wants the picture: the
  * chrome is off and the expression list starts collapsed, there to be opened
  * by anyone who wants to read the maths but not in the way of the graph.
- * Anything a script writes in its own `config { … }` still wins, so
+ * Anything a file writes in its own `config { … }` still wins, so
  * `expressionsCollapsed: false` opens the list on load.
  */
 export const AXIS_DEFAULT_CONFIG: Readonly<Record<string, boolean>> = {

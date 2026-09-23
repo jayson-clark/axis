@@ -13,7 +13,7 @@ export type {
 export type { CompilationResult, CompileOptions, StatementOrigin } from './compile';
 
 // The passes `compileAxis` is made of, for a tool that wants one of them on its
-// own - an editor checking a script without lowering it, say.
+// own - an editor checking a file without lowering it, say.
 export { loadProgram } from './program';
 export type { ImportResolution, LoadProgramOptions, Program, SourceFile } from './program';
 export { collectSymbols, definitionOf } from './symbols';

@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// The shape of the graph a script builds
+// The shape of the graph a file builds
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // Folders, tables, notes, imports and images are structure rather than maths,
@@ -18,24 +18,24 @@ import { example, exampleDirectory, skip, useCalculator } from './support.mts';
 const codes = (source: string, options?: CompileOptions) =>
     compileAxis(source, options).diagnostics.map(diagnostic => diagnostic.code);
 
-/** Load a script that has to be clean, and hand back the applied list. */
+/** Load source that has to be clean, and hand back the applied list. */
 async function loadClean(calculator: AxisCalculator, source: string, options?: CompileOptions) {
     const { diagnostics } = await calculator.load(source, options);
     assert.deepEqual(
         diagnostics.map(diagnostic => `${diagnostic.code}: ${diagnostic.message}`),
         [],
-        `${source} is not a clean script`,
+        `${source} is not clean`,
     );
     return (await calculator.getState()).expressions?.list ?? [];
 }
 
-/** Load one of the example scripts, imports and images resolved from disk. */
+/** Load one of the example files, imports and images resolved from disk. */
 async function loadExample(calculator: AxisCalculator, name: string) {
-    const script = await readAxisFile(example(name));
-    return calculator.load(script.source, {
-        path: script.path,
-        resolveImport: script.resolveImport,
-        resolveImage: script.resolveImage,
+    const file = await readAxisFile(example(name));
+    return calculator.load(file.source, {
+        path: file.path,
+        resolveImport: file.resolveImport,
+        resolveImage: file.resolveImage,
     });
 }
 
@@ -318,11 +318,11 @@ describe('imports', { skip }, () => {
         );
     });
 
-    test('what an import brought is in scope for the rest of the script', async () => {
+    test('what an import brought is in scope for the rest of the file', async () => {
         await loadExample(calculator(), '16-imports.axis');
 
         // `sine` and `envelope` are defined in the imported files, and the
-        // entry script graphs their product.
+        // entry file graphs their product.
         assert.deepEqual(await calculator().getErrors(), []);
         assert.equal((await calculator().evaluate('sine(0)')).numericValue, 0);
     });
@@ -367,15 +367,15 @@ describe('imports', { skip }, () => {
         assert.deepEqual(await calculator().getErrors(), []);
     });
 
-    test("an imported config applies, under the script's own", async () => {
+    test("an imported config applies, under the file's own", async () => {
         await loadClean(calculator(), 'config { showGrid: true }\nimport "configured"', host);
         const settings = await calculator().getSettings();
 
-        assert.equal(settings.showGrid, true, 'the entry script has to win');
+        assert.equal(settings.showGrid, true, 'the entry file has to win');
         assert.equal(settings.degreeMode, true, 'and the import still contributes');
     });
 
-    test('a missing import is an error, and the rest of the script still graphs', async () => {
+    test('a missing import is an error, and the rest of the file still graphs', async () => {
         const { diagnostics } = await calculator().load('import "nowhere"\na = 5', host);
 
         assert.deepEqual(
@@ -404,7 +404,7 @@ describe('images', { skip }, () => {
     /** The picture `18-images.axis` draws, as it sits on disk. */
     const picture = () => readFileSync(example('images/wave.png'));
 
-    test('a file beside the script arrives in the graph as a data URI', async () => {
+    test('a file beside the one importing it arrives in the graph as a data URI', async () => {
         await loadExample(calculator(), '18-images.axis');
 
         const list = (await calculator().getState()).expressions?.list ?? [];
@@ -419,7 +419,7 @@ describe('images', { skip }, () => {
         }
     });
 
-    test('the placement Desmos keeps is the expression the script wrote', async () => {
+    test('the placement Desmos keeps is the expression the file wrote', async () => {
         await loadExample(calculator(), '18-images.axis');
 
         const list = (await calculator().getState()).expressions?.list ?? [];
@@ -449,20 +449,20 @@ describe('images', { skip }, () => {
     });
 });
 
-describe('the example scripts', { skip }, () => {
+describe('the example files', { skip }, () => {
     const calculator = useCalculator();
 
     // The tour in examples/ is what a newcomer reads first, and it is also the
     // widest use of the language there is - every one of them has to be a
-    // script the checker has nothing to say about, and a graph Desmos accepts
+    // file the checker has nothing to say about, and a graph Desmos accepts
     // outright.
-    const scripts = readdirSync(exampleDirectory()).filter(name => name.endsWith('.axis'));
+    const files = readdirSync(exampleDirectory()).filter(name => name.endsWith('.axis'));
 
     test('there are examples to check', () => {
-        assert.ok(scripts.length >= 20, `only found ${scripts.length}`);
+        assert.ok(files.length >= 20, `only found ${files.length}`);
     });
 
-    for (const name of scripts) {
+    for (const name of files) {
         test(`${name} compiles cleanly and produces a graph with no errors`, async () => {
             const { diagnostics } = await loadExample(calculator(), name);
 
@@ -497,13 +497,13 @@ describe('the graph as a whole', { skip }, () => {
         }
     });
 
-    test('an empty script is an empty graph, not an error', async () => {
+    test('an empty file is an empty graph, not an error', async () => {
         await loadClean(calculator(), '// nothing but a comment\n');
 
         assert.deepEqual(await calculator().getErrors(), []);
     });
 
-    test('a script reloaded twice ends up the same both times', async () => {
+    test('a file reloaded twice ends up the same both times', async () => {
         const source = 'a = 5 @ slider: 1..9\ny = a * x @ color: #ff0000';
 
         await calculator().load(source);
@@ -515,7 +515,7 @@ describe('the graph as a whole', { skip }, () => {
         assert.deepEqual(second, first);
     });
 
-    test('the viewport is the one the script gave, the rest filled in', async () => {
+    test('the viewport is the one the file gave, the rest filled in', async () => {
         await loadClean(calculator(), 'config { xmin: -2; squareAxes: false }\ny = x');
         const viewport = (await calculator().getState()).graph?.viewport;
 

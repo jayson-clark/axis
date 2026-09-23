@@ -2,7 +2,7 @@
 // Config - the calculator's own settings
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// One config block per script, at the top level. Every entry maps to a Desmos
+// One config block per file, at the top level. Every entry maps to a Desmos
 // calculator setting, so this is where the graph's chrome, axes and behaviour
 // are set rather than any single expression's. Entries go one to a line, as
 // here, or share one with a ; between them.

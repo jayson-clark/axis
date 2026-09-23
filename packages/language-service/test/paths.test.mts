@@ -62,7 +62,7 @@ describe('paths being typed', () => {
         assert.equal(contextAtEnd('folder "F" { image "./a')?.kind, 'image');
     });
 
-    test('finds one on a later line of a script', () => {
+    test('finds one on a later line of a file', () => {
         assert.equal(contextAtEnd('y = x\nfolder "F" {\n    import "./lib/')?.directory, './lib/');
     });
 
@@ -84,7 +84,7 @@ describe('what a path offers', () => {
         assert.deepEqual(labels('import "').slice(0, 2), ['images/', 'lib/']);
     });
 
-    test('offers an import the scripts, and an image the pictures', () => {
+    test('offers an import the Axis files, and an image the pictures', () => {
         assert.deepEqual(labels('import "'), ['images/', 'lib/', 'curves.axis']);
         assert.deepEqual(labels('image "'), ['images/', 'lib/', 'beach.png']);
     });
@@ -99,7 +99,7 @@ describe('what a path offers', () => {
         assert.equal(items.find(item => item.label === 'lib/')!.retrigger, true);
     });
 
-    test('leaves out what a script cannot name', () => {
+    test('leaves out what a file cannot name', () => {
         // The dotfile and the .txt: one is not a path anybody writes, and the
         // other would compile to an error.
         assert.ok(!labels('import "').includes('.git/'));

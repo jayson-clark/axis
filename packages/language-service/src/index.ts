@@ -9,7 +9,7 @@
 //
 // Nothing here touches an editor or the DOM: `./monaco` adapts it to Monaco,
 // and the language server (#26) adapts it to LSP. Diagnostics, and the names
-// a script's imports define, come from the compiler's own passes, given the
+// a file's imports define, come from the compiler's own passes, given the
 // host's `resolveImport` and `resolveImage` (`ProgramOptions`).
 
 export {

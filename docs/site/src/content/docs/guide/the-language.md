@@ -5,9 +5,9 @@ sidebar:
   order: 1
 ---
 
-An Axis script is a list of statements. Each one becomes one item in the
+An Axis file is a list of statements. Each one becomes one item in the
 graph, whether an expression, a note, a folder or a table, in the order it is
-written - so the script reads top to bottom the way the expression list does.
+written - so the file reads top to bottom the way the expression list does.
 
 ```axis
 // A comment runs to the end of the line, and never reaches the graph.
@@ -70,7 +70,7 @@ at all: a point, a list of points, or `polygon(…)` on its own is drawn.
 
 A string on its own line is a note - the text card in Desmos' expression list.
 It is how a graph explains itself to whoever opens it next, where a comment
-explains the script to whoever reads it.
+explains the file to whoever reads it.
 
 ```axis
 "Drag the slider to change the slope."
@@ -139,7 +139,7 @@ styling a whole table, and when a list is the better tool.
 
 `config { … }` sets up the calculator itself rather than any one expression:
 the grid and axes, the viewport, the theme, and which parts of the Desmos
-interface appear. A script has at most one, at the top level.
+interface appear. A file has at most one, at the top level.
 
 ```axis
 config {
@@ -152,7 +152,7 @@ config {
 h(t) = 20t - 4.9t ^ 2
 ```
 
-A compiled script is meant to be a finished graph rather than an editor, so
+A compiled file is meant to be a finished graph rather than an editor, so
 Axis leaves off the chrome desmos.com wraps around one: the settings menu, the
 zoom buttons and the border are off, and the expression list starts collapsed.
 `config` asks for any of them back - `zoomButtons: true`,
@@ -165,7 +165,7 @@ Four statements have pages of their own:
 
 - `style` names a set of properties to reuse, and `macro` names an expression
   ([Macros and styles](../macros-and-styles/)).
-- `import` brings another script in as a folder, and `image` places a picture
+- `import` brings another file in as a folder, and `image` places a picture
   ([Imports and images](../imports-and-images/)).
 - `ticker` runs an action over and over for as long as the graph is open
   ([Sliders and animation](../sliders-and-animation/)).

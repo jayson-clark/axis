@@ -63,7 +63,7 @@ describe('document links', () => {
         );
     });
 
-    test('finds nothing in a script that names no files', () => {
+    test('finds nothing in a file that names no files', () => {
         assert.deepEqual(getDocumentLinks('y = x\n"an image of a beach"\nimage = 5'), []);
     });
 

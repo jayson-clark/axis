@@ -47,7 +47,7 @@ export const KEYWORD_INFO: Readonly<Record<Keyword | 'min' | 'max', KeywordInfo>
         allowedIn: FILE_ONLY,
     },
     import: {
-        detail: 'Bring in another script, as a folder',
+        detail: 'Bring in another file, as a folder',
         documentation:
             'The path is relative to this file, and `.axis` may be left off. The imported statements land in one folder, named after the file unless `as` names it.\n\n```axis\nimport "./lib/waves" as "Waves" @ collapsed: false\n```',
         snippet: 'import "${1:./file.axis}"',

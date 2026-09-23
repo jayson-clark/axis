@@ -2,9 +2,9 @@
 // A library of waves, meant to be imported
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Nothing about this file makes it a library: it is an ordinary script, and
+// Nothing about this file makes it a library: it is an ordinary one, and
 // opening a preview on it graphs it on its own. What `import` does is drop the
-// whole of it into another script, flattened into one folder - so the folders
+// whole of it into another file, flattened into one folder - so the folders
 // below are for reading this file, not for the graph it ends up in.
 
 folder "Controls" {

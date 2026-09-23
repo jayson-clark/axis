@@ -20,7 +20,7 @@ is the operator `-` applied to `3`.
 
 A name may be longer than one letter. Desmos only has single-letter names with
 a subscript, so the compiler spells `amp` as `a_{mp}`, and `x_1` as `x_{1}`;
-the script never has to. Greek letters and constants are written as words -
+the file never has to. Greek letters and constants are written as words -
 `pi`, `tau`, `theta`, `e`, `infinity` - and assigning to one of those is an
 error rather than an equation Desmos would quietly find false.
 
@@ -139,7 +139,7 @@ of a definition binds more loosely than anything else, so
 ## Calls and products
 
 `name(…)` is a call when `name` is a function - a built-in one, or one the
-script defines. Otherwise, with exactly one argument, it is a product:
+file defines. Otherwise, with exactly one argument, it is a product:
 `k(x - 1)` is `k` times `x - 1`, just as Desmos would read it.
 
 ```axis
@@ -149,7 +149,7 @@ y = k(x - 1) + f(x)
 ```
 
 A product needs a name Desmos reads as a value: a single letter, a variable the
-script defines, a parameter, or a constant. A longer name that is none of
+file defines, a parameter, or a constant. A longer name that is none of
 those is far more likely a misspelt function than a coefficient nobody
 defined, so it is reported:
 

@@ -13,7 +13,7 @@ import { useCompiledAxis } from './useCompiledAxis';
  */
 const DESMOS_API_KEY = AXIS_DESMOS_API_KEY;
 
-const STARTER_SOURCE = `// Welcome to Axis — a scripting language for Desmos.
+const STARTER_SOURCE = `// Welcome to Axis — a language for Desmos graphs.
 // Edit on the left, watch the graph update on the right -
 // or drag something on the right, and watch the left catch up.
 

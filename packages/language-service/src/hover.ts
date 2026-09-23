@@ -3,7 +3,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // The manifest's documentation for what it defines - builtins, properties,
-// enum values, the palette - and the keywords' own; for a name the script
+// enum values, the palette - and the keywords' own; for a name the file
 // defines, the definition itself, printed - and for one an import defines,
 // given the resolver to read it with, the same from that file.
 

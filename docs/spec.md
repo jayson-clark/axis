@@ -255,7 +255,7 @@ A hex literal is lowered written out in full and in lower case - `#ABC` is
 `#aabbcc` - which is the only spelling Desmos writes back. Palette names,
 unlike enum values, are **case-sensitive**, because any other spelling is an
 expression: `color: red` is r·e·d. So a palette name in the wrong case is an
-error (`invalid-color`) unless the script defines that name itself, in which
+error (`invalid-color`) unless the file defines that name itself, in which
 case it is the variable. A number, a string, an action or an equation is never
 a colour.
 
@@ -493,7 +493,7 @@ is never an issue: `macro double(a) = 2 * a` used as `double(1 + 2) ^ 2` is
   function or variable, or another macro.
 - Arity must match; a parameterless macro is used without parentheses.
 - Recursion (direct or mutual) is an error. A macro that collides with a
-  builtin or with a name the script defines is reported and left out, so the
+  builtin or with a name the file defines is reported and left out, so the
   name keeps its other meaning everywhere it is used.
 - A macro expands only in expression positions; it cannot stand for a
   statement, a block or metadata. Reusable metadata is what styles are for.
@@ -525,7 +525,7 @@ several imported tickers, the last to be read). A cycle is an error
 A file imported more than once is included the first time and is nothing the
 other times, wherever the imports are: a second copy would define every name
 in it again, which Desmos rejects. An import that cannot be resolved is
-`unresolved-import`, and the rest of the script still compiles.
+`unresolved-import`, and the rest of the file still compiles.
 
 ## 8. Diagnostics
 
@@ -581,7 +581,7 @@ Errors include, beyond syntax:
 An undefined _variable_ is not an error: Desmos offers it as a slider.
 
 The checker and the compiler report these codes. Every one is an error, and
-none of them stops the rest of the script compiling: a value that is wrong is
+none of them stops the rest of the file compiling: a value that is wrong is
 left off, and a statement that cannot be written at all is left out.
 
 | Code                    | What                                                                             |
@@ -620,7 +620,7 @@ left off, and a statement that cannot be written at all is left out.
 | `invalid-image`         | an image path that is not a picture by its extension                             |
 
 A diagnostic about an imported file carries that file's `path`, and its span
-is into that file; one about the script itself carries none. A misplaced
+is into that file; one about the entry file carries none. A misplaced
 `config` or `ticker` is not applied, and the contents of a nested folder join
 the folder it is in.
 
@@ -646,9 +646,9 @@ So the state is complete. It is version 11; it carries
 `doNotMigrateMovablePointStyle: true`, without which Desmos substitutes its
 own style for any point it decides is movable; `includeFunctionParametersInRandomSeed`
 at the top level, where Desmos reads it; the viewport under `graph`, with any
-edge the script did not give filled in from ±10; and the ticker beside the list
+edge the file did not give filled in from ±10; and the ticker beside the list
 only when there is one. The options are the Axis defaults under the merged
-config, with `actions: true` added for a script with a ticker and no `actions`
+config, with `actions: true` added for a file with a ticker and no `actions`
 of its own - Desmos decides `auto` from the list, which the ticker is not in.
 
 Each item in the list has a deterministic id - `expr_N`, `folder_N`, `note_N`,
@@ -672,7 +672,7 @@ make either unwritable.
 ## 10. Formatting
 
 `format` (in `@axis-dsl/syntax`) prints a file back from its tree, so there is
-one way every script is laid out. The decompiler and write-back print the nodes
+one way every file is laid out. The decompiler and write-back print the nodes
 they build with the same printer, so generated source looks typed by hand.
 
 - **Spacing.** One space either side of `+ - * / ^ = < <= > >= ->` and after
@@ -709,7 +709,7 @@ they build with the same printer, so generated source looks typed by hand.
 
 `decompileAxis({ state, options? })` is the compiler run backwards: a graph
 state - what `compileAxis` hands a host, or what a calculator's `getState`
-hands back - into a script, as `{ source, statements, diagnostics }`. It builds
+hands back - into Axis source, as `{ source, statements, diagnostics }`. It builds
 the statements as tree nodes and prints them with the printer (§10), so the
 source is already formatted and parses without a word. The contract is the
 round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same

@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Symbols - what every name in a script refers to
+// Symbols - what every name in a file refers to
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // One walk over the tree classifies every identifier in it: a property key, an
@@ -41,7 +41,7 @@ export type SymbolKind = 'variable' | 'function' | 'macro' | 'style' | 'paramete
  */
 export type SymbolNamespace = 'value' | 'macro' | 'style';
 
-/** Something the script itself defines. */
+/** Something the file itself defines. */
 export interface SymbolDefinition {
     name: string;
     kind: SymbolKind;

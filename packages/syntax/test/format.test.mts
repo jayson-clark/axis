@@ -7,7 +7,7 @@ import { format, parse, printExpression, sameTree } from '../dist/index.js';
 import { seeded, statementValue } from './trees.mts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const examples = resolve(here, '../../../examples/scripts');
+const examples = resolve(here, '../../../examples/graphs');
 const fixtures = resolve(here, 'fixtures');
 
 const axisFiles = (directory: string): string[] =>
@@ -17,7 +17,7 @@ const axisFiles = (directory: string): string[] =>
         return entry.name.endsWith('.axis') ? [path] : [];
     });
 
-/** The comments of a script, in order, as the lexer finds them. */
+/** The comments of a source, in order, as the lexer finds them. */
 const comments = (source: string) =>
     parse(source)
         .tokens.filter(token => token.kind === 'comment')
@@ -368,7 +368,7 @@ describe('format: wrapping a long line', () => {
         assert.equal(format('L = [\n1, 2]'), 'L = [\n    1,\n    2\n]');
     });
 
-    test('a wrapped line is a script the formatter leaves alone', () => {
+    test('a wrapped line is source the formatter leaves alone', () => {
         const source = 'P = [(0, 0), (4, 0), (8, 3), (12, 1), (16, 7)] @ color: RED';
         const wrapped = wrap(source);
 
@@ -379,7 +379,7 @@ describe('format: wrapping a long line', () => {
 // The examples are the widest use of the language there is, and the fixtures
 // the widest use of its syntax: every one of them, at the default width and at
 // a narrow one that makes the wrapping work, has to come back as the same
-// script, with the same comments in the same order, and settle.
+// source, with the same comments in the same order, and settle.
 describe('format: every example and fixture', () => {
     const files = [...axisFiles(examples), ...axisFiles(fixtures)];
 

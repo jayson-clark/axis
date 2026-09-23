@@ -7,7 +7,7 @@
 // and `docs/spec.md` is the prose it implements.
 //
 // A tree rather than text, because every tool used to rediscover the structure
-// of a script for itself - with its own regexes, and its own disagreements. Now
+// of a file for itself - with its own regexes, and its own disagreements. Now
 // the parser finds it once, and every node carries the span it was read from,
 // so a diagnostic, a source map entry or a write-back edit points at the exact
 // characters without anybody counting lines again.

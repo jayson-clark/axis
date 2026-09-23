@@ -49,7 +49,7 @@ for (const [path, text] of Object.entries(referencePages())) {
     write(join(docs, 'reference', path), text);
 }
 
-// A page for each example script.
-for (const [path, text] of Object.entries(examplePages(join(root, 'examples/scripts')))) {
+// A page for each example.
+for (const [path, text] of Object.entries(examplePages(join(root, 'examples/graphs')))) {
     write(join(docs, 'examples', path), text);
 }

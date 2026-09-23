@@ -5,9 +5,9 @@ sidebar:
   order: 7
 ---
 
-A script that repeats itself can name what it repeats. A `macro` names an
+A file that repeats itself can name what it repeats. A `macro` names an
 expression, and a `style` names a set of properties. Neither reaches Desmos:
-both are resolved away when the script compiles, so the graph is the one you
+both are resolved away when the file compiles, so the graph is the one you
 would have written out by hand.
 
 ## Macros
@@ -67,10 +67,10 @@ CIRCLE(2) @ color: BLACK, lineOpacity: 0.3
 ### The rules
 
 - **Macros are hoisted.** One is in scope for the whole compilation - above
-  where it is written, and in every file the script imports or is imported by.
+  where it is written, and in every file it imports or is imported by.
   A file of nothing but macros is a library.
 - **A macro shadows nothing.** Its name may not collide with a built-in, a
-  function or variable the script defines, or another macro. One that does is
+  function or variable the file defines, or another macro. One that does is
   reported and left out, so the name keeps its other meaning.
 - **Arity must match.** A macro is used with exactly as many arguments as it
   has parameters, and one with no parameters is used without brackets.
@@ -94,7 +94,7 @@ y = WAVE(1)
 Because a macro is expanded and then forgotten, the graph holds the expansion,
 not the call. So a statement a macro expanded into cannot be written back from
 the preview: dragging something it drew would replace `WAVE(1, 0)` in the
-script with the sine it stands for. The preview leaves such a statement alone
+file with the sine it stands for. The preview leaves such a statement alone
 and says why.
 
 ## Styles
