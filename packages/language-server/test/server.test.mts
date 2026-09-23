@@ -86,6 +86,10 @@ describe('the language server', () => {
         assert.deepEqual(codes(diagnostics), ['assign-to-builtin']);
         assert.equal(diagnostics[0].source, 'axis');
         assert.deepEqual(diagnostics[0].range.start, { line: 0, character: 0 });
+        assert.equal(
+            diagnostics[0].codeDescription?.href,
+            'https://jayson-clark.github.io/axis/reference/diagnostics/#assign-to-builtin',
+        );
     });
 
     test('checks a document again as it is edited', async () => {

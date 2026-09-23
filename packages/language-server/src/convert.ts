@@ -33,6 +33,7 @@ export function toDiagnostic(diagnostic: service.Diagnostic): Diagnostic {
         range: diagnostic.range,
         severity: SEVERITIES[diagnostic.severity],
         code: diagnostic.code,
+        ...(diagnostic.href && { codeDescription: { href: diagnostic.href } }),
         source: diagnostic.source,
         message: diagnostic.message,
     };

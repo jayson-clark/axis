@@ -38,7 +38,10 @@ function toMarkers(api: MonacoApi, diagnostics: Diagnostic[]): monaco.editor.IMa
         return {
             severity: severities[diagnostic.severity],
             message: diagnostic.message,
-            code: diagnostic.code,
+            // With a target, Monaco draws the code in the hover as a link.
+            code: diagnostic.href
+                ? { value: diagnostic.code, target: api.Uri.parse(diagnostic.href) }
+                : diagnostic.code,
             source: 'axis',
             ...range,
             endColumn: empty ? range.endColumn + 1 : range.endColumn,

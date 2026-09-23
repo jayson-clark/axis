@@ -1,7 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse } from '@axis-dsl/syntax';
+import { SYNTAX_DIAGNOSTICS, parse } from '@axis-dsl/syntax';
+import { COMPILER_DIAGNOSTICS } from '@axis-dsl/compiler';
 import {
+    diagnosticDocsUrl,
     getDiagnostics,
     getDocumentLinks,
     missingImageDiagnostic,
@@ -133,5 +135,30 @@ describe('missing files', () => {
         const diagnostic = missingImageDiagnostic(source, link);
         assert.equal(diagnostic.code, 'image-not-found');
         assert.equal(textOf(source, diagnostic.range), './gone.png');
+    });
+});
+
+describe('links to the reference', () => {
+    test('link a diagnostic to its code’s entry', () => {
+        const [diagnostic] = getDiagnostics('mean = 3');
+        assert.equal(
+            diagnostic.href,
+            'https://jayson-clark.github.io/axis/reference/diagnostics/#assign-to-builtin',
+        );
+    });
+
+    test('link every code the catalogues declare, by the code itself', () => {
+        for (const code of [
+            ...Object.keys(SYNTAX_DIAGNOSTICS),
+            ...Object.keys(COMPILER_DIAGNOSTICS),
+        ]) {
+            assert.equal(new URL(diagnosticDocsUrl(code)!).hash, `#${code}`, code);
+        }
+    });
+
+    test('leave a code with no entry unlinked', () => {
+        // Only a host reports a missing file, so the reference has no entry.
+        assert.equal(diagnosticDocsUrl('import-not-found'), undefined);
+        assert.equal(diagnosticDocsUrl('toString'), undefined);
     });
 });

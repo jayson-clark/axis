@@ -318,15 +318,29 @@ ${groups
 /** "a call on a name (§5.3)" as "A call on a name (§5.3)." */
 const sentence = summary => summary[0].toUpperCase() + summary.slice(1) + '.';
 
-function diagnostic(code_, info) {
-    return [`### ${code_}`, sentence(info.summary), axis(info.example, `error="${code_}"`)].join(
-        '\n\n',
-    );
+/**
+ * A code's entry. `also` is the checker's meaning for a code the lexer reports
+ * too - `invalid-color` - written into the same entry rather than under a
+ * second heading of its own, because the editors link a diagnostic to its
+ * entry by the code alone, and a second heading with the same text would get
+ * an anchor nothing links to.
+ */
+function diagnostic(code_, info, also) {
+    const parts = [`### ${code_}`, sentence(info.summary), axis(info.example, `error="${code_}"`)];
+    if (also) {
+        parts.push(
+            `The checker reports the same code for ${also.summary}.`,
+            axis(also.example, `error="${code_}"`),
+        );
+    }
+    return parts.join('\n\n');
 }
 
 function diagnostics() {
     const syntax = Object.entries(SYNTAX_DIAGNOSTICS);
-    const compiler = Object.entries(COMPILER_DIAGNOSTICS);
+    const compiler = Object.entries(COMPILER_DIAGNOSTICS).filter(
+        ([name]) => !(name in SYNTAX_DIAGNOSTICS),
+    );
     const decompiler = Object.entries(DECOMPILER_DIAGNOSTICS);
     return page(
         'Diagnostics',
@@ -340,7 +354,7 @@ Much of what is reported here is something Desmos would accept without a word - 
 
 What the lexer and the parser report. After one of these, the parser picks up again at the next line.
 
-${syntax.map(([name, info]) => diagnostic(name, info)).join('\n\n')}
+${syntax.map(([name, info]) => diagnostic(name, info, COMPILER_DIAGNOSTICS[name])).join('\n\n')}
 
 ## Checking it
 
@@ -377,7 +391,7 @@ function overview() {
 | [Constants and operators](constants/) | ${AXIS_MANIFEST.constants.length} constants and ${AXIS_MANIFEST.operators.length} operators |
 | [Properties](properties/) | ${AXIS_MANIFEST.metadata.length + AXIS_MANIFEST.tickerProperties.length} properties written after ${code('@')}, and the palette |
 | [Settings](settings/) | ${AXIS_MANIFEST.configProperties.length} ${code('config')} settings |
-| [Diagnostics](diagnostics/) | ${count(SYNTAX_DIAGNOSTICS).length + count(COMPILER_DIAGNOSTICS).length + count(DECOMPILER_DIAGNOSTICS).length} diagnostic codes |
+| [Diagnostics](diagnostics/) | ${new Set([...count(SYNTAX_DIAGNOSTICS), ...count(COMPILER_DIAGNOSTICS), ...count(DECOMPILER_DIAGNOSTICS)]).size} diagnostic codes |
 
 The [specification](../spec/) is the language's contract, written out in full.`,
         'Overview',

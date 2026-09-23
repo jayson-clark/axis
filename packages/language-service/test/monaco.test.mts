@@ -280,12 +280,12 @@ describe('the providers', () => {
         registerAxisLanguage(monaco.api);
 
         const markers = monaco.markers.get(model.uri.toString()) as {
-            code: string;
+            code: { value: string };
             severity: number;
             startLineNumber: number;
         }[];
         assert.deepEqual(
-            markers.map(marker => [marker.code, marker.severity, marker.startLineNumber]),
+            markers.map(marker => [marker.code.value, marker.severity, marker.startLineNumber]),
             [
                 ['assign-to-builtin', 8, 1],
                 ['invalid-color', 8, 2],
@@ -295,6 +295,22 @@ describe('the providers', () => {
         model.edit('a = 3');
         await new Promise(resolve => setTimeout(resolve, 300));
         assert.deepEqual(monaco.markers.get(model.uri.toString()), []);
+    });
+
+    test('link each code to its entry in the reference', () => {
+        const monaco = fakeMonaco();
+        const model = fakeModel('mean = 3');
+        monaco.models.push(model);
+        registerAxisLanguage(monaco.api);
+
+        const [marker] = monaco.markers.get(model.uri.toString()) as {
+            code: { value: string; target: { toString(): string } };
+        }[];
+        assert.equal(marker.code.value, 'assign-to-builtin');
+        assert.equal(
+            marker.code.target.toString(),
+            'https://jayson-clark.github.io/axis/reference/diagnostics/#assign-to-builtin',
+        );
     });
 
     test('clear their markers when disposed', () => {
