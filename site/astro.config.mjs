@@ -41,6 +41,11 @@ export default defineConfig({
             sidebar: [
                 { label: 'Start here', items: [{ autogenerate: { directory: 'start' } }] },
                 { label: 'Guide', items: [{ autogenerate: { directory: 'guide' } }] },
+                {
+                    label: 'Examples',
+                    collapsed: true,
+                    items: [{ autogenerate: { directory: 'examples' } }],
+                },
                 { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
                 { label: 'Specification', link: '/spec/' },
             ],

@@ -10,6 +10,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { examplePages } from './examples.mjs';
 import { referencePages } from './reference.mjs';
 
 const site = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,4 +45,9 @@ copyFileSync(join(root, 'assets/axis-tile.svg'), join(site, 'public/favicon.svg'
 // The reference, out of the manifest and the diagnostic catalogues.
 for (const [path, text] of Object.entries(referencePages())) {
     write(join(docs, 'reference', path), text);
+}
+
+// A page for each example script.
+for (const [path, text] of Object.entries(examplePages(join(root, 'examples/scripts')))) {
+    write(join(docs, 'examples', path), text);
 }

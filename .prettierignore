@@ -9,3 +9,4 @@ CHANGELOG.md
 site/.astro/
 site/src/content/docs/spec.md
 site/src/content/docs/reference/
+site/src/content/docs/examples/

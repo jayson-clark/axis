@@ -5,3 +5,4 @@ src/assets/
 public/favicon.svg
 
 .astro/
+src/content/docs/examples/
