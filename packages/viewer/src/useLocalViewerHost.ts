@@ -1,29 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import type {
-    CalculatorOptions,
-    DesmosExpression,
-    GraphSettings,
-    GraphStateFlags,
-    TickerState,
-} from '@axis-dsl/desmos';
+import type { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
 import {
     createLocalChannel,
     type GraphReading,
     type HostTransport,
     type ViewerMessage,
     type ViewerTransport,
-} from '@axis-dsl/protocol';
+} from './protocol/index.js';
 
 export interface LocalViewerHost {
     apiKey: string | null;
-    expressions: DesmosExpression[];
-    settings?: CalculatorOptions;
-    /** The viewport and `squareAxes`, applied through the calculator's state. */
-    graph?: GraphSettings;
-    /** The flags Desmos reads off the top of the state, applied the same way. */
-    state?: GraphStateFlags;
-    /** The graph's ticker, applied the same way. */
-    ticker?: TickerState;
+    /**
+     * The whole graph state, applied with `setState`. Left out, the viewer is
+     * sent no graph at all and the calculator stays as it is - a host that has
+     * not compiled anything yet has nothing to say.
+     */
+    state?: GraphState | null;
+    /** Calculator options, applied with `updateSettings` after the state. */
+    options?: CalculatorOptions;
     /** Shown in the tab strip. */
     status?: string | null;
     /**
@@ -37,36 +31,25 @@ export interface LocalViewerHost {
      *
      * Left out, the calculator is not watched: the viewer only starts looking
      * when a host says it has somewhere to put the answer. `before` is the
-     * graph as the calculator held it when this host's expressions were last
-     * applied, `after` is the graph now.
+     * graph as the calculator held it when this host's graph was last applied,
+     * `after` is the graph now.
      */
     onGraphChanged?: (before: GraphReading, after: GraphReading) => void;
 }
 
-/** The half of a host's state that describes the graph rather than the page. */
-type CompiledGraph = Pick<
-    LocalViewerHost,
-    'expressions' | 'settings' | 'graph' | 'state' | 'ticker'
->;
-
 /**
- * The compiled graph, as the one message that carries it.
+ * The graph, as the one message that carries it, or null for a host with none.
  *
  * Built here rather than at each of the two places that send it — the first
  * push when the viewer says `ready`, and the effect that re-sends on every
- * recompile. They have to agree: whichever one leaves out a part of the
- * compilation replaces what the other delivered with nothing, and the graph
- * loses it a render later. The ticker is the part that shows this up, being the
- * one thing that can change while the expression list does not.
+ * recompile — so the two cannot disagree about what a graph with no options
+ * is.
  */
-function expressionsMessage({
-    expressions,
-    settings,
-    graph,
+function graphMessage({
     state,
-    ticker,
-}: CompiledGraph): ViewerMessage {
-    return { command: 'setExpressions', data: { expressions, settings, graph, state, ticker } };
+    options,
+}: Pick<LocalViewerHost, 'state' | 'options'>): ViewerMessage | null {
+    return state ? { command: 'setGraph', data: { state, options: options ?? {} } } : null;
 }
 
 function pushAll(host: HostTransport, state: LocalViewerHost) {
@@ -79,7 +62,10 @@ function pushAll(host: HostTransport, state: LocalViewerHost) {
             },
         });
     }
-    host.send(expressionsMessage(state));
+    const graph = graphMessage(state);
+    if (graph) {
+        host.send(graph);
+    }
     host.send({ command: 'setStatus', data: { status: state.status ?? null } });
     host.send({ command: 'setSync', data: { enabled: Boolean(state.onGraphChanged) } });
 }
@@ -89,11 +75,11 @@ function pushAll(host: HostTransport, state: LocalViewerHost) {
  * cross. It speaks the same protocol the extension does — this hook is only the
  * ceremony of turning React state into messages.
  */
-export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
+export function useLocalViewerHost(host: LocalViewerHost): ViewerTransport {
     // Written during render so the `ready` handler below, which fires from the
     // viewer's mount effect, already sees this render's values.
-    const latest = useRef(state);
-    latest.current = state;
+    const latest = useRef(host);
+    latest.current = host;
 
     const [channel] = useState(() => {
         const created = createLocalChannel();
@@ -112,12 +98,12 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
         return created;
     });
 
-    const { apiKey, expressions, settings, graph, state: stateFlags, ticker, status } = state;
-    const canSetApiKey = Boolean(state.onRequestApiKey);
+    const { apiKey, state, options, status } = host;
+    const canSetApiKey = Boolean(host.onRequestApiKey);
     // Whether a host is listening, not which function it is listening with: a
     // host writing this inline gets a new closure every render, and resending
     // `setSync` on each one would be a message per keystroke.
-    const wantsSync = Boolean(state.onGraphChanged);
+    const wantsSync = Boolean(host.onGraphChanged);
 
     useEffect(() => {
         if (apiKey) {
@@ -129,10 +115,11 @@ export function useLocalViewerHost(state: LocalViewerHost): ViewerTransport {
     }, [channel, apiKey, canSetApiKey]);
 
     useEffect(() => {
-        channel.host.send(
-            expressionsMessage({ expressions, settings, graph, state: stateFlags, ticker }),
-        );
-    }, [channel, expressions, settings, graph, stateFlags, ticker]);
+        const graph = graphMessage({ state, options });
+        if (graph) {
+            channel.host.send(graph);
+        }
+    }, [channel, state, options]);
 
     useEffect(() => {
         channel.host.send({ command: 'setStatus', data: { status: status ?? null } });

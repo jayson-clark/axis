@@ -20,19 +20,19 @@ config {
 // otherwise, and metadata on the statement styles it like any other folder.
 // An import's folder starts collapsed, since what is in it is written and read
 // elsewhere; `collapsed: false` opens it.
-import "./lib/waves.axis" as "Waves" # collapsed: false
+import "./lib/waves.axis" as "Waves" @ collapsed: false
 
 // This one imports a file of its own; both land in the same folder.
 import "./lib/envelope.axis"
 
-// Everything an import brought is in scope from here on, so the graph itself
-// is written against it.
-y = sine(x) * envelope(x) # color: #c74440, lineWidth: 3
-y = envelope(x) # color: #000000, lineStyle: DOTTED
-y = -envelope(x) # color: #000000, lineStyle: DOTTED
+// Everything an import brings is in scope - its definitions, and its macros and
+// styles too - so the graph itself is written against it.
+y = sine(x) * envelope(x) @ color: RED, lineWidth: 3
+y = envelope(x) @ color: BLACK, lineStyle: DOTTED
+y = -envelope(x) @ color: BLACK, lineStyle: DOTTED
 
 folder "Comparison" {
     // An import inside a folder joins that folder rather than opening a new
     // one, for the same reason: there is nowhere for a second level to go.
-    y = cosine(x) * envelope(x) # color: #2d70b3, lineWidth: 2
+    y = cosine(x) * envelope(x) @ color: BLUE, lineWidth: 2
 }

@@ -1,7 +1,9 @@
 # @axis-dsl/viewer
 
 The [Axis](https://github.com/jayson-clark/axis) results panel: a live Desmos
-graph, and — in `debug` — the JSON behind it beside it.
+graph, and — in `debug` — the JSON behind it beside it. Also the protocol every
+host drives it with, and the transports that carry that protocol, at
+`@axis-dsl/viewer/protocol`.
 
 ```sh
 npm install @axis-dsl/viewer react react-dom
@@ -13,21 +15,29 @@ npm install @axis-dsl/viewer react react-dom
 ## Usage
 
 ```tsx
+import { useMemo } from 'react';
 import { compileAxis } from '@axis-dsl/compiler';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
 
 function Preview({ source }: { source: string }) {
-    const { expressions, settings } = compileAxis(source);
+    const { state, options } = useMemo(() => compileAxis(source), [source]);
     const transport = useLocalViewerHost({
         apiKey: MY_DESMOS_KEY,
-        expressions,
-        settings,
-        status: `${expressions.length} expressions`
+        state,
+        options,
+        status: `${state.expressions?.list?.length ?? 0} expressions`,
     });
 
     return <AxisViewer transport={transport} />;
 }
 ```
+
+A graph is two things, `state` and `options`, because Desmos has two ways in:
+the viewer applies them as `calculator.setState(state)` and then
+`calculator.updateSettings(options)`, and does nothing else to them. Everything
+the graph is made of — the expression list, the ticker, the viewport, the
+top-level flags — is in `state`, so a graph looks the same in every host that
+shows it.
 
 ## Debug mode
 
@@ -45,31 +55,110 @@ The graph is the same either way — the JSON pane is what `debug` adds, so the
 
 ## One way in
 
-`AxisViewer` has no props for expressions, settings, the API key or status —
-everything it displays arrives as a message over a `ViewerTransport` from
-`@axis-dsl/protocol`. `useLocalViewerHost` is the in-process transport for a
-host that renders the viewer itself; `createHttpTransport()` is the one the
-VSCode extension's preview page uses to reach its server. Same viewer either
-way.
+`AxisViewer` has no props for the graph, the API key or the status. Everything
+it displays arrives as a `ViewerMessage` over a `ViewerTransport`, and
+everything it asks for goes back as a `HostMessage`. One path in means a feature
+is built once and every host gets it — the VSCode preview over an HTTP event
+stream, a web playground over an in-memory channel. Same viewer either way.
 
+```ts
+type ViewerMessage =
+    | { command: 'init'; data: { desmosApiKey: string; canSetApiKey?: boolean } }
+    | { command: 'setGraph'; data: { state: GraphState; options: CalculatorOptions } }
+    | { command: 'setStatus'; data: { status: string | null } }
+    | { command: 'setSync'; data: { enabled: boolean } };
+
+type HostMessage =
+    | { command: 'ready' }
+    | { command: 'requestApiKey' }
+    | { command: 'graphChanged'; data: { before: GraphReading; after: GraphReading } };
+```
+
+The viewer sends `ready` on mount; the host answers with `init` and the current
+graph. `setGraph` replaces the graph whole, and one that is the same as the last
+is not applied again, so re-sending an unchanged graph leaves the viewport
+wherever the user panned it. `requestApiKey` is only ever sent to a host that
+set `canSetApiKey`, because only a host with somewhere to put a key can act on
+it — the extension opens VSCode settings, a host with one baked in has nowhere.
 Pass `onRequestApiKey` to `useLocalViewerHost` and the viewer offers a "Set an
-API key" button that calls it. Leave it out and the button is not rendered at
+API key" button that calls it; leave it out and the button is not rendered at
 all, rather than leading nowhere.
+
+The messages and transports live at `@axis-dsl/viewer/protocol`, a subpath that
+imports neither React nor the DOM when loaded, so the other end of the wire can
+be a Node process: the extension's preview server imports it in the VSCode
+extension host. The package root re-exports the protocol's types for a React
+host that wants to name them.
+
+### In-process
+
+`useLocalViewerHost` is the transport for a host that renders the viewer itself,
+and is what a React host should reach for first. Underneath it is
+`createLocalChannel`, two ends of a synchronous channel with no wire between
+them:
+
+```ts
+import { createLocalChannel } from '@axis-dsl/viewer/protocol';
+
+const { host, viewer } = createLocalChannel();
+
+host.onMessage(message => {
+    if (message.command === 'ready') {
+        host.send({ command: 'init', data: { desmosApiKey: key } });
+        host.send({ command: 'setGraph', data: { state, options } });
+    }
+});
+
+<AxisViewer transport={viewer} />;
+```
+
+### Across a wire
+
+`createHttpTransport` is the viewer's end of a connection to the extension's
+preview server: Server-Sent Events downstream, a POST per message upstream. It
+defaults every option out of the page's own URL, so the page that loads the
+viewer usually needs no arguments:
+
+```ts
+import { createHttpTransport } from '@axis-dsl/viewer/protocol';
+
+<AxisViewer transport={createHttpTransport()} />;
+```
+
+SSE rather than a WebSocket because the traffic is almost entirely one-way — the
+viewer sends two messages in its life — and it needs no dependency on either
+end. It also reconnects on its own.
+
+A transport with a wire can report whether it still has one, through the
+optional `onConnectionChange`. A momentary drop reads as `connecting` and
+recovers silently; only a stream that spends `reconnectGraceMs` (3s by default)
+failing to come back is called `disconnected`, at which point the viewer says so
+above the graph rather than leaving a stale one looking current. A first
+connection is silent. A transport that omits `onConnectionChange`, as the
+in-process channel does, is taken to be connected for as long as it exists.
+
+`PREVIEW_PATHS` and `PREVIEW_QUERY` are the preview server's HTTP surface — the
+routes and the query keys — kept here because both ends depend on this package
+and neither can see the other at runtime. `PREVIEW_QUERY.token` is a per-session
+secret every route requires: any process on the machine can reach a loopback
+port.
 
 ## Editing from the graph
 
 Pass `onGraphChanged` to `useLocalViewerHost` and the viewer watches the
 calculator for what the user does to the graph directly — dragging a point,
 moving a slider, recolouring something, panning — and hands back two readings:
-the graph as it was when your expressions were applied, and the graph now.
+the graph as it was when your graph was applied, and the graph now. Over the
+protocol this is `setSync` turning on `graphChanged`.
 
 ```ts
 const transport = useLocalViewerHost({
     apiKey,
-    expressions,
+    state,
+    options,
     onGraphChanged: (before, after) => {
-        const { edits } = writeBackGraph(compiled, before, after, files);
-        // …apply them to the script the graph was compiled from
+        const { edits } = writeBackGraph(source, { before, after }, compiled);
+        setSource(applySourceEdits(source, edits));
     },
 });
 ```
@@ -78,21 +167,16 @@ Leave it out and the calculator is not watched at all — the viewer only starts
 looking when a host says it has somewhere to put the answer.
 
 The difference between the two readings is the user's doing and nothing else.
-The baseline is read back off the calculator rather than taken from the
-expressions that produced it, because Desmos normalises what it is given: a
-state compared against what was sent would report a change on every expression
-the moment the graph loaded. Reports are debounced, since a drag is hundreds of
-`change` events and one edit.
+The baseline is read back off the calculator rather than taken from the state
+that produced it, because Desmos normalises what it is given: a state compared
+against what was sent would report a change on every expression the moment the
+graph loaded. Reports are debounced, since a drag is hundreds of `change` events
+and one edit.
 
-`writeBackGraph` in `@axis-dsl/compiler` is what turns the pair into edits to
-the statements that produced them.
-
-A transport with a wire can also report whether it still has one, via
-`onConnectionChange`. When it drops, the viewer says so above the graph instead
-of leaving a stale one looking current — a first connection is silent, a
-reconnection reads as "Reconnecting…", and a connection given up on reads as
-stopped. A transport that omits `onConnectionChange`, as the in-process channel
-does, is taken to be connected for as long as it exists.
+A reading is a `GraphReading` — `{ state, options }`, `calculator.getState()`
+and a copy of `calculator.settings`, the same two halves a graph is applied as.
+That is what `writeBackGraph` in `@axis-dsl/compiler` compares, and it is what
+turns the pair into edits to the statements that produced them.
 
 ## Capturing an image
 
@@ -143,16 +227,30 @@ applied after the theme and therefore wins:
 
 ## API
 
-| Export                      |                                                                         |
-| --------------------------- | ----------------------------------------------------------------------- |
-| `AxisViewer`                | The panel. Props: `transport`, `debug?`, `ref?`, `className?`, `style?` |
-| `useLocalViewerHost(state)` | Turns React state into protocol messages; returns the transport         |
-| `AxisViewerHandle`          | What its `ref` exposes: `capture(options?)`, `getGraph()`               |
-| `DesmosGraph`               | Just the graph, if you want to arrange things yourself                  |
-| `JsonInspector`             | Just the JSON pane                                                      |
-| `useDesmos(apiKey)`         | Loads the Desmos script once per page                                   |
-| `useViewerState(transport)` | The state `AxisViewer` builds from the messages                         |
-| `AXIS_THEME`                | The palette, as `--axis-*` custom properties                            |
-| `AXIS_COLOR_SCHEME`         | The `color-scheme` those properties need to resolve                     |
+| Export                      |                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| `AxisViewer`                | The panel. Props: `transport`, `debug?`, `ref?`, `className?`, `style?`             |
+| `useLocalViewerHost(host)`  | Turns `{ apiKey, state, options, … }` into protocol messages; returns the transport |
+| `AxisViewerHandle`          | What its `ref` exposes: `capture(options?)`, `getGraph()`                           |
+| `DesmosGraph`               | Just the graph, if you want to arrange things yourself                              |
+| `JsonInspector`             | Just the JSON pane                                                                  |
+| `useDesmos(apiKey)`         | Loads the Desmos script once per page                                               |
+| `useViewerState(transport)` | The state `AxisViewer` builds from the messages                                     |
+| `AXIS_THEME`                | The palette, as `--axis-*` custom properties                                        |
+| `AXIS_COLOR_SCHEME`         | The `color-scheme` those properties need to resolve                                 |
+
+From `@axis-dsl/viewer/protocol`:
+
+| Export                                          |                                                                                  |
+| ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| `ViewerMessage` / `HostMessage` / `AxisMessage` | The protocol                                                                     |
+| `ViewerGraph`                                   | `{ state: GraphState, options: CalculatorOptions }`, what `setGraph` carries     |
+| `GraphReading`                                  | `{ state, options }` read back off the calculator, as `graphChanged` carries it  |
+| `ViewerTransport` / `HostTransport`             | The two ends of a connection                                                     |
+| `createLocalChannel()`                          | An in-process channel; returns `{ host, viewer }`                                |
+| `createHttpTransport(options?)`                 | The SSE + POST transport, for a viewer served over HTTP                          |
+| `HttpTransportOptions`                          | `{ token?, file?, origin?, reconnectGraceMs? }`, all defaulted from the page URL |
+| `ConnectionState`                               | `'connecting' \| 'connected' \| 'disconnected'`                                  |
+| `PREVIEW_PATHS` / `PREVIEW_QUERY`               | The preview server's routes and query keys                                       |
 
 MIT

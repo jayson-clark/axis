@@ -9,74 +9,111 @@
 // with.
 //
 // This closes that loop. Given the compilation a graph was built from, the
-// state as the calculator handed it back at that moment, and the state now, it
+// graph as the calculator handed it back at that moment, and the graph now, it
 // works out which expressions actually changed and writes each of them back
-// over the lines that produced it.
+// over the characters of the statement that produced it.
 //
 // **The unit is the statement, never the file.** Decompiling the whole graph
 // and writing that out would be far simpler and would throw away everything a
 // script has that a graph does not: the comments, the blank lines, the macros,
-// the folders an import stands for, the order somebody chose. So an edit here
-// is a line range and its replacement, and a statement nobody touched is not in
-// the output at all.
+// the styles, the folders an import stands for, the order somebody chose. So an
+// edit here is a span and its replacement, and a statement nobody touched is
+// not in the output at all.
+//
+// **The change is merged, never taken whole.** A statement is re-read from the
+// source, the properties that differ between the two readings of the graph are
+// rewritten on it, and everything else stays the node the author wrote - their
+// brackets, their `use:` of a style, their property order, the slider bound
+// Desmos did not bother to hand back because it matched its own default. Then
+// the statement is printed over exactly its own span, which is why statements
+// sharing a line through `;` are each as writable as one on a line of its own.
 //
 // **What cannot be written is said rather than done.** A statement a macro
-// expanded into, several statements sharing one line, an expression that came
-// from somewhere this script cannot name - each of those is reported as a
-// skipped change with a reason. Silently dropping a change the user made with
-// their own hands is the one outcome worth ruling out; quietly writing the
-// wrong thing is the other.
+// expanded into, one in a file this script imports, a graph that is moving by
+// itself - each of those is reported as a skipped change with a reason.
+// Silently dropping a change the user made with their own hands is the one
+// outcome worth ruling out; quietly writing the wrong thing is the other.
 
-import {
+import type {
     CalculatorOptions,
     DesmosExpression,
-    GraphSettings,
-    GraphStateFlags,
+    GraphState,
+    Table,
     TickerState,
 } from '@axis-dsl/desmos';
-import { scanBlockLine, type BlockFrame } from '@axis-dsl/language';
-import type { CompilationResult } from './compile';
-import { decompileExpression, decompileSettings, graphActionNames } from './decompile';
+import {
+    AXIS_GRAPH_PROPERTY_NAMES,
+    AXIS_MANIFEST,
+    AXIS_STATE_PROPERTY_NAMES,
+    AXIS_VIEWPORT_PROPERTY_NAMES,
+    type ConfigStatement,
+    type Diagnostic,
+    type FolderStatement,
+    lex,
+    type Metadata,
+    parse,
+    printStatement,
+    type PropertyPlacement,
+    sameTree,
+    type Span,
+    type Statement,
+    type StringLiteral,
+    type TableColumn,
+    type TableStatement,
+    type TickerStatement,
+} from '@axis-dsl/syntax';
+import type { CompilationResult, StatementOrigin } from './compile';
+import { decompileExpression, decompileSettings, decompileTicker } from './decompile';
+import {
+    applyPropertyWrites,
+    applyWrites,
+    cellValues,
+    importAliasFor,
+    mergeExpression,
+    propertyWrites,
+    stringNode,
+} from './readback';
 
-/** A graph as the calculator holds it: the expression list, and the rest. */
+/**
+ * A graph as the calculator holds it: `calculator.getState()`, and the live
+ * `calculator.settings` beside it - the same two halves a compilation is
+ * applied as.
+ */
 export interface GraphSnapshot {
-    expressions: DesmosExpression[];
-    settings?: CalculatorOptions;
-    graph?: GraphSettings;
-    state?: GraphStateFlags;
-    ticker?: TickerState;
+    state: GraphState;
+    options?: CalculatorOptions;
 }
 
-/** What happened to one expression between the two snapshots. */
-export type ChangeKind = 'changed' | 'added' | 'removed' | 'settings';
+/**
+ * What happened between two snapshots: an expression changed, appeared or
+ * went; the settings or the viewport moved; the ticker changed.
+ */
+export type ChangeKind = 'changed' | 'added' | 'removed' | 'settings' | 'ticker';
 
 /** One change to a graph, before anything has been decided about writing it. */
 export interface GraphChange {
     kind: ChangeKind;
-    /** The expression's id, absent for a settings change. */
+    /** The expression's id, for the three kinds that are about one. */
     id?: string;
-    /** What it looks like now, absent for one that was removed. */
-    expression?: DesmosExpression;
+    /** The expression as it was, absent for one that was added. */
+    before?: DesmosExpression;
+    /** The expression as it is now, absent for one that was removed. */
+    after?: DesmosExpression;
 }
 
 /**
- * A replacement for a run of lines in one file.
- *
- * Zero-based and inclusive at both ends, and `text` is the lines that go there
- * - empty for a deletion. An insertion is written as a zero-width range, with
- * `line` the index it goes before and `endLine` one less than it.
+ * A replacement of characters in one file: `[span.start, span.end)` becomes
+ * `text`. An insertion has an empty span, a deletion an empty text.
  */
 export interface SourceEdit {
     path: string;
-    line: number;
-    endLine: number;
-    /** The replacement lines. Empty deletes the range. */
-    text: string[];
+    span: Span;
+    text: string;
     /** The change this edit carries out, for a host that wants to explain it. */
     change: GraphChange;
 }
 
-/** A change that was seen and deliberately not written. */
+/** A change that was seen and deliberately not written, or not all of it. */
 export interface SkippedChange {
     change: GraphChange;
     reason: string;
@@ -84,26 +121,25 @@ export interface SkippedChange {
 
 export interface WriteBackOptions {
     /**
-     * Which kinds of change to take. Left out, all four are taken.
+     * Which kinds of change to take. Left out, all of them are.
      *
      * Worth setting: `settings` fires on every pan and zoom, which is a change
      * to the graph but rarely one somebody meant to make to their script.
      */
     include?: Partial<Record<ChangeKind, boolean>>;
     /**
-     * The file a new expression is written to when there is nowhere better -
-     * which is anything not landing in a folder the script wrote. Defaults to
-     * the compilation's entry.
+     * One level of block indentation. Read off the script where it indents
+     * anything, and four spaces, as the formatter writes it, where it does not.
      */
-    entryPath?: string;
-    /** One level of block indentation. Four spaces, as the formatter writes it. */
     indent?: string;
+    /** The script's path, as it was compiled with, for the edits to carry. */
+    path?: string;
 }
 
 export interface WriteBackResult {
     /**
-     * The edits to make, ordered so they can be applied one after another
-     * without re-indexing: latest in the file first, within each file.
+     * The edits to make to the script, ordered so they can be applied one
+     * after another without re-counting: latest in the file first.
      */
     edits: SourceEdit[];
     /** Changes that were seen but not written, each with why. */
@@ -111,43 +147,48 @@ export interface WriteBackResult {
 }
 
 /**
- * The changes between two snapshots of the same graph, as edits to the script.
+ * The changes between two snapshots of the same graph, as edits to `source`.
  *
- * `before` is the state the calculator handed back immediately after the
- * compilation was applied to it, rather than the compilation itself. That
- * matters: Desmos normalises what it is given - dropping a bound that matches
- * its own default, writing a switched-off clickable by leaving `enabled` off -
- * so comparing against what was sent would report a change on every expression
- * the moment the graph loaded.
+ * `source` is the script `compilation` was compiled from - its spans are what
+ * say where each statement is. `before` is the graph the calculator handed
+ * back immediately after the compilation was applied to it, rather than the
+ * compilation itself. That matters: Desmos normalises what it is given -
+ * dropping a bound that matches its own default, writing a switched-off
+ * clickable by leaving `enabled` off - so comparing against what was sent
+ * would report a change on every expression the moment the graph loaded.
  */
 export function writeBackGraph(
+    source: string,
+    { before, after }: { before: GraphSnapshot; after: GraphSnapshot },
     compilation: CompilationResult,
-    before: GraphSnapshot,
-    after: GraphSnapshot,
-    files: ReadonlyMap<string, string>,
     options: WriteBackOptions = {},
 ): WriteBackResult {
-    const indent = options.indent ?? '    ';
+    const writer = new Writer(source, before, after, compilation, options);
     const wanted = (kind: ChangeKind) => options.include?.[kind] ?? true;
-    const actions = graphActionNames(after.expressions);
+    const changes = diffGraphs(before, after).filter(change => wanted(change.kind));
 
-    const edits: SourceEdit[] = [];
-    const skipped: SkippedChange[] = [];
-
-    for (const change of diffGraphs(before, after)) {
-        if (!wanted(change.kind)) {
-            continue;
-        }
-
-        const edit = editFor(change, compilation, before, after, files, actions, indent, options);
-        if ('reason' in edit) {
-            skipped.push({ change, reason: edit.reason });
-        } else {
-            edits.push(edit);
+    // Additions are handled together, since a folder made in the calculator
+    // arrives as one change and everything put into it as others.
+    const added = changes.filter(change => change.kind === 'added');
+    for (const change of changes) {
+        switch (change.kind) {
+            case 'changed':
+                writer.changed(change);
+                break;
+            case 'removed':
+                writer.removed(change);
+                break;
+            case 'settings':
+                writer.settings(change);
+                break;
+            case 'ticker':
+                writer.ticker(change);
+                break;
         }
     }
+    writer.added(added);
 
-    return { edits: order(edits), skipped };
+    return writer.result();
 }
 
 /**
@@ -160,33 +201,79 @@ export function writeBackGraph(
  */
 export function diffGraphs(before: GraphSnapshot, after: GraphSnapshot): GraphChange[] {
     const changes: GraphChange[] = [];
-    const was = new Map(before.expressions.map(expression => [expression.id, expression]));
-    const now = new Map(after.expressions.map(expression => [expression.id, expression]));
+    const was = new Map(listOf(before).map(expression => [expression.id, expression]));
+    const now = new Map(listOf(after).map(expression => [expression.id, expression]));
 
     for (const [id, expression] of now) {
         const previous = was.get(id);
         if (!previous) {
-            changes.push({ kind: 'added', id, expression });
+            changes.push({ kind: 'added', id, after: expression });
         } else if (!same(previous, expression)) {
-            changes.push({ kind: 'changed', id, expression });
+            changes.push({ kind: 'changed', id, before: previous, after: expression });
         }
     }
 
-    for (const [id] of was) {
+    for (const [id, expression] of was) {
         if (!now.has(id)) {
-            changes.push({ kind: 'removed', id });
+            changes.push({ kind: 'removed', id, before: expression });
         }
     }
 
-    if (
-        !same(before.settings, after.settings) ||
-        !same(before.graph, after.graph) ||
-        !same(before.state, after.state)
-    ) {
+    if (CONFIG_NAMES.some(name => !same(configValue(before, name), configValue(after, name)))) {
         changes.push({ kind: 'settings' });
     }
 
+    if (!same(tickerOf(before), tickerOf(after))) {
+        changes.push({ kind: 'ticker' });
+    }
+
     return changes;
+}
+
+/**
+ * Apply edits to the text of the file they are for. The order is the one
+ * {@link WriteBackResult.edits} comes in: latest first, so no edit moves the
+ * characters a later one is about.
+ */
+export function applySourceEdits(source: string, edits: readonly SourceEdit[]): string {
+    let text = source;
+    for (const edit of edits) {
+        text = text.slice(0, edit.span.start) + edit.text + text.slice(edit.span.end);
+    }
+    return text;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reading snapshots
+// ─────────────────────────────────────────────────────────────────────────────
+
+const listOf = (snapshot: GraphSnapshot): DesmosExpression[] =>
+    snapshot.state.expressions?.list ?? [];
+
+/** A ticker that exists, or nothing: Desmos reads one with no handler as none. */
+function tickerOf(snapshot: GraphSnapshot): TickerState | undefined {
+    const ticker = snapshot.state.expressions?.ticker;
+    return ticker?.handlerLatex ? ticker : undefined;
+}
+
+const CONFIG_NAMES = AXIS_MANIFEST.configProperties.map(property => property.name);
+const VIEWPORT = new Set<string>(AXIS_VIEWPORT_PROPERTY_NAMES);
+const GRAPH = new Set<string>(AXIS_GRAPH_PROPERTY_NAMES);
+const STATE_FLAGS = new Set<string>(AXIS_STATE_PROPERTY_NAMES);
+
+/**
+ * A config property's value on a live graph, read from wherever Desmos keeps
+ * it: the viewport and a few others in the state, a couple of flags on the top
+ * of the state, and everything else in the calculator's options.
+ */
+function configValue(snapshot: GraphSnapshot, name: string): unknown {
+    const graph = snapshot.state.graph as Record<string, unknown> | undefined;
+    if (VIEWPORT.has(name)) {
+        return (graph?.viewport as Record<string, unknown> | undefined)?.[name];
+    }
+    if (GRAPH.has(name)) return graph?.[name];
+    if (STATE_FLAGS.has(name)) return snapshot.state[name];
+    return (snapshot.options as Record<string, unknown> | undefined)?.[name];
 }
 
 /**
@@ -218,540 +305,787 @@ function stable(value: unknown): string {
     });
 }
 
-/** The edit one change calls for, or why it is not one that can be made. */
-function editFor(
-    change: GraphChange,
-    compilation: CompilationResult,
-    before: GraphSnapshot,
-    after: GraphSnapshot,
-    files: ReadonlyMap<string, string>,
-    actions: readonly string[],
-    indent: string,
-    options: WriteBackOptions,
-): SourceEdit | { reason: string } {
-    if (change.kind === 'settings') {
-        return settingsEdit(change, compilation, before, after, files, indent, options);
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// The writer
+// ─────────────────────────────────────────────────────────────────────────────
 
-    if (change.kind === 'added') {
-        return additionEdit(change, compilation, files, actions, indent, options);
-    }
-
-    // A graph that is moving by itself is not a graph anybody is editing.
-    //
-    // A playing slider changes its own value several times a second and a
-    // running ticker changes whatever it drives, so writing either back means a
-    // file that rewrites itself for as long as the tab is open - hundreds of
-    // edits nobody made, each one a version in everybody else's history. The
-    // animation is the script working, not somebody changing it.
-    const animated = animating(change, after);
-    if (animated) {
-        return { reason: animated };
-    }
-
-    const origin = compilation.sourceMap.get(change.id!);
-    if (!origin) {
-        return { reason: 'this expression was not compiled from this script' };
-    }
-    if (!origin.writable) {
-        return { reason: origin.reason ?? 'this statement cannot be rewritten' };
-    }
-
-    const source = files.get(origin.path);
-    if (source === undefined) {
-        return { reason: `${origin.path} is not among the files given` };
-    }
-    const lines = source.split('\n');
-
-    if (change.kind === 'removed') {
-        return { path: origin.path, line: origin.line, endLine: origin.endLine, text: [], change };
-    }
-
-    // Rewritten from the statement's own expression with the change laid over
-    // it, rather than from what the calculator handed back. Those are not the
-    // same thing: Desmos leaves a property off the state when it matches its
-    // own default, so a slider written `{min: 0, max: 10}` comes back carrying
-    // only the min - and rewriting from that would quietly take `max: 10` out
-    // of somebody's script as the price of dragging the slider.
-    const expression =
-        merged(
-            compilation.expressions.find(candidate => candidate.id === change.id),
-            before.expressions.find(candidate => candidate.id === change.id),
-            change.expression!,
-        ) ?? change.expression!;
-
-    const written = decompileExpression(expression, {
-        indent,
-        actions,
-        // A statement inside a folder block is one of a run the block separates
-        // by commas, so a run held together by its own commas has to be
-        // bracketed there or it would read as several statements.
-        separated: folderOf(expression) !== undefined,
-    });
-
-    if (!written.length) {
-        return { reason: 'this expression has no statement form' };
-    }
-
-    const replacing = lines.slice(origin.line, origin.endLine + 1);
-
-    // A picture's URL is not the picture's URL. `image "./beach.png"` is read
-    // off a disk and inlined as a `data:` URI before the graph exists, so what
-    // a graph carries is the bytes and the path is gone - and writing the graph
-    // back over the statement would put a megabyte of base64 where the filename
-    // was. Dragging a picture is a real edit and worth keeping; the name it was
-    // written with is not the decompiler's to supply.
-    if (expression.type === 'image') {
-        const kept = keepImagePath(written[0], replacing[0]);
-        if (!kept) {
-            return { reason: 'cannot tell which file this picture names' };
-        }
-        written[0] = kept;
-    }
-
-    return {
-        path: origin.path,
-        line: origin.line,
-        endLine: origin.endLine,
-        text: relaid(written, replacing, indent),
-        change,
-    };
-}
-
-/** The `image "…"` a statement opens with, whatever follows it. */
-const IMAGE_HEAD = /^\s*(image\s+"(?:[^"\\]|\\[^])*")/;
-
-/**
- * `written`, wearing the picture the source named rather than the one the graph
- * carries.
- *
- * Null where the statement being replaced does not open with an `image "…"` at
- * all - which means the line is not what this expression was compiled from, and
- * the safe answer is to write nothing rather than to guess. Everything after
- * the URL is the decompiler's, since that is the half a drag actually changed.
- */
-function keepImagePath(written: string, replacing: string): string | null {
-    const source = IMAGE_HEAD.exec(replacing);
-    const fresh = IMAGE_HEAD.exec(written);
-
-    if (!source || !fresh) {
-        return null;
-    }
-
-    return `${source[1]}${written.slice(fresh[0].length)}`;
+/** A statement found in the source, with where it sits. */
+interface Located {
+    statement: Statement;
+    /** How many blocks it is inside: 0 at the top of the file. */
+    depth: number;
 }
 
 /**
- * A rewritten statement, wearing the layout of the one it replaces.
- *
- * The decompiler writes a statement one way: code, then its metadata behind a
- * `#`, on one line. The statement being replaced was written by a person, who
- * may well have spread that metadata over a `#{ … }` block and indented the
- * whole thing inside a folder - and having a graph edit silently reflow
- * somebody's script is exactly the kind of thing that makes a feature like this
- * not worth having switched on.
- *
- * So the indentation is taken from the line being replaced, a metadata block is
- * written back as a block, and any `//` comment on the lines going away is kept
- * and moved to the end.
+ * A statement rebuilt, ready to be printed over the one it replaces, with
+ * anything about the change it could not say - or why there is no statement.
  */
-function relaid(written: string[], replacing: string[], indent: string): string[] {
-    const margin = /^\s*/.exec(replacing[0] ?? '')?.[0] ?? '';
-    const comments = replacing.map(trailingComment).filter((text): text is string => !!text);
-    const comment = comments.length ? ` ${comments.join(' ')}` : '';
+type Rebuilt = { statement: Statement; notes: string[] } | { reason: string };
 
-    // A table, which the decompiler already writes as several lines, keeps that
-    // shape; only its margin is restored.
-    if (written.length > 1) {
-        const laid = written.map(line => `${margin}${line}`);
-        laid[laid.length - 1] += comment;
-        return laid;
-    }
+/** A graph item, or a table column, as a bag of keys. */
+type Item = Record<string, unknown>;
 
-    const statement = written[0];
-    const split = splitMetadata(statement);
+class Writer {
+    private readonly edits: SourceEdit[] = [];
+    private readonly skipped: SkippedChange[] = [];
+    private readonly statements = new Map<string, Located>();
+    private readonly top: Statement[];
+    private readonly imports: ReadonlySet<string>;
+    private readonly unit: string;
+    private readonly path: string;
+    /** Folders the calculator no longer has, whose contents went with them. */
+    private readonly removedFolders = new Set<string>();
 
-    if (!split) {
-        return [`${margin}${statement}${comment}`];
-    }
-
-    // The properties in the order the author had them, rather than the order
-    // the decompiler writes them in. Both are correct and they are rarely the
-    // same, so without this every rewritten statement also silently shuffles
-    // its own metadata - a diff about nothing, on a line the user is watching.
-    const entries = inAuthorsOrder(splitProperties(split.metadata), replacing);
-
-    // Written as a `#{ … }` block before, so written as one again.
-    if (replacing.length > 1 && /#\{/.test(replacing[0])) {
-        return [
-            `${margin}${split.code} #{`,
-            ...entries.map(entry => `${margin}${indent}${entry}`),
-            `${margin}}${comment}`,
-        ];
-    }
-
-    return [`${margin}${split.code} # ${entries.join(', ')}${comment}`];
-}
-
-/**
- * `entries` sorted the way the lines they are replacing had them.
- *
- * A property the statement did not carry before is new, and goes on the end in
- * the order the decompiler chose - which for a colour picked in Desmos means
- * `color` lands where `color` belongs rather than wherever it was noticed.
- */
-function inAuthorsOrder(entries: readonly string[], replacing: readonly string[]): string[] {
-    const before = replacing.join('\n');
-    const at = (entry: string) => {
-        const key = entry.slice(0, entry.indexOf(':'));
-        // Matched as a property rather than as text, so a `label: "color: red"`
-        // does not decide where `color` goes.
-        const found = new RegExp(`(?:^|[#,{\\s])${key}\\s*:`).exec(before);
-        return found ? found.index : Number.MAX_SAFE_INTEGER;
-    };
-
-    return entries
-        .map((entry, index) => ({ entry, was: at(entry), index }))
-        .sort((a, b) => a.was - b.was || a.index - b.index)
-        .map(held => held.entry);
-}
-
-/**
- * A graph's settings, with the viewport dropped unless the script named one.
- *
- * Panning and zooming are how anybody reads a graph, and they change the
- * viewport constantly. A script that says nothing about its framing was written
- * by somebody who did not care about it, and putting four `xmin`-and-friends
- * lines into their config the first time they scrolled would be the feature
- * writing something they did not ask for - which is the one thing it must never
- * do. A script that *does* name a viewport has an author who cares where the
- * graph sits, and for them panning is an edit like any other.
- */
-function framing(
-    graph: GraphSettings | undefined,
-    declared: GraphSettings | undefined,
-): GraphSettings | undefined {
-    if (!graph || declared?.viewport) {
-        return graph;
-    }
-
-    const { viewport, ...rest } = graph;
-    return rest;
-}
-
-/**
- * Why this change is the graph animating rather than somebody editing it, or
- * null where it is not.
- *
- * The ticker is checked for every expression rather than only the ones it
- * names: what a tick assigns to is an action written in latex, and reading it
- * well enough to know which expressions it touches is the ticker's own problem,
- * not something worth half-solving here. A graph whose ticker is running is a
- * graph running, so nothing in it is written back until it is stopped.
- */
-function animating(change: GraphChange, after: GraphSnapshot): string | null {
-    if (after.ticker?.playing) {
-        return 'the ticker is running — stop it to edit from the graph';
-    }
-
-    const expression = change.expression as { slider?: { isPlaying?: boolean } } | undefined;
-    if (expression?.slider?.isPlaying) {
-        return 'this slider is animating — pause it to edit from the graph';
-    }
-
-    return null;
-}
-
-/**
- * `source` with the difference between `before` and `after` laid over it.
- *
- * The change is taken from what actually changed on the calculator rather than
- * from the whole of its answer, so everything the script said that Desmos
- * merely did not bother to save - a bound at its default, a property it
- * normalised away - stays in the script. A key that went is taken out; a key
- * that arrived or moved is written; everything else is left exactly as the
- * statement had it.
- */
-function merged<T>(source: T | undefined, before: unknown, after: T | undefined): T | undefined {
-    if (after === undefined) {
-        return undefined;
-    }
-    if (source === undefined) {
-        return after;
-    }
-
-    const was = (before ?? {}) as Record<string, unknown>;
-    const now = after as unknown as Record<string, unknown>;
-    const result = { ...(source as unknown as Record<string, unknown>) };
-
-    for (const key of new Set([...Object.keys(was), ...Object.keys(now)])) {
-        if (same(was[key], now[key])) {
-            continue;
-        }
-        if (key in now) {
-            result[key] = now[key];
-        } else {
-            delete result[key];
-        }
-    }
-
-    return result as T;
-}
-
-/**
- * The folder an expression belongs to, or undefined at the top level.
- *
- * A folder has no folder of its own - Desmos has one level of them - so the key
- * is absent from that member of the union rather than optional on it.
- */
-function folderOf(expression: DesmosExpression): string | undefined {
-    return 'folderId' in expression ? expression.folderId : undefined;
-}
-
-/** A statement's code and metadata, or null where it carries none. */
-function splitMetadata(statement: string): { code: string; metadata: string } | null {
-    const at = statement.lastIndexOf(' # ');
-    if (at === -1) {
-        return null;
-    }
-    return { code: statement.slice(0, at), metadata: statement.slice(at + 3) };
-}
-
-/** `color: red, lineWidth: 3` as its entries, ignoring commas inside brackets. */
-function splitProperties(metadata: string): string[] {
-    const entries: string[] = [];
-    let depth = 0;
-    let buffer = '';
-
-    for (const char of metadata) {
-        if ('([{'.includes(char)) {
-            depth++;
-        } else if (')]}'.includes(char)) {
-            depth--;
-        } else if (char === ',' && depth === 0) {
-            entries.push(buffer.trim());
-            buffer = '';
-            continue;
-        }
-        buffer += char;
-    }
-
-    if (buffer.trim()) {
-        entries.push(buffer.trim());
-    }
-    return entries;
-}
-
-/** The `// …` on the end of a line, or null - one inside a string is not one. */
-function trailingComment(line: string): string | null {
-    let quote: string | null = null;
-
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (quote) {
-            if (char === '\\') {
-                i++;
-            } else if (char === quote) {
-                quote = null;
+    constructor(
+        private readonly source: string,
+        private readonly before: GraphSnapshot,
+        private readonly after: GraphSnapshot,
+        private readonly compilation: CompilationResult,
+        options: WriteBackOptions,
+    ) {
+        const tree = parse(source);
+        this.top = tree.file.statements;
+        const visit = (statements: readonly Statement[], depth: number) => {
+            for (const statement of statements) {
+                this.statements.set(key(statement.span), { statement, depth });
+                if (statement.kind === 'FolderStatement') visit(statement.body, depth + 1);
             }
-        } else if (char === '"' || char === "'") {
-            quote = char;
-        } else if (char === '/' && line[i + 1] === '/') {
-            return line.slice(i).trim();
+        };
+        visit(this.top, 0);
+
+        this.imports = new Set(compilation.dependencies.imports);
+        this.unit = options.indent ?? /^([ \t]+)\S/m.exec(source)?.[1] ?? '    ';
+        this.path =
+            options.path ??
+            [...compilation.sourceMap.values()].find(origin => !this.imports.has(origin.path))
+                ?.path ??
+            compilation.configOrigin?.path ??
+            '';
+
+        for (const expression of listOf(before)) {
+            if (expression.type === 'folder' && !listOf(after).some(e => e.id === expression.id)) {
+                this.removedFolders.add(expression.id!);
+            }
         }
     }
 
-    return null;
+    result(): WriteBackResult {
+        // A statement deleted with the folder it was in is deleted with it, so
+        // an edit inside the folder's span would be an edit to text that is
+        // no longer there.
+        const removals = this.edits.filter(edit => edit.change.kind === 'removed');
+        const edits = this.edits.filter(
+            edit =>
+                !removals.some(
+                    removal =>
+                        removal !== edit &&
+                        removal.span.start <= edit.span.start &&
+                        edit.span.end <= removal.span.end &&
+                        removal.span.end - removal.span.start > edit.span.end - edit.span.start,
+                ),
+        );
+
+        // Latest first, so each edit leaves the characters before it where
+        // they were. Two insertions at one place go in the order they were
+        // made, which applying the later one first is what gives.
+        const ordered = edits
+            .map((edit, index) => ({ edit, index }))
+            .sort(
+                (a, b) =>
+                    b.edit.span.start - a.edit.span.start ||
+                    b.edit.span.end - a.edit.span.end ||
+                    b.index - a.index,
+            )
+            .map(({ edit }) => edit);
+
+        return { edits: ordered, skipped: this.skipped };
+    }
+
+    // ── Changed ──────────────────────────────────────────────────────────────
+
+    changed(change: GraphChange): void {
+        // A graph that is moving by itself is not a graph anybody is editing.
+        //
+        // A playing slider changes its own value several times a second and a
+        // running ticker changes whatever it drives, so writing either back
+        // means a file that rewrites itself for as long as the tab is open -
+        // hundreds of edits nobody made. The animation is the script working,
+        // not somebody changing it. What a tick assigns to is an action written
+        // in latex, and working out which expressions it reaches is not worth
+        // half-doing here: a graph whose ticker runs is a graph running.
+        const animated = this.animating(change);
+        if (animated) return this.skip(change, animated);
+
+        const found = this.origin(change.id!);
+        if ('reason' in found) return this.skip(change, found.reason);
+        const { origin, located } = found;
+        if (!origin.writable) {
+            return this.skip(change, origin.reason ?? 'this statement cannot be rewritten');
+        }
+
+        const was = change.before!;
+        const now = change.after!;
+        if ((was as Item).folderId !== (now as Item).folderId) {
+            return this.skip(change, 'moving an expression between folders is not written back');
+        }
+
+        // Rewritten from the statement's own tree with the change laid over
+        // it, rather than from what the calculator handed back. Those are not
+        // the same thing: Desmos leaves a property off the state when it
+        // matches its own default, so a slider written `0..10` comes back
+        // carrying only the min - and rewriting from that would quietly take
+        // the max out of somebody's script as the price of dragging it.
+        const rebuilt = this.rebuild(located.statement, was, now);
+        if ('reason' in rebuilt) return this.skip(change, rebuilt.reason);
+        for (const note of rebuilt.notes) this.skip(change, note);
+
+        // A folder is rewritten up to its `{` and its own metadata, and not
+        // one character into its body: its statements are their own.
+        if (rebuilt.statement.kind === 'FolderStatement') {
+            return this.folderHeader(change, located, rebuilt.statement);
+        }
+
+        const printed = this.print(rebuilt.statement, origin.span, located.depth);
+        if (typeof printed !== 'string') return this.skip(change, printed.reason);
+        this.replace(origin.span, printed, change);
+    }
+
+    /** Why this change is the graph animating rather than an edit, or null. */
+    private animating(change: GraphChange): string | null {
+        if (tickerOf(this.after)?.playing) {
+            return 'the ticker is running — pause it to edit from the graph';
+        }
+        if (tickerOf(this.before)?.playing) {
+            return 'the ticker has been running since the graph was loaded, so this may be its doing — edit the script to take a fresh reading';
+        }
+        const slider = (change.after as { slider?: { isPlaying?: boolean } } | undefined)?.slider;
+        if (slider?.isPlaying) {
+            return 'this slider is animating — pause it to edit from the graph';
+        }
+        return null;
+    }
+
+    /**
+     * A statement with the difference between two readings of it written in.
+     *
+     * Both readings are decompiled - the decompiler is the one place that
+     * knows what a graph item says as Axis - and it is the difference between
+     * the two statements that is merged onto the author's, part by part.
+     */
+    private rebuild(statement: Statement, was: DesmosExpression, now: DesmosExpression): Rebuilt {
+        if (statement.kind === 'TableStatement') {
+            return this.table(statement, was as Table, now as Table);
+        }
+
+        const before = decompileExpression(was);
+        const after = decompileExpression(now);
+        const notes = problems(before.diagnostics, after.diagnostics);
+        const b = before.statement;
+        const a = after.statement;
+        if (!a || !b) {
+            return {
+                reason:
+                    after.diagnostics[0]?.message ??
+                    before.diagnostics[0]?.message ??
+                    'an empty expression has no statement to write',
+            };
+        }
+        if (
+            statement.kind === 'ImageStatement' &&
+            (was as Item).image_url !== (now as Item).image_url
+        ) {
+            // The source is the one thing never taken from the graph. A
+            // picture named by path was read off a disk and inlined as a
+            // `data:` URI before the graph existed, so the graph carries the
+            // bytes and has no memory of the path - and writing its URL back
+            // would put the whole picture, base64'd, where the filename was.
+            notes.push(unknownReason(['image_url']));
+        }
+        // A key whose change alone leaves the reading as it was is one no
+        // Axis property says. The rest of the change is still written.
+        const unsaid = changedKeys(was, now).filter(key => {
+            const alone = decompileExpression({
+                ...was,
+                [key]: (now as Item)[key],
+            } as DesmosExpression);
+            return alone.statement !== null && sameTree(alone.statement, b);
+        });
+        if (unsaid.length > 0) notes.push(unknownReason(unsaid));
+        if (sameTree(a, b)) {
+            return { reason: notes[0] ?? unknownReason(changedKeys(was, now)) };
+        }
+
+        if (
+            statement.kind === 'ExpressionStatement' &&
+            b.kind === 'ExpressionStatement' &&
+            a.kind === 'ExpressionStatement'
+        ) {
+            const expression = mergeExpression(statement.expression, b.expression, a.expression);
+            const metadata = this.merged('expression', statement, b.metadata, a.metadata);
+            return { statement: { ...statement, expression, metadata }, notes };
+        }
+        if (
+            statement.kind === 'NoteStatement' &&
+            b.kind === 'NoteStatement' &&
+            a.kind === 'NoteStatement'
+        ) {
+            const text: StringLiteral =
+                b.text.value === a.text.value
+                    ? statement.text
+                    : { ...stringNode(a.text.value), span: statement.text.span };
+            const metadata = this.merged('note', statement, b.metadata, a.metadata);
+            return { statement: { ...statement, text, metadata }, notes };
+        }
+        if (
+            statement.kind === 'ImageStatement' &&
+            b.kind === 'ImageStatement' &&
+            a.kind === 'ImageStatement'
+        ) {
+            const metadata = this.merged('image', statement, b.metadata, a.metadata);
+            return { statement: { ...statement, metadata }, notes };
+        }
+        if (b.kind === 'FolderStatement' && a.kind === 'FolderStatement') {
+            const renamed = !sameTree(b.title, a.title);
+            if (statement.kind === 'FolderStatement') {
+                const title = renamed ? a.title : statement.title;
+                const metadata = this.merged('folder', statement, b.metadata, a.metadata);
+                return { statement: { ...statement, title, metadata }, notes };
+            }
+            if (statement.kind === 'ImportStatement') {
+                // The folder an import stands for is titled by its `as`, or
+                // by the file when it has none.
+                const alias = renamed
+                    ? importAliasFor(a.title?.value, statement.path.value)
+                    : statement.alias;
+                const metadata = this.merged('import', statement, b.metadata, a.metadata);
+                return { statement: { ...statement, alias, metadata }, notes };
+            }
+        }
+
+        return { reason: 'this statement is not one a graph item is written from' };
+    }
+
+    /** A statement's metadata with the properties the two readings disagree on rewritten. */
+    private merged(
+        placement: PropertyPlacement,
+        statement: { metadata: Metadata | null; span: Span },
+        before: Metadata | null,
+        after: Metadata | null,
+    ): Metadata | null {
+        const writes = propertyWrites(
+            placement,
+            before?.entries ?? [],
+            after?.entries ?? [],
+            statement.metadata?.entries ?? [],
+        );
+        return applyPropertyWrites(statement.metadata, writes, statement.span.end, this.source);
+    }
+
+    /**
+     * A table, column by column. The columns are matched to the statement's by
+     * position among the ones the table had, and to each other by id - so a
+     * column added in the calculator is new, one deleted there goes, and a cell
+     * edited in one rewrites that cell and no other.
+     */
+    private table(statement: TableStatement, was: Table, now: Table): Rebuilt {
+        if (statement.columns.length !== was.columns.length) {
+            return { reason: "this table's columns do not line up with its statement" };
+        }
+
+        const columns: TableColumn[] = [];
+        const notes: string[] = [];
+        const unsaid = Object.keys({ ...was, ...now }).filter(
+            key =>
+                !['type', 'id', 'folderId', 'columns'].includes(key) &&
+                !same((was as unknown as Item)[key], (now as unknown as Item)[key]),
+        );
+        if (unsaid.length > 0) notes.push(unknownReason(unsaid));
+
+        for (const column of now.columns) {
+            // A blank among a column's cells is something a list cannot hold;
+            // the decompiler writes one as `0 / 0`, which is not the blank the
+            // graph has, so it is refused here rather than written wrong.
+            const cells = cellValues(column.values ?? []);
+            if (cells.some(cell => cell.trim() === '')) {
+                return { reason: 'a table cell left empty has no Axis spelling' };
+            }
+
+            const after = decompiledColumn(now, column);
+            if ('reason' in after) return after;
+            notes.push(...after.notes);
+
+            const index = was.columns.findIndex(candidate => candidate.id === column.id);
+            if (index < 0) {
+                columns.push(after.column);
+                continue;
+            }
+
+            const before = decompiledColumn(was, was.columns[index]);
+            if ('reason' in before) return before;
+            const written = statement.columns[index];
+            const [b, a] = [before.column, after.column];
+
+            let values = written.values;
+            if (!same(was.columns[index].values, column.values)) {
+                values = a.values
+                    ? a.values.map((value, at) =>
+                          mergeExpression(written.values?.[at], b.values?.[at], value),
+                      )
+                    : null;
+            }
+
+            columns.push({
+                ...written,
+                header: mergeExpression(written.header, b.header, a.header),
+                values,
+                metadata: this.merged('column', written, b.metadata, a.metadata),
+            });
+        }
+
+        return { statement: { ...statement, columns }, notes: [...new Set(notes)] };
+    }
+
+    /** A folder's `folder "Title" { @ …` rewritten, and its body left alone. */
+    private folderHeader(change: GraphChange, located: Located, folder: FolderStatement): void {
+        const original = located.statement as FolderStatement;
+        const open = this.openBrace(original);
+        if (open < 0) return this.skip(change, 'this folder has no `{`');
+        const end = original.metadata ? original.metadata.span.end : open + 1;
+
+        let text = printStatement(
+            { ...folder, metadata: null, body: [] },
+            { level: located.depth, indent: this.unit },
+        ).replace(/\}$/, '');
+        if (folder.metadata) {
+            text += ` ${this.printMetadata(folder.metadata, located.depth)}`;
+            // Metadata straight after the `{` has to be ended before the first
+            // statement, which a folder written on one line has not done.
+            if (!original.metadata && !/^[ \t]*(\r?\n|;|\}|\/\/)/.test(this.source.slice(end))) {
+                text += ';';
+            }
+        }
+
+        this.replace({ start: original.span.start, end }, text, change);
+    }
+
+    // ── Removed ──────────────────────────────────────────────────────────────
+
+    removed(change: GraphChange): void {
+        const folderId = (change.before as { folderId?: string } | undefined)?.folderId;
+
+        // Deleted with its folder, which is one edit for the lot.
+        if (folderId !== undefined && this.removedFolders.has(folderId)) {
+            const folder = this.compilation.sourceMap.get(folderId);
+            if (folder && !this.imports.has(folder.path)) return;
+        }
+
+        const found = this.origin(change.id!);
+        if ('reason' in found) return this.skip(change, found.reason);
+
+        // Unlike a rewrite, a deletion needs nothing the graph holds, so a
+        // statement a macro expanded into can go as well as any other.
+        this.replace(removalSpan(this.source, found.origin.span), '', change);
+    }
+
+    // ── Added ────────────────────────────────────────────────────────────────
+
+    added(changes: readonly GraphChange[]): void {
+        const folders = new Set(
+            changes.filter(change => change.after?.type === 'folder').map(change => change.id!),
+        );
+        const members = new Map<string, Statement[]>();
+        const pending: { change: GraphChange; statement: Statement }[] = [];
+
+        // Members first, so a folder made in the calculator is written with
+        // what was put in it.
+        for (const change of changes) {
+            const item = change.after!;
+            const folderId = (item as { folderId?: string }).folderId;
+            if (item.type === 'folder') continue;
+
+            const statement = this.made(change, item);
+            if (!statement) continue;
+
+            if (folderId !== undefined && folders.has(folderId)) {
+                members.set(folderId, [...(members.get(folderId) ?? []), statement]);
+            } else if (folderId !== undefined) {
+                this.intoFolder(change, folderId, statement);
+            } else {
+                pending.push({ change, statement });
+            }
+        }
+
+        for (const change of changes) {
+            if (change.after?.type !== 'folder') continue;
+            const statement = this.made(change, change.after);
+            if (statement?.kind === 'FolderStatement') {
+                pending.push({
+                    change,
+                    statement: { ...statement, body: members.get(change.id!) ?? [] },
+                });
+            }
+        }
+
+        // Everything with no folder of its own goes on the end of the script,
+        // which is the one placement that is always right and never a guess
+        // about where it belonged - in the order the graph lists it.
+        const order = new Map(listOf(this.after).map((item, index) => [item.id, index]));
+        pending.sort((a, b) => (order.get(a.change.id) ?? 0) - (order.get(b.change.id) ?? 0));
+        for (const { change, statement } of pending) {
+            this.append(statement, change);
+        }
+    }
+
+    /**
+     * The statement a new item is written as - the decompiler's - or nothing,
+     * with the reason reported.
+     */
+    private made(change: GraphChange, item: DesmosExpression): Statement | null {
+        // A picture added in the calculator arrives as its own bytes, and a
+        // script has no statement meaning "these bytes" - only ones that name
+        // a file or a URL. Writing it out would put the whole picture,
+        // base64'd, into somebody's source.
+        if (item.type === 'image' && /^data:/i.test(item.image_url ?? '')) {
+            this.skip(
+                change,
+                'add this picture to the project and draw it with `image`, to give it a name',
+            );
+            return null;
+        }
+        const { statement, diagnostics } = decompileExpression(item);
+        for (const diagnostic of diagnostics) this.skip(change, diagnostic.message);
+        if (!statement && diagnostics.length === 0) {
+            this.skip(change, 'an empty expression has no statement to write');
+        }
+        return statement;
+    }
+
+    /** A new statement written at the end of the folder it was made in. */
+    private intoFolder(change: GraphChange, folderId: string, statement: Statement): void {
+        const found = this.origin(folderId);
+        if ('reason' in found) {
+            return this.skip(
+                change,
+                this.compilation.sourceMap.has(folderId)
+                    ? found.reason
+                    : 'this expression is in a folder that is not in this script',
+            );
+        }
+        const { located } = found;
+        if (located.statement.kind === 'ImportStatement') {
+            return this.skip(
+                change,
+                'this expression is in the folder an import stands for, and that is the imported file',
+            );
+        }
+        if (located.statement.kind !== 'FolderStatement') {
+            return this.skip(change, 'this expression is in a folder that is not in this script');
+        }
+
+        const folder = located.statement;
+        const depth = located.depth + 1;
+        const printed = printStatement(statement, { level: depth, indent: this.unit });
+        const open = this.openBrace(folder);
+        const close = folder.span.end - 1;
+
+        if (this.source.slice(open, close).includes('\n')) {
+            // Spread over lines: on a line of its own before the `}`.
+            const lineStart = this.source.lastIndexOf('\n', close - 1) + 1;
+            const margin = this.unit.repeat(depth);
+            if (/^[ \t]*$/.test(this.source.slice(lineStart, close))) {
+                this.insert(lineStart, `${margin}${printed}\n`, change);
+            } else {
+                this.insert(
+                    close,
+                    `\n${margin}${printed}\n${this.unit.repeat(located.depth)}`,
+                    change,
+                );
+            }
+            return;
+        }
+
+        // On one line, it stays on one: another entry after the last.
+        const last = folder.body[folder.body.length - 1];
+        const anchor = last?.span.end ?? folder.metadata?.span.end;
+        if (anchor !== undefined) {
+            this.insert(anchor, `; ${printed}`, change);
+        } else {
+            this.insert(open + 1, ` ${printed}${this.source[open + 1] === '}' ? ' ' : ''}`, change);
+        }
+    }
+
+    /** A new top-level statement, on the end of the script. */
+    private append(statement: Statement, change: GraphChange): void {
+        const printed = printStatement(statement, { indent: this.unit });
+        const end = this.source.length;
+        if (this.source.trim() === '' || this.source.endsWith('\n')) {
+            this.insert(end, `${printed}\n`, change);
+        } else {
+            this.insert(end, `\n${printed}`, change);
+        }
+    }
+
+    // ── Settings ─────────────────────────────────────────────────────────────
+
+    /**
+     * The settings that changed, written into the script's own `config`
+     * block - or into one opened at the top for them.
+     *
+     * The viewport is written only for a script that names one. Panning and
+     * zooming are how anybody reads a graph, and they change the viewport
+     * constantly; a script that says nothing about its framing was written by
+     * somebody who did not care about it, and four `xmin`-and-friends lines
+     * appearing the first time they scrolled would be the feature writing
+     * something nobody asked for. A script that does name a viewport has an
+     * author who cares where the graph sits, and for them a pan is an edit.
+     */
+    settings(change: GraphChange): void {
+        const origin = this.compilation.configOrigin;
+        let config: ConfigStatement | undefined;
+        if (origin) {
+            const located = this.statements.get(key(origin.span));
+            if (located?.statement.kind !== 'ConfigStatement') {
+                return this.skip(change, 'the script has changed since this graph was compiled');
+            }
+            config = located.statement;
+        }
+
+        const entries = config?.entries ?? [];
+        const framed = entries.some(entry => VIEWPORT.has(entry.key.name));
+        const all = propertyWrites(
+            'config',
+            decompileSettings(this.before)?.entries ?? [],
+            decompileSettings(this.after)?.entries ?? [],
+            entries,
+        );
+        const writes = all.filter(write => framed || !VIEWPORT.has(write.name));
+
+        if (writes.length === 0) {
+            if (all.length > 0) {
+                this.skip(change, 'the viewport moved, and this script does not set one');
+            }
+            return;
+        }
+
+        if (config && origin) {
+            const updated: ConfigStatement = {
+                ...config,
+                entries: applyWrites(config.entries, writes, config.span.end - 1, this.source),
+            };
+            const printed = this.print(updated, origin.span, 0);
+            if (typeof printed !== 'string') return this.skip(change, printed.reason);
+            return this.replace(origin.span, printed, change);
+        }
+
+        // A script with no config block gets one at the very top, which is
+        // where every example keeps it.
+        const created: ConfigStatement = {
+            kind: 'ConfigStatement',
+            entries: applyWrites([], writes, 0),
+            span: { start: 0, end: 0 },
+        };
+        const printed = printStatement(created, { indent: this.unit });
+        this.insert(0, this.source.trim() === '' ? `${printed}\n` : `${printed}\n\n`, change);
+    }
+
+    // ── The ticker ───────────────────────────────────────────────────────────
+
+    /**
+     * The ticker, written back into the script's `ticker` statement. Its own
+     * running is the one change refused: a ticker started from the graph is
+     * the graph being played with, and it is what makes everything else in it
+     * move.
+     */
+    ticker(change: GraphChange): void {
+        const was = tickerOf(this.before);
+        const now = tickerOf(this.after);
+        if (now?.playing) {
+            return this.skip(change, 'the ticker is running — pause it to edit from the graph');
+        }
+
+        const statement = this.top.find(
+            (candidate): candidate is TickerStatement => candidate.kind === 'TickerStatement',
+        );
+        const after = now && decompileTicker(now);
+        for (const diagnostic of after?.diagnostics ?? []) this.skip(change, diagnostic.message);
+
+        if (!statement) {
+            if (was) {
+                return this.skip(change, 'the ticker is written in a file this script imports');
+            }
+            if (after?.statement) this.append(after.statement, change);
+            return;
+        }
+
+        if (!now) {
+            return this.replace(removalSpan(this.source, statement.span), '', change);
+        }
+        const a = after?.statement;
+        const b = was && decompileTicker(was).statement;
+        if (!a) return;
+
+        const handler = mergeExpression(statement.handler, b?.handler, a.handler);
+        const metadata = this.merged('ticker', statement, b?.metadata ?? null, a.metadata);
+        const printed = this.print({ ...statement, handler, metadata }, statement.span, 0);
+        if (typeof printed !== 'string') return this.skip(change, printed.reason);
+        this.replace(statement.span, printed, change);
+    }
+
+    // ── Shared ───────────────────────────────────────────────────────────────
+
+    /**
+     * Where an expression was written, and the statement found there - or why
+     * there is nothing here to write it to.
+     */
+    private origin(id: string): { origin: StatementOrigin; located: Located } | { reason: string } {
+        const origin = this.compilation.sourceMap.get(id);
+        if (!origin) {
+            return { reason: 'this expression was not compiled from this script' };
+        }
+        if (this.imports.has(origin.path)) {
+            // Only the script handed over is edited. Another file's statement
+            // is somebody else's source, and possibly several scripts'.
+            return { reason: `this is written in ${origin.path}, which this script imports` };
+        }
+        const located = this.statements.get(key(origin.span));
+        if (!located) {
+            return { reason: 'the script has changed since this graph was compiled' };
+        }
+        return { origin, located };
+    }
+
+    /**
+     * A statement as text, ready to go over `span`.
+     *
+     * Printed against the source it came from, so a bracket the author spread
+     * over lines stays spread and a block's comments stay where they were. The
+     * printer keeps a statement holding a comment it cannot place exactly as
+     * it was written - which here would silently throw the change away - so
+     * what it prints is read back, and must be the statement asked for.
+     */
+    private print(statement: Statement, span: Span, depth: number): string | { reason: string } {
+        const options = { level: depth, indent: this.unit };
+        const printed = printStatement(statement, { ...options, source: this.source });
+        if (readsAs(printed, statement)) return printed;
+
+        const hasComment = lex(this.source.slice(span.start, span.end)).tokens.some(
+            token => token.kind === 'comment',
+        );
+        if (hasComment) {
+            return { reason: 'a comment inside this statement would be lost by rewriting it' };
+        }
+        const fresh = printStatement(statement, options);
+        if (readsAs(fresh, statement)) return fresh;
+        return { reason: 'this statement could not be written back as it is now' };
+    }
+
+    /** Metadata as `@ …` or `@{ … }`, printed the way it would trail a statement. */
+    private printMetadata(metadata: Metadata, depth: number): string {
+        const printed = printStatement(
+            { kind: 'NoteStatement', text: stringNode(''), metadata, span: { start: 0, end: 0 } },
+            { level: depth, indent: this.unit },
+        );
+        return printed.slice('"" '.length);
+    }
+
+    /** Where a block statement's `{` is: the first after its keyword and title. */
+    private openBrace(folder: FolderStatement): number {
+        const from = folder.title ? folder.title.span.end : folder.span.start;
+        return this.source.indexOf('{', from);
+    }
+
+    private replace(span: Span, text: string, change: GraphChange): void {
+        if (this.source.slice(span.start, span.end) === text) return;
+        this.edits.push({
+            path: this.path,
+            span: { start: span.start, end: span.end },
+            text,
+            change,
+        });
+    }
+
+    private insert(at: number, text: string, change: GraphChange): void {
+        this.edits.push({ path: this.path, span: { start: at, end: at }, text, change });
+    }
+
+    private skip(change: GraphChange, reason: string): void {
+        this.skipped.push({ change, reason });
+    }
 }
 
-/** The edit that rewrites the `config { … }` block, or opens one. */
-function settingsEdit(
-    change: GraphChange,
-    compilation: CompilationResult,
-    before: GraphSnapshot,
-    after: GraphSnapshot,
-    files: ReadonlyMap<string, string>,
-    indent: string,
-    options: WriteBackOptions,
-): SourceEdit | { reason: string } {
-    // Merged for the same reason an expression is: the state a calculator
-    // hands back is not everything the script said, only everything Desmos
-    // thought worth saving.
-    const written = decompileSettings(
-        {
-            settings: merged(compilation.settings, before.settings, after.settings),
-            graph: framing(merged(compilation.graph, before.graph, after.graph), compilation.graph),
-            state: merged(compilation.state, before.state, after.state),
-            ticker: after.ticker,
-        },
-        { indent },
+const key = (span: Span) => `${span.start}:${span.end}`;
+
+/**
+ * One column of a table, decompiled on its own - so a column whose header
+ * cannot be read is that column's problem, and the rest stay lined up.
+ */
+function decompiledColumn(
+    table: Table,
+    column: Table['columns'][number],
+): { column: TableColumn; notes: string[] } | { reason: string } {
+    const { statement, diagnostics } = decompileExpression({ ...table, columns: [column] });
+    const read = statement?.kind === 'TableStatement' ? statement.columns[0] : undefined;
+    if (!read) {
+        return { reason: diagnostics[0]?.message ?? 'a column of this table cannot be read' };
+    }
+    return { column: read, notes: diagnostics.map(diagnostic => diagnostic.message) };
+}
+
+/** What the decompiler could not say about `after` that it could about `before`. */
+function problems(before: readonly Diagnostic[], after: readonly Diagnostic[]): string[] {
+    const known = new Set(before.map(diagnostic => diagnostic.message));
+    return after.map(diagnostic => diagnostic.message).filter(message => !known.has(message));
+}
+
+/** The keys of an item that differ between two readings of it. */
+function changedKeys(was: DesmosExpression, now: DesmosExpression): string[] {
+    const [a, b] = [was as unknown as Item, now as unknown as Item];
+    return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
+        key => !same(a[key], b[key]),
     );
-
-    const origin = compilation.configOrigin;
-
-    if (origin) {
-        if (files.get(origin.path) === undefined) {
-            return { reason: `${origin.path} is not among the files given` };
-        }
-        // Every setting back at its default leaves no block to write, and the
-        // one that is there goes rather than being left empty.
-        return {
-            path: origin.path,
-            line: origin.line,
-            endLine: origin.endLine,
-            text: written,
-            change,
-        };
-    }
-
-    if (!written.length) {
-        return { reason: 'the settings are all defaults, so there is no block to write' };
-    }
-
-    const path = options.entryPath ?? entryOf(compilation, files);
-    if (path === undefined) {
-        return { reason: 'there is no entry file to open a config block in' };
-    }
-
-    // A script with no config block gets one at the very top, which is where
-    // the decompiler puts it and where every example keeps it.
-    return { path, line: 0, endLine: -1, text: [...written, ''], change };
 }
 
-/** Where an expression Desmos grew on its own is written. */
-function additionEdit(
-    change: GraphChange,
-    compilation: CompilationResult,
-    files: ReadonlyMap<string, string>,
-    actions: readonly string[],
-    indent: string,
-    options: WriteBackOptions,
-): SourceEdit | { reason: string } {
-    const expression = change.expression!;
-    const folderId = folderOf(expression);
-
-    // A picture added in Desmos arrives carrying its own bytes, and a script
-    // has no `image` statement that means "these bytes" - only ones that name a
-    // file or a URL. Writing the statement out would put the whole picture,
-    // base64'd, into somebody's source, which for a photograph is megabytes on
-    // one line. It stays in the graph and is said rather than written.
-    if (expression.type === 'image' && /^data:/i.test(expression.image_url ?? '')) {
-        return {
-            reason: 'add this picture to the plot and draw it with `image`, to give it a name',
-        };
-    }
-
-    const written = decompileExpression(expression, {
-        indent,
-        actions,
-        separated: folderId !== undefined,
-    });
-    if (!written.length) {
-        return { reason: 'this expression has no statement form' };
-    }
-
-    // Inside a folder the script wrote, it goes at the end of that folder's
-    // block - which is the only placement that keeps the graph it describes the
-    // same as the graph it came from.
-    if (folderId !== undefined) {
-        const folder = compilation.sourceMap.get(folderId);
-        if (!folder) {
-            return { reason: 'this expression is in a folder that is not in this script' };
-        }
-        if (!folder.writable) {
-            return { reason: folder.reason ?? 'its folder cannot be written into' };
-        }
-
-        const source = files.get(folder.path);
-        if (source === undefined) {
-            return { reason: `${folder.path} is not among the files given` };
-        }
-
-        const close = closingBrace(source.split('\n'), folder.line);
-        if (close === -1) {
-            return { reason: 'its folder has no closing brace' };
-        }
-
-        return {
-            path: folder.path,
-            line: close,
-            endLine: close - 1,
-            text: written.map(line => `${indent}${line}`),
-            change,
-        };
-    }
-
-    const path = options.entryPath ?? entryOf(compilation, files);
-    if (path === undefined) {
-        return { reason: 'there is no entry file to write it to' };
-    }
-
-    // Everything else goes on the end of the entry, which is the one placement
-    // that is always correct and never a guess about where it belonged.
-    const lines = (files.get(path) ?? '').split('\n');
-    const at = lines.length;
-    return { path, line: at, endLine: at - 1, text: written, change };
+/** Whether `text` parses back as exactly `statement`, layout aside. */
+function readsAs(text: string, statement: Statement): boolean {
+    const tree = parse(text);
+    if (tree.diagnostics.some(diagnostic => diagnostic.severity === 'error')) return false;
+    const [read, ...rest] = tree.file.statements;
+    return read !== undefined && rest.length === 0 && sameTree(read, statement);
 }
 
 /**
- * The line holding the `}` that closes the block opened on `from`.
+ * The characters to delete to take a statement out.
  *
- * Read the way the compiler reads a script rather than by counting braces: a
- * brace inside a string or a comment closes nothing, and a block written inline
- * opens and closes on the one line.
+ * A statement alone on its lines takes the lines with it, and the comment on
+ * the end of its last line, which was about it. One sharing a line through `;`
+ * takes its separator, whichever side it is on, and leaves its neighbours.
  */
-function closingBrace(lines: readonly string[], from: number): number {
-    const stack: BlockFrame[] = [];
-    scanBlockLine(lines[from] ?? '', from, stack);
+function removalSpan(source: string, span: Span): Span {
+    const lineStart = source.lastIndexOf('\n', span.start - 1) + 1;
+    const newline = source.indexOf('\n', span.end);
+    const lineEnd = newline < 0 ? source.length : newline;
+    const leading = source.slice(lineStart, span.start);
+    const trailing = source.slice(span.end, lineEnd);
 
-    if (!stack.length) {
-        // Opened and closed on its own line, so there is nowhere inside it.
-        return -1;
+    if (/^[ \t]*$/.test(leading) && /^[ \t]*(\/\/.*)?\r?$/.test(trailing)) {
+        if (newline >= 0) return { start: lineStart, end: newline + 1 };
+        // The last line of the file: the newline before it goes instead.
+        return { start: Math.max(0, lineStart - 1), end: source.length };
     }
 
-    for (let at = from + 1; at < lines.length; at++) {
-        const depth = stack.length;
-        scanBlockLine(lines[at], at, stack);
-        if (stack.length < depth && !stack.length) {
-            return at;
-        }
-    }
-
-    return -1;
+    const after = /^[ \t]*;[ \t]*/.exec(trailing);
+    if (after) return { start: span.start, end: span.end + after[0].length };
+    const before = /[ \t]*;[ \t]*$/.exec(leading);
+    if (before) return { start: span.start - before[0].length, end: span.end };
+    return span;
 }
 
-/** The file to write something with nowhere else to go into. */
-function entryOf(
-    compilation: CompilationResult,
-    files: ReadonlyMap<string, string>,
-): string | undefined {
-    for (const origin of compilation.sourceMap.values()) {
-        if (files.has(origin.path) && !compilation.imports.includes(origin.path)) {
-            return origin.path;
-        }
-    }
-    return files.keys().next().value;
+function unknownReason(keys: readonly string[]): string {
+    return keys.length === 1
+        ? `\`${keys[0]}\` changed, and no Axis property says it, so it stays in the graph only`
+        : `${list(keys)} changed, and no Axis property says them, so they stay in the graph only`;
 }
 
-/**
- * Edits ordered so a host can apply them one after another.
- *
- * Latest in the file first, so an edit never moves the lines a later one is
- * about. Files are kept apart, since ranges in one say nothing about the other.
- */
-function order(edits: readonly SourceEdit[]): SourceEdit[] {
-    return [...edits].sort((a, b) =>
-        a.path === b.path ? b.line - a.line : a.path < b.path ? -1 : 1,
-    );
-}
-
-/** Apply edits for one file to its text. Order is {@link WriteBackResult.edits}. */
-export function applySourceEdits(source: string, edits: readonly SourceEdit[]): string {
-    const lines = source.split('\n');
-
-    for (const edit of edits) {
-        lines.splice(edit.line, edit.endLine - edit.line + 1, ...edit.text);
-    }
-
-    return lines.join('\n');
+function list(names: readonly string[]): string {
+    return names.map(name => `\`${name}\``).join(', ');
 }

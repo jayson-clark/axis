@@ -13,13 +13,8 @@
 // compiles. {@link loadImports} is that step: it walks the import graph ahead
 // of time, asynchronously, over whatever notion of "a file" the host has.
 
-import {
-    expandBlockEntries,
-    foldMetadataBlocks,
-    joinContinuedLines,
-    parseImportStatement,
-    splitTrailingMetadata,
-} from '@axis-dsl/language';
+import { parse, type Statement } from '@axis-dsl/syntax';
+import { forEachStatement } from './walk';
 
 /** A file an import resolved to: where it lives, and what it says. */
 export interface ResolvedImport {
@@ -44,20 +39,27 @@ export type ResolveImport = (specifier: string, from: string) => ResolvedImport 
 /**
  * Every specifier `source` imports, in the order it imports them.
  *
- * The source is flattened first, so an import written inline inside a folder is
- * found just as one on a line of its own is.
+ * Read off the syntax tree, so an import is found wherever the parser finds
+ * one - inside a folder, on a line shared with another statement - and a note
+ * that happens to say `import "x"`, or a variable called `important`, is not
+ * one.
  */
 export function findImports(source: string): string[] {
-    const specifiers: string[] = [];
+    return findStatements(source, 'ImportStatement').map(statement => statement.path.value);
+}
 
-    for (const line of expandBlockEntries(joinContinuedLines(foldMetadataBlocks(source)))) {
-        const statement = parseImportStatement(splitTrailingMetadata(line.trim()).code);
-        if (statement) {
-            specifiers.push(statement.specifier);
+/** Every statement of one kind in `source`, folders opened, in source order. */
+export function findStatements<K extends Statement['kind']>(
+    source: string,
+    kind: K,
+): Extract<Statement, { kind: K }>[] {
+    const found: Extract<Statement, { kind: K }>[] = [];
+    forEachStatement(parse(source).file.statements, statement => {
+        if (statement.kind === kind) {
+            found.push(statement as Extract<Statement, { kind: K }>);
         }
-    }
-
-    return specifiers;
+    });
+    return found;
 }
 
 /** How {@link loadImports} names and reads the host's files. */
@@ -78,25 +80,18 @@ export interface ImportHost {
  * The result is keyed by resolved path and is what {@link createImportResolver}
  * turns into the synchronous callback the compiler wants.
  *
- * A cycle is not an error here - the same file is simply not read twice - so
- * that the compiler can report it against the statement that closes the loop,
- * where a user can see which import to remove.
+ * Nothing here is an error. A cycle is not followed - the same file is simply
+ * not read twice - and a file that cannot be read is left out, so that the
+ * compiler reports both against the statement responsible, where a user can
+ * see which import to fix, rather than failing the whole load with no place
+ * to point at.
  */
 export async function loadImports(
     entry: ResolvedImport,
     host: ImportHost,
 ): Promise<Map<string, string>> {
     const files = new Map<string, string>();
-
-    /** Read one file, naming the import that asked for it if it is not there. */
-    const read = async (specifier: string, path: string, from: string): Promise<string> => {
-        try {
-            return await host.read(path);
-        } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-            throw new Error(`Cannot read "${specifier}", imported by ${from}: ${reason}`);
-        }
-    };
+    const missing = new Set<string>();
 
     // The entry is queued but not stored: it is only added to `files` if some
     // other file imports it back, which is the cycle the compiler reports.
@@ -108,12 +103,21 @@ export async function loadImports(
 
         for (const specifier of findImports(current.source)) {
             const path = host.resolve(specifier, current.path);
+            if (missing.has(path)) {
+                continue;
+            }
 
             if (!files.has(path)) {
-                files.set(
-                    path,
-                    path === entry.path ? entry.source : await read(specifier, path, current.path),
-                );
+                if (path === entry.path) {
+                    files.set(path, entry.source);
+                } else {
+                    try {
+                        files.set(path, await host.read(path));
+                    } catch {
+                        missing.add(path);
+                        continue;
+                    }
+                }
             }
 
             if (!queued.has(path)) {

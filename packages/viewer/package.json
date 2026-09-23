@@ -1,8 +1,8 @@
 {
     "name": "@axis-dsl/viewer",
-    "version": "1.6.0",
+    "version": "2.0.0",
     "type": "module",
-    "description": "Every Axis React component: the results panel and the Desmos graph and JSON inspector it is built from, shared by the web playground and the VSCode preview",
+    "description": "Every Axis React component: the results panel and the Desmos graph and JSON inspector it is built from, shared by the web playground and the VSCode preview, and the protocol that drives it",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "scripts": {
@@ -18,8 +18,7 @@
         "react-dom": "catalog:"
     },
     "dependencies": {
-        "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/protocol": "workspace:*"
+        "@axis-dsl/desmos": "workspace:*"
     },
     "peerDependencies": {
         "react": "^19"
@@ -46,6 +45,10 @@
         ".": {
             "types": "./dist/index.d.ts",
             "default": "./dist/index.js"
+        },
+        "./protocol": {
+            "types": "./dist/protocol/index.d.ts",
+            "default": "./dist/protocol/index.js"
         }
     },
     "files": [

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { applySourceEdits, writeBackGraph } from '@axis-dsl/compiler';
 import { DESMOS_DEMO_API_KEY } from '@axis-dsl/desmos';
 import { AxisEditor } from './AxisEditor';
 import { monaco } from './monaco';
@@ -14,22 +15,25 @@ import { useCompiledAxis } from './useCompiledAxis';
 const DESMOS_API_KEY = DESMOS_DEMO_API_KEY;
 
 const STARTER_SOURCE = `// Welcome to Axis — a scripting language for Desmos.
-// Edit on the left, watch the graph update on the right.
+// Edit on the left, watch the graph update on the right -
+// or drag something on the right, and watch the left catch up.
 
 config {
-    degreeMode: false,
+    degreeMode: false
     showGrid: true
 }
 
 "Getting started"
 
-f(x) = x^2 - 4x + 3 # color: #c74440
+f(x) = x^2 - 4x + 3 @ color: #c74440
 
-g(x) = sin(x) + cos(2x) # color: #2d70b3, lineWidth: 2
+g(x) = sin(x) + cos(2x) @ color: #2d70b3, lineWidth: 2
 
-a = 1.5 # playing: true
+a = 1.5 @ slider: 0..3
 
-h(x) = a * f(x) # color: #388c46, lineStyle: DASHED
+h(x) = a * f(x) @ color: #388c46, lineStyle: DASHED
+
+P = (1, 2) @ dragMode: XY
 `;
 
 /** Follows the OS setting. There is no in-app toggle to keep in sync with it. */
@@ -53,7 +57,8 @@ export function App() {
     const [source, setSource] = useState(STARTER_SOURCE);
     const theme = useSystemTheme();
 
-    const { expressions, settings, graph, ticker, error, isStale } = useCompiledAxis(source);
+    const { state, options, error, isStale, compiled } = useCompiledAxis(source);
+    const count = state?.expressions?.list?.length ?? 0;
 
     // The playground drives the viewer over the same protocol the extension
     // uses; the only difference is that the channel never leaves the page.
@@ -61,13 +66,30 @@ export function App() {
     // offer a button that would have nowhere to lead.
     const viewerTransport = useLocalViewerHost({
         apiKey: DESMOS_API_KEY,
-        expressions,
-        settings,
-        graph,
-        ticker,
-        status: isStale
-            ? 'Compiling…'
-            : `${expressions.length} expression${expressions.length === 1 ? '' : 's'}`,
+        state,
+        options,
+        status: isStale ? 'Compiling…' : `${count} expression${count === 1 ? '' : 's'}`,
+        // Drag a point, move a slider, recolour a curve: the statement that
+        // drew it is rewritten in the editor. Only against the compilation the
+        // graph on screen came from - one typed over since has spans that no
+        // longer point at anything, and the next compile resets the graph
+        // anyway.
+        onGraphChanged: (before, after) => {
+            if (!compiled || isStale || compiled.source !== source) {
+                return;
+            }
+            const { edits, skipped } = writeBackGraph(
+                compiled.source,
+                { before, after },
+                compiled.compilation,
+            );
+            for (const { reason } of skipped) {
+                console.info(`Not written back: ${reason}`);
+            }
+            if (edits.length > 0) {
+                setSource(applySourceEdits(compiled.source, edits));
+            }
+        },
     });
 
     return (

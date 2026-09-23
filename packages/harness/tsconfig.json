@@ -10,6 +10,6 @@
         "outDir": "./dist",
         "rootDir": "src"
     },
-    "references": [{ "path": "../desmos" }, { "path": "../language" }, { "path": "../compiler" }],
+    "references": [{ "path": "../desmos" }, { "path": "../syntax" }, { "path": "../compiler" }],
     "include": ["src/**/*"]
 }

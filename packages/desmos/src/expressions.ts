@@ -95,6 +95,8 @@ export interface TableColumn {
     latex: string;
     values?: string[];
     color?: string;
+    /** A colour Desmos works out, as an expression: `rgb(…)`, a variable. */
+    colorLatex?: string;
     hidden?: boolean;
     lineStyle?: LineStyle | string;
     pointStyle?: PointStyle | string;
@@ -262,6 +264,12 @@ export interface GraphImage {
     clickableInfo?: ClickableInfo;
     hidden?: boolean;
     secret?: boolean;
+    /**
+     * Whether the image can be dragged about the graphpaper. An image has this
+     * rather than a point's `dragMode`, which Desmos ignores on one.
+     */
+    draggable?: boolean;
+    /** @deprecated Ignored on an image by Desmos; see {@link draggable}. */
     dragMode?: DragMode | string;
 }
 

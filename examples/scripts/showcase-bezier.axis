@@ -14,30 +14,30 @@ config {
 "Cubic Bezier"
 
 folder "Control points - drag these" {
-    A = (-6, -3) # color: #000000, pointSize: 16, dragMode: XY, label: "A", showLabel: true
-    B = (-4, 5) # color: #000000, pointSize: 16, dragMode: XY, label: "B", showLabel: true
-    C = (4, -5) # color: #000000, pointSize: 16, dragMode: XY, label: "C", showLabel: true
-    D = (6, 3) # color: #000000, pointSize: 16, dragMode: XY, label: "D", showLabel: true
+    A = (-6, -3) @ color: BLACK, pointSize: 16, dragMode: XY, label: "A", showLabel
+    B = (-4, 5) @ color: BLACK, pointSize: 16, dragMode: XY, label: "B", showLabel
+    C = (4, -5) @ color: BLACK, pointSize: 16, dragMode: XY, label: "C", showLabel
+    D = (6, 3) @ color: BLACK, pointSize: 16, dragMode: XY, label: "D", showLabel
     "The control polygon."
-    hull = [A, B, C, D] # color: #000000, points: false, lineStyle: DASHED, lineOpacity: 0.35
+    hull = [A, B, C, D] @ color: BLACK, lines, points: false, lineStyle: DASHED, lineOpacity: 0.35
 }
 
 "The curve itself, as a parametric point in t."
 
-curve(t) = (1 - t) ^ 3 * A + 3(1 - t) ^ 2 * t * B + 3(1 - t) * t ^ 2 * C + t ^ 3 * D # hidden
-curve(t) # color: #6042a6, lineWidth: 4
+curve(t) = (1 - t) ^ 3 * A + 3(1 - t) ^ 2 * t * B + 3(1 - t) * t ^ 2 * C + t ^ 3 * D @ hidden
+curve(t) @ color: PURPLE, lineWidth: 4
 
 folder "de Casteljau at s" {
-    s = 0.35 # sliderBounds: {min: 0, max: 1, step: 0.002}, playing: true
+    s = 0.35 @ slider: 0..1 step 0.002, playing
     "First round of midpoints."
-    E = A + s * (B - A) # color: #c74440, pointSize: 12
-    F = B + s * (C - B) # color: #c74440, pointSize: 12
-    G = C + s * (D - C) # color: #c74440, pointSize: 12
-    L1 = [E, F, G] # color: #c74440, points: false, lineOpacity: 0.6
+    E = A + s * (B - A) @ color: RED, pointSize: 12
+    F = B + s * (C - B) @ color: RED, pointSize: 12
+    G = C + s * (D - C) @ color: RED, pointSize: 12
+    L1 = [E, F, G] @ color: RED, lines, points: false, lineOpacity: 0.6
     "Second round."
-    H = E + s * (F - E) # color: #2d70b3, pointSize: 12
-    I = F + s * (G - F) # color: #2d70b3, pointSize: 12
-    L2 = [H, I] # color: #2d70b3, points: false, lineOpacity: 0.6
+    H = E + s * (F - E) @ color: BLUE, pointSize: 12
+    I = F + s * (G - F) @ color: BLUE, pointSize: 12
+    L2 = [H, I] @ color: BLUE, lines, points: false, lineOpacity: 0.6
     "And the point on the curve."
-    J = H + s * (I - H) # color: #6042a6, pointSize: 20
+    J = H + s * (I - H) @ color: PURPLE, pointSize: 20
 }

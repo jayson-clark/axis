@@ -1,17 +1,25 @@
+// Typechecks the extension; esbuild compiles it (`scripts/build.mjs`). It is
+// bundled into two CommonJS files - `extension.js` for the extension host and
+// `server.js` for the language server - so it resolves imports the way a
+// bundler does. That is also what lets the preview server import
+// `@axis-dsl/viewer/protocol`, which is ESM, without the extension host ever
+// having to `require` an ES module.
 {
-    "extends": "../../tsconfig.json",
     "compilerOptions": {
-        "composite": true,
+        "target": "ES2022",
+        "module": "preserve",
+        "moduleResolution": "bundler",
+        "lib": ["ES2022"],
         // The preview server is built on node's http, fs and crypto.
         "types": ["node"],
-        "outDir": "./dist",
-        "rootDir": "src"
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "isolatedModules": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noEmit": true
     },
-    "references": [
-        { "path": "../desmos" },
-        { "path": "../protocol" },
-        { "path": "../language" },
-        { "path": "../compiler" }
-    ],
     "include": ["src/**/*"]
 }

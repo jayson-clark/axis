@@ -1,0 +1,64 @@
+{
+    "name": "@axis-dsl/language-service",
+    "version": "2.0.0",
+    "description": "Axis language services over the syntax tree: diagnostics, completions, formatting, semantic tokens, with a Monaco adapter",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "watch": "tsc --watch"
+    },
+    "dependencies": {
+        "@axis-dsl/compiler": "workspace:*",
+        "@axis-dsl/syntax": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "catalog:",
+        "monaco-editor": "catalog:"
+    },
+    "peerDependencies": {
+        "monaco-editor": ">=0.56.0"
+    },
+    "peerDependenciesMeta": {
+        "monaco-editor": {
+            "optional": true
+        }
+    },
+    "license": "MIT",
+    "author": "Jayson Clark",
+    "homepage": "https://github.com/jayson-clark/axis#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/jayson-clark/axis.git",
+        "directory": "packages/language-service"
+    },
+    "bugs": {
+        "url": "https://github.com/jayson-clark/axis/issues"
+    },
+    "keywords": [
+        "axis",
+        "axis-dsl",
+        "desmos",
+        "graphing",
+        "dsl"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./monaco": {
+            "types": "./dist/monaco/index.d.ts",
+            "default": "./dist/monaco/index.js"
+        },
+        "./syntaxes/axis.tmLanguage.json": "./syntaxes/axis.tmLanguage.json"
+    },
+    "files": [
+        "dist",
+        "syntaxes",
+        "README.md"
+    ],
+    "sideEffects": false,
+    "publishConfig": {
+        "access": "public"
+    }
+}

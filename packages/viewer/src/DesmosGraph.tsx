@@ -4,12 +4,9 @@ import {
     Calculator,
     CalculatorOptions,
     DesmosExpression,
-    GraphSettings,
     GraphState,
-    GraphStateFlags,
-    TickerState,
 } from '@axis-dsl/desmos';
-import type { GraphReading } from '@axis-dsl/protocol';
+import type { GraphReading } from './protocol/index.js';
 import { useDesmos } from './useDesmos.js';
 
 export interface DesmosGraphHandle {
@@ -29,25 +26,18 @@ export interface DesmosGraphProps {
     /** Exposes {@link DesmosGraphHandle}. A plain prop, as React 19 has it. */
     ref?: Ref<DesmosGraphHandle>;
     apiKey: string | null | undefined;
-    expressions: DesmosExpression[];
-    settings?: CalculatorOptions;
     /**
-     * The viewport and `squareAxes`. Separate from `settings` because Desmos
-     * keeps them in the graph state: `updateSettings` would ignore them.
+     * The whole graph, applied with `setState` exactly as given: the expression
+     * list, the ticker beside it, the viewport and every top-level flag. Left
+     * out, the calculator is left as it is.
      */
-    graph?: GraphSettings;
+    state?: GraphState | null;
     /**
-     * `includeFunctionParametersInRandomSeed` and anything else Desmos reads
-     * off the top of a graph state. Separate from `graph` because that is a
-     * different place in the same state, and putting one of these inside it is
-     * ignored as quietly as `updateSettings` would ignore it.
+     * Calculator options, applied with `updateSettings` once the state is in.
+     * Separate because Desmos keeps the two apart: an option inside the state
+     * is ignored, and so is a piece of state handed to `updateSettings`.
      */
-    state?: GraphStateFlags;
-    /**
-     * The graph's ticker. Separate for the same reason: Desmos keeps it beside
-     * the expression list rather than in it.
-     */
-    ticker?: TickerState;
+    options?: CalculatorOptions;
     /**
      * Report changes the user makes to the graph by hand.
      *
@@ -76,13 +66,6 @@ export interface DesmosGraphProps {
 }
 
 /**
- * The framing a graph gets when its script does not ask for one. Desmos would
- * otherwise keep whatever the calculator was last showing, so a graph that says
- * nothing about its viewport opens where every other one does.
- */
-const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
-
-/**
  * How long the graph has to be still before a change is reported.
  *
  * Desmos fires `change` on every frame of a drag, and a point dragged across
@@ -92,64 +75,15 @@ const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
  */
 const DEFAULT_CHANGE_DELAY = 400;
 
-/** A calculator's state, in the parts the rest of Axis keeps a graph in. */
-function reading(calculator: Calculator): GraphReading {
-    const state = calculator.getState();
-
-    const { includeFunctionParametersInRandomSeed } = state;
-    // A calculator with nothing in it yet answers with no expression list at
-    // all, which is a graph of none rather than a graph that cannot be read.
-    const held = state.expressions ?? { list: [] };
-
-    return {
-        expressions: held.list ?? [],
-        // `settings` is the live options object rather than part of the state:
-        // Desmos keeps the two apart, and so does everything reading this.
-        settings: { ...calculator.settings },
-        graph: state.graph,
-        // The flags Desmos reads off the top of a state rather than out of its
-        // `graph`, which is also where it writes them back.
-        ...(includeFunctionParametersInRandomSeed !== undefined && {
-            state: { includeFunctionParametersInRandomSeed },
-        }),
-        ticker: held.ticker,
-    };
-}
-
 /**
- * setState (rather than setExpressions) is what carries folder membership, so
- * expressions are always applied as a whole graph state.
+ * A calculator's graph, in the two halves a graph is applied as.
  *
- * The viewport rides along in the same state: setting it here rather than with
- * a later `setMathBounds` means the graph is never drawn at the wrong framing
- * first. A script that names only some edges gets the defaults for the rest —
- * `xmin: 0` alone is a half-written rectangle, and Desmos would ignore it.
+ * `settings` is copied rather than handed over: it is the live observable
+ * object Desmos keeps updating, and a reading has to stay what it was when it
+ * was taken.
  */
-function graphState(
-    expressions: DesmosExpression[],
-    graph: GraphSettings | undefined,
-    state: GraphStateFlags | undefined,
-    ticker: TickerState | undefined,
-): GraphState {
-    return {
-        version: 11,
-        // The top-level state flags, which are neither calculator options nor
-        // part of `graph`: Desmos reads them here and only here.
-        ...state,
-        // `# pointStyle: SQUARE` means that style, on a draggable point as much
-        // as a fixed one. Without this, Desmos substitutes its own style for
-        // any point it decides is movable and stashes the author's away — so a
-        // square point silently becomes a round one the moment its coordinates
-        // turn out to be draggable.
-        doNotMigrateMovablePointStyle: true,
-        graph: {
-            ...graph,
-            viewport: { ...DEFAULT_VIEWPORT, ...graph?.viewport },
-        },
-        // The ticker rides beside the list rather than in it, and a graph
-        // without one says so by carrying no ticker at all.
-        expressions: { list: expressions, ...(ticker && { ticker }) },
-    };
+function reading(calculator: Calculator): GraphReading {
+    return { state: calculator.getState(), options: { ...calculator.settings } };
 }
 
 /**
@@ -171,17 +105,14 @@ function capture(
 }
 
 /**
- * Renders a Desmos graphing calculator and keeps it in sync with `expressions`
- * and `settings`. Knows nothing about where those come from.
+ * Renders a Desmos graphing calculator and keeps it in sync with `state` and
+ * `options`. Knows nothing about where those come from.
  */
 export function DesmosGraph({
     ref,
     apiKey,
-    expressions,
-    settings,
-    graph,
-    state: stateFlags,
-    ticker,
+    state,
+    options,
     onGraphChanged,
     changeDelay = DEFAULT_CHANGE_DELAY,
     loadingFallback,
@@ -191,7 +122,7 @@ export function DesmosGraph({
 }: DesmosGraphProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const calculatorRef = useRef<Calculator | null>(null);
-    /** Serialized state+settings last pushed to the calculator. */
+    /** Serialized state+options last pushed to the calculator. */
     const lastAppliedRef = useRef<string | null>(null);
     /**
      * The graph as the calculator held it the moment the last state finished
@@ -230,18 +161,18 @@ export function DesmosGraph({
     }, [status]);
 
     // Runs after the effect above on the render that flips status to 'ready',
-    // so the first batch of expressions never needs to be queued.
+    // so the first graph never needs to be queued.
     useEffect(() => {
         const calculator = calculatorRef.current;
-        if (!calculator) {
+        if (!calculator || !state) {
             return;
         }
 
-        const state = graphState(expressions, graph, stateFlags, ticker);
-
-        // Every compile hands us fresh object identities, so compare contents:
-        // re-applying an identical state would churn the calculator for nothing.
-        const applied = JSON.stringify({ state, settings: settings ?? null });
+        // Every compile hands us fresh object identities, so compare contents.
+        // Re-applying an identical state would churn the calculator for nothing,
+        // and would throw away wherever the user has panned to since - saving a
+        // file without changing the graph should not reframe it.
+        const applied = JSON.stringify({ state, options: options ?? null });
         if (applied === lastAppliedRef.current) {
             return;
         }
@@ -255,11 +186,14 @@ export function DesmosGraph({
         const wasOutside =
             previous instanceof HTMLElement && !!container && !container.contains(previous);
 
+        // setState rather than setExpressions, because only the state form
+        // carries folder membership - and the state is applied as it came, so
+        // this graph is the same one every other host shows.
         calculator.setState(state);
 
         // updateSettings has to follow setState, which resets graph settings.
-        if (settings) {
-            calculator.updateSettings(settings);
+        if (options) {
+            calculator.updateSettings(options);
         }
 
         // The baseline moves with the graph: from here on, a change is
@@ -287,7 +221,7 @@ export function DesmosGraph({
         // MathQuill focuses itself a tick after the list is rebuilt.
         const frame = requestAnimationFrame(restore);
         return () => cancelAnimationFrame(frame);
-    }, [status, expressions, settings, graph, stateFlags, ticker]);
+    }, [status, state, options]);
 
     // Watching the calculator for what the user does to the graph directly.
     //

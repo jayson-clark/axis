@@ -1,10 +1,8 @@
 import * as vscode from 'vscode';
-import {
-    AXIS_FILE_EXTENSION,
-    AXIS_LANGUAGE_ID,
-    registerAxisLanguage,
-} from '@axis-dsl/language/vscode';
-import { PreviewServer } from './server';
+import type { LanguageClient } from 'vscode-languageclient/node';
+import { AXIS_FILE_EXTENSION, AXIS_LANGUAGE_ID } from '@axis-dsl/language-service';
+import { createLanguageClient } from './client';
+import { PreviewServer } from './preview-server';
 import { openPreview, resolvePreviewTarget } from './preview';
 import { PreviewStatus } from './status';
 
@@ -15,7 +13,9 @@ function isAxisDocument(document: vscode.TextDocument): boolean {
     );
 }
 
-export function activate(context: vscode.ExtensionContext) {
+let client: LanguageClient | undefined;
+
+export async function activate(context: vscode.ExtensionContext) {
     // Constructed here but not started: the server listens on the first preview
     // and, for someone who only wants the language support, never at all.
     const server = new PreviewServer(context);
@@ -24,8 +24,6 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         server,
         status,
-        // Completion, formatting and diagnostics, shared with the web app.
-        ...registerAxisLanguage(),
         vscode.commands.registerCommand('axis.preview', async (argument: unknown) => {
             const uri = await resolvePreviewTarget(argument, isAxisDocument);
             if (uri) {
@@ -35,6 +33,20 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('axis.previewStatus', () => status.showMenu()),
         vscode.commands.registerCommand('axis.stopPreviewServer', () => server.stop()),
     );
+
+    // Completion, formatting, diagnostics and the rest, from the language
+    // server. Started last and not awaited by the commands above, so a server
+    // that is slow to come up - or fails to - never holds the preview hostage.
+    client = createLanguageClient(context);
+    try {
+        await client.start();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        void vscode.window.showErrorMessage(`The Axis language server did not start: ${message}`);
+    }
 }
 
-export function deactivate() {}
+export async function deactivate() {
+    await client?.stop();
+    client = undefined;
+}

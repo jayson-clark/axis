@@ -1,19 +1,38 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// @axis-dsl/compiler - .axis source to Desmos expressions
+// @axis-dsl/compiler - .axis source to a Desmos graph
 // ═════════════════════════════════════════════════════════════════════════════
 
 export { compileAxis } from './compile';
 export type { CompilationResult, CompileOptions, StatementOrigin } from './compile';
-export { convertToLatex } from './latex';
-export { convertFromLatex } from './unlatex';
+
+// The passes `compileAxis` is made of, for a tool that wants one of them on its
+// own - an editor checking a script without lowering it, say.
+export { loadProgram } from './program';
+export type { ImportResolution, LoadProgramOptions, Program, SourceFile } from './program';
+export { collectSymbols, definitionOf } from './symbols';
+export type { Definition, MacroDefinition, StyleDefinition, Symbols } from './symbols';
+export { checkProgram } from './check';
+export type { CheckResult } from './check';
+export { expandMacros } from './macros';
+export type { Expansion } from './macros';
+export { resolveProperties } from './styles';
+
+export { emitLatex, identifierLatex, LatexParseError, parseLatex } from './latex/index';
 export {
     decompileAxis,
     decompileExpression,
     decompileSettings,
-    graphActionNames,
+    decompileTicker,
 } from './decompile';
-export type { DecompileExpressionOptions, DecompileInput, DecompileOptions } from './decompile';
+export type {
+    DecompiledStatement,
+    DecompileExpressionOptions,
+    DecompileInput,
+    DecompileResult,
+} from './decompile';
 export { applySourceEdits, diffGraphs, writeBackGraph } from './writeback';
+export { applyPropertyWrites, mergeExpression, propertyWrites } from './readback';
+export type { PropertyWrite } from './readback';
 export type {
     ChangeKind,
     GraphChange,

@@ -7,7 +7,8 @@
 
 "Basics"
 
-// A line starting with // is a comment. It never reaches the graph.
+// A // starts a comment, which runs to the end of the line. It never reaches
+// the graph.
 
 // A bare string on its own line is a note - the yellow text card in Desmos.
 "Notes explain a graph to whoever opens it next."
@@ -19,16 +20,22 @@ y = 2x + 1
 c = 3
 y = c * x - 4
 
-// Anything after a # is metadata: how the statement should look and behave.
-y = x ^ 2 # color: #c74440
+// A newline ends a statement, and so does a ;, so two short ones may share a
+// line.
+d = -2; y = d * x + 6
+
+// Anything after an @ is metadata: how the statement should look and behave.
+y = x ^ 2 @ color: #c74440
 
 // Several properties are separated by commas.
-y = x ^ 3 # color: #2d70b3, lineWidth: 4, lineOpacity: 0.6
+y = x ^ 3 @ color: #2d70b3, lineWidth: 4, lineOpacity: 0.6
 
-// Where there are more of them than sit comfortably behind a #, a #{ } block
-// gives them a line each - and inside it the newline is the separator.
-y = x ^ 4 #{
-    color: #388c46
+// Where there are more of them than sit comfortably behind an @, an @{ } block
+// gives them a line each - and inside it the newline is the separator. A colour
+// may be a hex literal, as above, or one of the Desmos palette's own by name:
+// RED, BLUE, GREEN, PURPLE, ORANGE or BLACK.
+y = x ^ 4 @{
+    color: GREEN
     lineWidth: 4
     lineStyle: DASHED
     label: "quartic"
@@ -40,13 +47,14 @@ P = [
     (-2, 4),
     (0, 0),
     (2, 4)
-] # color: #388c46, pointSize: 14
+] @ color: GREEN, pointSize: 14
 
 // hidden keeps a statement in the list but off the graph; it is still defined
-// and usable. Written bare, with no value.
-k = 10 # hidden
+// and usable. It is written bare, with no value: any property that is true or
+// false may be, and a bare one means true.
+k = 10 @ hidden
 
 // secret hides it from the expression list entirely.
-scale = 0.5 # secret
+scale = 0.5 @ secret
 
-y = k * sin(scale * x) # color: #6042a6
+y = k * sin(scale * x) @ color: PURPLE

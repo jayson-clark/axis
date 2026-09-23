@@ -2,7 +2,7 @@
     "name": "axis-dsl",
     "displayName": "Axis — Desmos Scripting Language",
     "description": "Previews the .axis file you have open as a live Desmos graph, with Axis language support",
-    "version": "1.8.0",
+    "version": "2.0.0",
     "publisher": "axis",
     "engines": {
         "vscode": "^1.134.0"
@@ -11,8 +11,11 @@
         "Other"
     ],
     "scripts": {
-        "build": "node scripts/copy-assets.mjs",
-        "watch": "tsc --watch"
+        "build": "tsc --noEmit && node scripts/build.mjs",
+        "watch": "node scripts/build.mjs --watch",
+        "typecheck": "tsc --noEmit",
+        "package": "pnpm run build && node scripts/package.mjs",
+        "test:vscode": "node test-vscode/run.mjs"
     },
     "activationEvents": [
         "onLanguage:axis"
@@ -96,7 +99,7 @@
                     "type": "number",
                     "default": 100,
                     "minimum": 0,
-                    "markdownDescription": "Column the formatter breaks a long line at, counting its indentation. A statement is broken at a bracket, one entry to a line, which is the only place Axis lets one continue; a line made long by anything else — a note, a comment, a `# key: value` run — is left whole. Set to `0` to never break a line."
+                    "markdownDescription": "Column the formatter breaks a long line at, counting its indentation. A statement is broken at a bracket, one entry to a line, and metadata that does not fit becomes an `@{ … }` block, one property to a line; a line made long by anything else — a note, a comment — is left whole. Set to `0` to never break a line."
                 }
             }
         },
@@ -111,15 +114,17 @@
         }
     },
     "devDependencies": {
-        "@types/node": "catalog:",
-        "@types/vscode": "catalog:"
-    },
-    "dependencies": {
         "@axis-dsl/compiler": "workspace:*",
-        "@axis-dsl/language": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/protocol": "workspace:*",
-        "@axis-dsl/viewer": "workspace:*"
+        "@axis-dsl/language-server": "workspace:*",
+        "@axis-dsl/language-service": "workspace:*",
+        "@axis-dsl/viewer": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/vscode": "catalog:",
+        "@vscode/test-electron": "catalog:",
+        "@vscode/vsce": "catalog:",
+        "esbuild": "catalog:",
+        "vscode-languageclient": "catalog:"
     },
     "private": true,
     "license": "MIT",

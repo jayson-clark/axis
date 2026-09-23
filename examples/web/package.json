@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/web",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "private": true,
     "type": "module",
     "description": "Axis playground - Monaco editor + live Desmos graph in the browser",
@@ -13,7 +13,7 @@
     "dependencies": {
         "@axis-dsl/compiler": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/language": "workspace:*",
+        "@axis-dsl/language-service": "workspace:*",
         "@axis-dsl/viewer": "workspace:*"
     },
     "devDependencies": {

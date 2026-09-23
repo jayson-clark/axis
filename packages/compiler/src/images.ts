@@ -13,8 +13,8 @@
 // time, over whatever notion of "a file" the host has - and over every file the
 // entry script imports as well, since an imported script draws its own images.
 
-import { findImageStatements, imageMediaType, isImageUrl } from '@axis-dsl/language';
-import type { ResolvedImport } from './imports';
+import { imageMediaType, isImageUrl } from '@axis-dsl/syntax';
+import { findStatements, type ResolvedImport } from './imports';
 
 /** An image file that was found: where it lives, and the URI it inlines as. */
 export interface ResolvedImage {
@@ -36,13 +36,13 @@ export type ResolveImage = (url: string, from: string) => ResolvedImage | undefi
 /**
  * Every image file `source` draws, in the order it draws them.
  *
- * Paths only - an `image` that already names a URL has no file behind it. The
- * source is flattened first, so an image written inline inside a folder is
- * found just as one on a line of its own is.
+ * Paths only - an `image` that already names a URL has no file behind it. Read
+ * off the syntax tree, so an image inside a folder is found as readily as one
+ * at the top level.
  */
 export function findImageFiles(source: string): string[] {
-    return findImageStatements(source)
-        .map(statement => statement.url)
+    return findStatements(source, 'ImageStatement')
+        .map(statement => statement.source.value)
         .filter(url => !isImageUrl(url));
 }
 
@@ -64,6 +64,10 @@ export interface ImageHost {
  * The result is keyed by resolved path and is what {@link createImageResolver}
  * turns into the synchronous callback the compiler wants. `imported` is what
  * {@link loadImports} handed back, so one walk of the import graph serves both.
+ *
+ * A file that cannot be read, or is not a picture, is left out rather than
+ * failing the load: the compiler reports it against the `image` statement that
+ * names it, which is somewhere a user can be pointed.
  */
 export async function loadImages(
     entry: ResolvedImport,
@@ -78,32 +82,19 @@ export async function loadImages(
     ];
 
     for (const file of files) {
-        // Named only when there is a file to name: a script compiled from a
-        // string has no path, and "drawn by " reads worse than saying nothing.
-        const drawnBy = file.path ? `, drawn by ${file.path}` : '';
-
         for (const url of findImageFiles(file.source)) {
             const path = host.resolve(url, file.path);
-            if (images.has(path)) {
+            const mediaType = imageMediaType(path);
+            if (images.has(path) || mediaType === undefined) {
                 continue;
             }
 
-            const mediaType = imageMediaType(path);
-            if (mediaType === undefined) {
-                throw new Error(
-                    `"${url}"${drawnBy} is not an image file - Axis reads png, jpg, gif, webp, svg, bmp, ico, apng and avif.`,
-                );
-            }
-
-            let bytes: Uint8Array;
             try {
-                bytes = await host.read(path);
-            } catch (error) {
-                const reason = error instanceof Error ? error.message : String(error);
-                throw new Error(`Cannot read image "${url}"${drawnBy}: ${reason}`);
+                const bytes = await host.read(path);
+                images.set(path, `data:${mediaType};base64,${encodeBase64(bytes)}`);
+            } catch {
+                // Reported by the compiler, which cannot resolve it either.
             }
-
-            images.set(path, `data:${mediaType};base64,${encodeBase64(bytes)}`);
         }
     }
 

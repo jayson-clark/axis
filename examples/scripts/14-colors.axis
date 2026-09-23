@@ -2,27 +2,41 @@
 // Colour
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// color takes a hex string or a colour name. Left off, Desmos cycles through
-// its own palette in order.
+// color takes a hex literal, one of the Desmos palette's names, or any other
+// expression that works out a colour. Left off, Desmos cycles through its own
+// palette in order.
 
 "Colour"
 
 folder "The Desmos palette" {
-    y = 6 # color: #c74440, lineWidth: 6
-    y = 5 # color: #2d70b3, lineWidth: 6
-    y = 4 # color: #388c46, lineWidth: 6
-    y = 3 # color: #6042a6, lineWidth: 6
-    y = 2 # color: #fa7e19, lineWidth: 6
-    y = 1 # color: #000000, lineWidth: 6
+    y = 6 @ color: #c74440, lineWidth: 6
+    y = 5 @ color: #2d70b3, lineWidth: 6
+    y = 4 @ color: #388c46, lineWidth: 6
+    y = 3 @ color: #6042a6, lineWidth: 6
+    y = 2 @ color: #fa7e19, lineWidth: 6
+    y = 1 @ color: #000000, lineWidth: 6
 }
 
-folder "Named colours" {
-    y = -1 # color: red, lineWidth: 6
-    y = -2 # color: blue, lineWidth: 6
-    y = -3 # color: green, lineWidth: 6
-    y = -4 # color: purple, lineWidth: 6
-    y = -5 # color: orange, lineWidth: 6
-    y = -6 # color: black, lineWidth: 6
+folder "Palette names" {
+    "The same six, by name."
+    y = -1 @ color: RED, lineWidth: 6
+    y = -2 @ color: BLUE, lineWidth: 6
+    y = -3 @ color: GREEN, lineWidth: 6
+    y = -4 @ color: PURPLE, lineWidth: 6
+    y = -5 @ color: ORANGE, lineWidth: 6
+    y = -6 @ color: BLACK, lineWidth: 6
+}
+
+folder "Colours worked out" {
+    "Anything else is an expression: a colour can be defined once and used by name wherever one goes."
+    warm = rgb(230, 120, 40)
+    y = -7.5 @ color: warm, lineWidth: 6
+    "Or computed where it is used - drag the hue."
+    hue = 200 @ slider: 0..360 step 1
+    y = -8.5 @ color: hsv(hue, 0.8, 0.9), lineWidth: 6
+    "A list of colours gives each point of a list its own."
+    K = [0...9]
+    (K - 4.5, -9.5) @ color: hsv(36K, 1, 1), pointSize: 16
 }
 
 folder "No colour given" {
@@ -34,7 +48,7 @@ folder "No colour given" {
 
 folder "Opacity" {
     "Three ways to fade: lineOpacity, pointOpacity, fillOpacity."
-    y = 0.5x + 12 # color: #c74440, lineWidth: 10, lineOpacity: 1
-    y = 0.5x + 14 # color: #c74440, lineWidth: 10, lineOpacity: 0.6
-    y = 0.5x + 16 # color: #c74440, lineWidth: 10, lineOpacity: 0.25
+    y = 0.5x + 12 @ color: RED, lineWidth: 10, lineOpacity: 1
+    y = 0.5x + 14 @ color: RED, lineWidth: 10, lineOpacity: 0.6
+    y = 0.5x + 16 @ color: RED, lineWidth: 10, lineOpacity: 0.25
 }

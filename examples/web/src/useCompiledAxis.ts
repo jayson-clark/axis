@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react';
-import { compileAxis } from '@axis-dsl/compiler';
-import { CalculatorOptions, DesmosExpression, GraphSettings, TickerState } from '@axis-dsl/desmos';
+import { type CompilationResult, compileAxis } from '@axis-dsl/compiler';
+import { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
 
 export interface CompiledAxis {
-    expressions: DesmosExpression[];
-    settings?: CalculatorOptions;
-    /** The viewport and `squareAxes`, which the viewer applies as graph state. */
-    graph?: GraphSettings;
-    /** The graph's ticker, which the viewer applies the same way. */
-    ticker?: TickerState;
-    /** Message from the last failed compile, or null. */
+    /** The whole graph state, null until the first compile has finished. */
+    state: GraphState | null;
+    /** The calculator options, applied after the state. */
+    options: CalculatorOptions;
+    /** Everything the compiler had to say about the source. */
+    diagnostics: CompilationResult['diagnostics'];
+    /** The first error the compiler reported, for the bar above the graph, or null. */
     error: string | null;
     /** True between a source edit and the debounced compile that follows it. */
     isStale: boolean;
+    /**
+     * The whole compilation and the source it was compiled from - what writing
+     * a change made in the graph back into the script needs, since the source
+     * map's spans are only good for the text they were read from.
+     */
+    compiled: { source: string; compilation: CompilationResult } | null;
 }
 
 const DEBOUNCE_MS = 250;
@@ -20,17 +26,18 @@ const DEBOUNCE_MS = 250;
 /**
  * Compiles `source` on a debounce.
  *
- * A failed compile keeps the last good expressions on screen and surfaces the
- * error alongside them — clearing the graph on every half-typed line would make
- * the live preview useless.
+ * The compiler never throws on a script: a mistake is a diagnostic, and the
+ * graph it hands back alongside is everything the rest of the script still
+ * makes. So the preview keeps drawing while a line is half typed, and the
+ * first error is surfaced beside it.
  */
 export function useCompiledAxis(source: string): CompiledAxis {
     const [result, setResult] = useState<Omit<CompiledAxis, 'isStale'>>(() => ({
-        expressions: [],
-        settings: undefined,
-        graph: undefined,
-        ticker: undefined,
+        state: null,
+        options: {},
+        diagnostics: [],
         error: null,
+        compiled: null,
     }));
     const [isStale, setIsStale] = useState(true);
 
@@ -38,15 +45,17 @@ export function useCompiledAxis(source: string): CompiledAxis {
         setIsStale(true);
         const timer = window.setTimeout(() => {
             try {
-                const compiled = compileAxis(source);
+                const compilation = compileAxis(source);
+                const { state, options, diagnostics } = compilation;
                 setResult({
-                    expressions: compiled.expressions,
-                    settings: compiled.settings,
-                    graph: compiled.graph,
-                    ticker: compiled.ticker,
-                    error: null,
+                    state,
+                    options,
+                    diagnostics,
+                    error: describeErrors(diagnostics, source),
+                    compiled: { source, compilation },
                 });
             } catch (error) {
+                // Only a bug in the compiler lands here.
                 setResult(previous => ({
                     ...previous,
                     error: error instanceof Error ? error.message : String(error),
@@ -59,4 +68,19 @@ export function useCompiledAxis(source: string): CompiledAxis {
     }, [source]);
 
     return { ...result, isStale };
+}
+
+/** `line 3: \`sine\` is not a function… (and 2 more)`, or null for a clean script. */
+function describeErrors(
+    diagnostics: CompilationResult['diagnostics'],
+    source: string,
+): string | null {
+    const errors = diagnostics.filter(diagnostic => diagnostic.severity === 'error');
+    if (errors.length === 0) {
+        return null;
+    }
+    const [first] = errors;
+    const line = source.slice(0, first.span.start).split('\n').length;
+    const more = errors.length > 1 ? ` (and ${errors.length - 1} more)` : '';
+    return `line ${line}: ${first.message}${more}`;
 }

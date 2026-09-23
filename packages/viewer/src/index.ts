@@ -6,6 +6,15 @@ export { AxisViewer } from './AxisViewer.js';
 export type { AxisViewerHandle, AxisViewerProps, AxisViewerTab } from './AxisViewer.js';
 export { useLocalViewerHost } from './useLocalViewerHost.js';
 export type { LocalViewerHost } from './useLocalViewerHost.js';
+// The protocol's types, for a React host that names them. Its values - the
+// transports and the preview server's routes - are only at
+// `@axis-dsl/viewer/protocol`, which is safe to load without React.
+export type {
+    ConnectionState,
+    GraphReading,
+    ViewerGraph,
+    ViewerTransport,
+} from './protocol/index.js';
 
 // The pieces it is built from, for a host that wants to arrange them itself.
 export { DesmosGraph } from './DesmosGraph.js';
