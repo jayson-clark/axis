@@ -120,8 +120,9 @@ that wants some of them and not others.
 The app owns `monaco-editor`: the adapter imports only its types, and works on
 whatever instance it is given. Axis ships no editor component,
 because loading Monaco and wrapping it for a framework is app-shaped work every
-bundler spells differently; [`examples/web/src/AxisEditor.tsx`](https://github.com/jayson-clark/axis/blob/main/examples/web/src/AxisEditor.tsx)
-is a React wrapper to copy, and [`examples/web/src/monaco.ts`](https://github.com/jayson-clark/axis/blob/main/examples/web/src/monaco.ts)
+bundler spells differently; the docs site's playground has
+[`AxisEditor.tsx`](https://github.com/jayson-clark/axis/blob/main/docs/site/src/components/AxisEditor.tsx),
+a React wrapper to copy, and [`monaco.ts`](https://github.com/jayson-clark/axis/blob/main/docs/site/src/components/monaco.ts),
 the Vite loading and worker setup.
 
 The TextMate grammar the extension highlights with ships here too, as

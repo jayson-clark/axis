@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { type CompilationResult, type CompileOptions, compileAxis } from '@axis-dsl/compiler';
-import { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
+import type { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
 
 export interface CompiledAxis {
     /** The whole graph state, null until the first compile has finished. */

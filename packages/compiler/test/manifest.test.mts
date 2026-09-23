@@ -4,7 +4,7 @@
 //
 // Hover shows them and the docs site's reference is built from them, so an
 // example that no longer compiles is documentation that lies. Each is compiled
-// as though it sat in `examples/graphs/`, where its imports and images are.
+// as though it sat in `examples/`, where its imports and images are.
 // Whether Desmos accepts what comes out is the harness' question
 // (`packages/harness/test/docs.test.mts`).
 

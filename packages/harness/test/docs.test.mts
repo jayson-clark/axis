@@ -6,7 +6,7 @@
 // on the docs site, in the spec or in the keywords' hover. The compiler's own
 // suites have already said each one compiles cleanly; this says Desmos draws
 // it - no expression in error, and no console error from the page. An example
-// is read as though it sat in `examples/graphs/`, so an import of
+// is read as though it sat in `examples/`, so an import of
 // `./lib/waves` or a picture of `./images/wave.png` is the real file.
 
 import { test, describe } from 'node:test';

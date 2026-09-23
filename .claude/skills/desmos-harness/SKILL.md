@@ -19,7 +19,7 @@ The harness needs Chromium, once: `pnpm test:browser`.
 ## From the command line
 
 ```sh
-node packages/harness/dist/cli.js examples/graphs/06-sliders-and-animation.axis
+node packages/harness/dist/cli.js examples/06-sliders-and-animation.axis
 ```
 
 ```

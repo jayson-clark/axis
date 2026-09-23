@@ -2,23 +2,23 @@
 // The examples' directory, bundled into the page
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// Every example on the site is written as though it sat in `examples/graphs/`
-// - which is where the tests compile it - so it may import `./lib/waves` or
-// draw `./images/wave.png`. The playground has no disk to read them from, so
+// Every example on the site is written as though it sat in `examples/` - which
+// is where the tests compile it - so it may import `./lib/waves` or draw
+// `./images/wave.png`. The playground has no disk to read them from, so
 // Vite bundles the library and the pictures in, and these resolvers answer
-// from that: the source in the playground is `examples/graphs/playground.axis`.
+// from that: the source in the playground is `examples/playground.axis`.
 
 import type { CompileOptions } from '@axis-dsl/compiler';
 import { imageMediaType, withAxisExtension } from '@axis-dsl/syntax';
 
-const ROOT = '/examples/graphs/';
+const ROOT = '/examples/';
 
-/** `../../examples/graphs/lib/waves.axis` as `/examples/graphs/lib/waves.axis`. */
-const key = (path: string) => ROOT + path.slice(path.indexOf('/examples/graphs/') + ROOT.length);
+/** `../../examples/lib/waves.axis` as `/examples/lib/waves.axis`. */
+const key = (path: string) => ROOT + path.slice(path.indexOf('/examples/') + ROOT.length);
 
 const sources = Object.fromEntries(
     Object.entries(
-        import.meta.glob<string>('../../../../examples/graphs/lib/**/*.axis', {
+        import.meta.glob<string>('../../../../examples/lib/**/*.axis', {
             query: '?raw',
             import: 'default',
             eager: true,
@@ -28,7 +28,7 @@ const sources = Object.fromEntries(
 
 const pictures = Object.fromEntries(
     Object.entries(
-        import.meta.glob<string>('../../../../examples/graphs/images/**/*', {
+        import.meta.glob<string>('../../../../examples/images/**/*', {
             query: '?inline',
             import: 'default',
             eager: true,
@@ -36,7 +36,7 @@ const pictures = Object.fromEntries(
     ).map(([path, dataUri]) => [key(path), dataUri]),
 );
 
-/** `./lib/waves` from `/examples/graphs/playground.axis`, as a path in the bundle. */
+/** `./lib/waves` from `/examples/playground.axis`, as a path in the bundle. */
 function resolve(specifier: string, from: string): string {
     const segments = specifier.startsWith('/')
         ? [...ROOT.split('/'), ...specifier.slice(1).split('/')]

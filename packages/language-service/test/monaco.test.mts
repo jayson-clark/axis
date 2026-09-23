@@ -16,7 +16,7 @@ import type { MonacoApi } from '../dist/monaco/index.js';
 // The adapter imports nothing of Monaco's but its types, and is handed the
 // namespace to register on - so a namespace that records what it was given is
 // enough to drive every provider as Monaco would, without a browser. The
-// playground's own check (`examples/web`) is what runs the real thing.
+// playground on the docs site is what runs the real thing.
 
 type Listener<T> = (value: T) => void;
 

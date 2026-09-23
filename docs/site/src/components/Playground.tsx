@@ -2,10 +2,9 @@
 // The playground: an Axis editor beside the graph it compiles to
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// Built from the same pieces as the standalone playground in `examples/web` -
-// its Monaco wrapper, its Monaco loader and its compile hook are that app's,
-// imported rather than copied - with the viewer drawing the graph over the
-// same protocol the VSCode preview uses. Dragging something in the graph
+// A Monaco wrapper, a Monaco loader and a compile hook - each its own file
+// here, and each written to be copied into an app that embeds Axis - with the
+// viewer drawing the graph over the same protocol the VSCode preview uses. Dragging something in the graph
 // writes the change back into the source, as it does there.
 //
 // The source to open with comes from the page's fragment, `#code=…`, which is
@@ -16,9 +15,9 @@ import { applySourceEdits, writeBackGraph } from '@axis-dsl/compiler';
 import { AXIS_DESMOS_API_KEY } from '@axis-dsl/desmos';
 import { registerAxisLanguage } from '@axis-dsl/language-service/monaco';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
-import { AxisEditor } from '../../../../examples/web/src/AxisEditor';
-import { monaco } from '../../../../examples/web/src/monaco';
-import { useCompiledAxis } from '../../../../examples/web/src/useCompiledAxis';
+import { AxisEditor } from './AxisEditor';
+import { monaco } from './monaco';
+import { useCompiledAxis } from './useCompiledAxis';
 import { PLAYGROUND_OPTIONS } from './files';
 import { decodeSource } from './share';
 

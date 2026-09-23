@@ -2,7 +2,7 @@
 // The examples' directory, as a place to compile from
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The files in `examples/graphs/` import `./lib/…` and draw `./images/…`,
+// The files in `examples/` import `./lib/…` and draw `./images/…`,
 // and so do the manifest's examples and the docs', which are read as though
 // they sat beside them. These resolve both off disk, synchronously, the way a
 // host would after walking the import graph.
@@ -13,9 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { imageMediaType } from '@axis-dsl/syntax';
 import type { CompileOptions } from '../../dist/index.js';
 
-export const EXAMPLES_DIRECTORY = fileURLToPath(
-    new URL('../../../../examples/graphs/', import.meta.url),
-);
+export const EXAMPLES_DIRECTORY = fileURLToPath(new URL('../../../../examples/', import.meta.url));
 
 export const resolveImport = (specifier: string, from: string) => {
     const target = specifier.endsWith('.axis') ? specifier : `${specifier}.axis`;

@@ -24,7 +24,7 @@ export function resolveFrom(files: Record<string, string>): Resolver {
     };
 }
 
-const EXAMPLES = fileURLToPath(new URL('../../../examples/graphs/', import.meta.url));
+const EXAMPLES = fileURLToPath(new URL('../../../examples/', import.meta.url));
 
 /** The options that compile an example graph the way the CLI would: from its file. */
 export function resolveExample(name: string) {
