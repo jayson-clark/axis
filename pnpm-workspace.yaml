@@ -3,16 +3,20 @@ packages:
   # examples/scripts holds .axis files, not a package; pnpm skips any directory
   # here without a package.json.
   - 'examples/*'
+  - 'site'
 
 # All third-party dependency versions are pinned here. Packages reference them
 # with "catalog:" instead of a version range.
 catalog:
+  '@astrojs/react': 6.0.6
+  '@astrojs/starlight': 0.42.2
   '@types/node': 26.4.0
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.5
   '@types/vscode': 1.134.0
   '@vscode/test-electron': 3.1.0
   '@vscode/vsce': 4.0.0
+  astro: 7.3.3
   esbuild: 0.28.2
   monaco-editor: 0.56.0
   playwright-core: 1.62.1

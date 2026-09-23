@@ -17,6 +17,7 @@ disagree, one of them is a bug.
 | `@axis-dsl/desmos`           | The Desmos calculator API, typed by hand                                                            |
 | `@axis-dsl/harness`          | Runs a script against a real headless Desmos calculator                                             |
 | `axis-dsl` (extension)       | The VSCode extension: an LSP client for the server, and the preview                                 |
+| `@axis-dsl/site` (`site/`)   | The docs site: Astro Starlight, its reference generated from the manifest and the catalogues        |
 
 The layering is syntax ← compiler ← language-service ← language-server, each
 using only what is to its left - so something the compiler and the editor both
@@ -47,6 +48,8 @@ pnpm typecheck      # everything, tests included
 pnpm format         # prettier
 pnpm format:check   # prettier, without writing
 pnpm test:browser   # download the Chromium the harness needs (once)
+pnpm site:dev       # the docs site, live, at localhost:4321/axis/
+pnpm site:build     # the docs site, built into site/dist
 pnpm --filter axis-dsl test:vscode   # the extension, in a real VSCode it downloads
 ```
 

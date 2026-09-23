@@ -1,0 +1,7 @@
+# Written by scripts/generate.mjs from the rest of the repo.
+src/content/docs/spec.md
+src/content/docs/reference/
+src/assets/
+public/favicon.svg
+
+.astro/

@@ -1,0 +1,31 @@
+{
+    "name": "@axis-dsl/site",
+    "version": "2.0.0",
+    "private": true,
+    "type": "module",
+    "description": "The Axis documentation site, built with Astro Starlight",
+    "scripts": {
+        "generate": "node scripts/generate.mjs",
+        "dev": "node scripts/generate.mjs && astro dev",
+        "build": "node scripts/generate.mjs && astro build",
+        "preview": "astro preview"
+    },
+    "dependencies": {
+        "@astrojs/react": "catalog:",
+        "@astrojs/starlight": "catalog:",
+        "astro": "catalog:",
+        "@axis-dsl/compiler": "workspace:*",
+        "@axis-dsl/desmos": "workspace:*",
+        "@axis-dsl/language-service": "workspace:*",
+        "@axis-dsl/syntax": "workspace:*",
+        "@axis-dsl/viewer": "workspace:*",
+        "monaco-editor": "catalog:",
+        "react": "catalog:",
+        "react-dom": "catalog:"
+    },
+    "devDependencies": {
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
+        "@types/node": "catalog:"
+    }
+}
