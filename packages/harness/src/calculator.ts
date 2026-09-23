@@ -18,7 +18,7 @@ import {
     AsyncScreenshotOptions,
     Calculator,
     CalculatorOptions,
-    DESMOS_DEMO_API_KEY,
+    AXIS_DESMOS_API_KEY,
     DesmosExpression,
     DesmosNamespace,
     ExpressionAnalysis,
@@ -49,7 +49,7 @@ const DEFAULT_VIEWPORT: MathBounds = { left: -10, right: 10, bottom: -10, top: 1
 const DEFAULT_STATE_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
 
 export interface AxisCalculatorOptions {
-    /** Defaults to Desmos' public demo key, as the rest of Axis does. */
+    /** Defaults to the Axis project's key, as the rest of Axis does. */
     apiKey?: string;
     /** Options the calculator is constructed with. */
     settings?: CalculatorOptions;
@@ -154,7 +154,7 @@ export class AxisCalculator {
         try {
             page = await browser.newPage({ viewport: { width: 1024, height: 768 } });
             const routing = await installRouting(page, {
-                apiKey: options.apiKey ?? DESMOS_DEMO_API_KEY,
+                apiKey: options.apiKey ?? AXIS_DESMOS_API_KEY,
                 offline: options.offline,
             });
 

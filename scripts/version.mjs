@@ -23,13 +23,15 @@ if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
 }
 
 // Everything pnpm-workspace.yaml names as a package: a directory under
-// `packages/` or `examples/` with a package.json of its own.
-const manifests = ['packages', 'examples'].flatMap(group =>
-    readdirSync(join(root, group), { withFileTypes: true })
-        .filter(entry => entry.isDirectory())
-        .map(entry => join(root, group, entry.name, 'package.json'))
-        .filter(existsSync),
-);
+// `packages/` or `examples/` with a package.json of its own, and the docs site.
+const manifests = [
+    ...['packages', 'examples'].flatMap(group =>
+        readdirSync(join(root, group), { withFileTypes: true })
+            .filter(entry => entry.isDirectory())
+            .map(entry => join(root, group, entry.name, 'package.json')),
+    ),
+    join(root, 'docs/site/package.json'),
+].filter(existsSync);
 
 for (const path of manifests) {
     const text = readFileSync(path, 'utf8');

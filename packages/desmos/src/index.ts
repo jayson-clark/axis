@@ -8,8 +8,8 @@ export * from './expressions';
 export * from './api';
 export * from './calculator';
 export {
+    AXIS_DESMOS_API_KEY,
     DESMOS_API_VERSION,
-    DESMOS_DEMO_API_KEY,
     DESMOS_DOCS_URL,
     DESMOS_SCRIPT_ORIGIN,
     desmosScriptUrl,

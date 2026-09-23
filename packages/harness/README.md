@@ -132,7 +132,7 @@ axis-inspect - < graph.axis           # source on stdin
   --errors-only                       # only what Desmos rejected
   --eval '<expr>'                     # also evaluate an Axis expression (repeatable)
   --screenshot out.png                # write a PNG of the graphpaper
-  --api-key <key>                     # default: the public demo key
+  --api-key <key>                     # default: the Axis project's key
   --offline                           # fail rather than fetch from desmos.com
 ```
 
@@ -140,8 +140,9 @@ A file is read with its imports and images resolved from disk, relative to the
 script, with a leading `/` relative to the script's own directory. The same
 reading is exported for a test or a tool of your own: `readAxisFile(path)`
 hands back `{ path, source, resolveImport, resolveImage }`, ready to spread into
-`load` or `compileAxis`, and `nodeImportHost`/`nodeImageHost` are the hosts it
-is built from.
+`load` or `compileAxis`; `loadAxisSource(source, path)` does the same for source
+already in hand, as though it were the file at `path`; and
+`nodeImportHost`/`nodeImageHost` are the hosts both are built from.
 
 ```ts
 import { createCalculator, readAxisFile } from '@axis-dsl/harness';
@@ -168,6 +169,7 @@ has to accept it, rather than against the compiler's own idea of itself:
 | `expressions` | emitted latex evaluated against a plain evaluator of the same tree                                               |
 | `decompile`   | decompiling the graph state a real calculator hands back                                                         |
 | `writeback`   | changes made to a live graph, written back into the script                                                       |
+| `docs`        | every example in the manifest, drawn on a calculator with no expression in error                                 |
 | `harness`     | the harness itself, and `axis-inspect`                                                                           |
 
 `metadata`, `config`, `language` and `ticker` are driven from the manifest in
@@ -194,14 +196,14 @@ answered out of the cache, and a request to any other host is aborted — but
 sharing the origin means calculator.js resolves its own assets to URLs the same
 interceptor recognizes, and no API key referrer rule has anything to object to.
 
-Desmos' public demo key is the default, as it is elsewhere in Axis. Pass
-`apiKey` (or `--api-key`) to use your own.
+The Axis project's key is the default, as it is elsewhere in Axis. Pass `apiKey`
+(or `--api-key`) to use your own.
 
 ## Options
 
 ```ts
 await createCalculator({
-    apiKey,        // default: the Desmos demo key
+    apiKey,        // default: the Axis project's key
     settings,      // CalculatorOptions the calculator is constructed with
     viewport,      // initial math bounds; fixed rather than fitted, for stability
     offline,       // fail on a cache miss instead of fetching

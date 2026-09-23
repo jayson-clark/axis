@@ -56,7 +56,7 @@ export const KEYWORD_INFO: Readonly<Record<Keyword | 'min' | 'max', KeywordInfo>
     image: {
         detail: 'A picture on the graph',
         documentation:
-            'A path beside this file, an `http(s):` URL or a `data:` URI.\n\n```axis\nimage "./beach.png" @ center: (0, 0), width: 10\n```',
+            'A path beside this file, an `http(s):` URL or a `data:` URI.\n\n```axis\nimage "./images/wave.png" @ center: (0, 0), width: 10\n```',
         snippet: 'image "${1:./picture.png}" @ center: (${2:0}, ${3:0}), width: ${4:10}',
         allowedIn: FILE_OR_FOLDER,
     },

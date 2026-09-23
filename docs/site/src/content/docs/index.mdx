@@ -1,0 +1,65 @@
+---
+title: Axis
+description: A scripting language for Desmos. Write a .axis file and it compiles to the graph.
+template: splash
+hero:
+  tagline: A scripting language for Desmos. Write a script, get a graph - with an editor that graphs it as you type.
+  image:
+    file: ../../assets/axis-mark.svg
+  actions:
+    - text: Get started
+      link: /axis/start/introduction/
+      icon: right-arrow
+    - text: Language reference
+      link: /axis/reference/
+      variant: minimal
+    - text: GitHub
+      link: https://github.com/jayson-clark/axis
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+```axis
+config { showGrid: true; degreeMode: false }
+
+style bold { lineWidth: 4 }
+macro bell(s) = e ^ (-x ^ 2 / s)
+
+"Basic functions"
+
+f(x) = x ^ 2 - 4x + 3 @ color: RED
+g(x) = sin(x) + cos(2x) @ color: BLUE, use: bold
+
+a = 1 @ slider: 0.5..4 step 0.5
+h(x) = bell(a) @{
+    color: GREEN
+    lineStyle: DASHED
+    label: "a bell"
+}
+
+n = 0
+ticker n -> n + dt / 1000 @ playing
+```
+
+<CardGrid>
+    <Card title="Text, not clicks" icon="document">
+        A graph is a file: diff it, review it, import one into another, keep it
+        in git. Folders, tables, notes, sliders, click actions and the ticker
+        are all statements.
+    </Card>
+    <Card title="Styling that stays put" icon="pencil">
+        `@ color: RED, lineStyle: DASHED` trails what it styles, and a `style`
+        names a set of properties to reuse with `use:`.
+    </Card>
+    <Card title="An editor that knows it" icon="laptop">
+        The VSCode extension completes, hovers, formats and checks as you type,
+        and previews the graph beside the script - drag a point there and the
+        script catches up.
+    </Card>
+    <Card title="Checked against Desmos" icon="approve-check">
+        Every example on this site is compiled and then drawn on a real Desmos
+        calculator before it is published.
+    </Card>
+</CardGrid>

@@ -60,7 +60,7 @@ export function getDiagnostics(
     options: DiagnosticOptions = {},
 ): Diagnostic[] {
     const tree = toTree(input);
-    const found = [...tree.diagnostics];
+    const found: SyntaxDiagnostic[] = [...tree.diagnostics];
     const semantic =
         options.semantic === false
             ? undefined

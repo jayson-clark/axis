@@ -1,0 +1,61 @@
+/* The mark's gradient runs from cyan to violet. Dark pages take their accent
+   from the cyan end and light ones from the violet, where each reads. */
+
+:root {
+    --sl-color-accent-low: #083344;
+    --sl-color-accent: #22d3ee;
+    --sl-color-accent-high: #cffafe;
+}
+
+:root[data-theme="light"] {
+    --sl-color-accent-low: #ede9fe;
+    --sl-color-accent: #6d28d9;
+    --sl-color-accent-high: #3b0764;
+}
+
+/* The playground: the editor and the graph side by side, stacked on a phone. */
+
+.axis-playground {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: min(75vh, 48rem);
+    margin-top: 1.5rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.axis-playground__editor {
+    position: relative;
+    min-height: 0;
+    border-right: 1px solid var(--sl-color-gray-5);
+}
+
+.axis-playground__graph {
+    min-height: 0;
+}
+
+.axis-playground__error {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 0.4rem 0.75rem;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.8rem;
+    color: #fff;
+    background: #b42318;
+}
+
+@media (max-width: 50rem) {
+    .axis-playground {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: 1fr 1fr;
+        height: 90vh;
+    }
+
+    .axis-playground__editor {
+        border-right: none;
+        border-bottom: 1px solid var(--sl-color-gray-5);
+    }
+}

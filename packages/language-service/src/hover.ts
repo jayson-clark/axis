@@ -12,6 +12,7 @@ import {
     builtinDescription,
     definitionText,
     importedText,
+    manifestDocumentation,
     propertyDocumentation,
 } from './describe';
 import {
@@ -139,5 +140,5 @@ function builtinText(name: string, occurrence: Occurrence): string | undefined {
     if (!occurrence.builtin) return undefined;
     const builtin = builtinDescription(name, occurrence.builtin);
     if (!builtin) return undefined;
-    return `${code(builtin.signature)}\n\n${builtin.detail}\n\nBuiltin ${builtin.category} ${occurrence.builtin}.`;
+    return `${code(builtin.signature)}\n\n${manifestDocumentation(builtin, `Builtin ${builtin.category} ${occurrence.builtin}.`)}`;
 }

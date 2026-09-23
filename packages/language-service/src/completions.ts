@@ -20,7 +20,13 @@ import {
     type SyntaxTree,
 } from '@axis-dsl/syntax';
 import { cursorContext, type CursorContext, type StatementOwner } from './context';
-import { definitionSummary, definitionText, importedText, propertyDocumentation } from './describe';
+import {
+    definitionSummary,
+    definitionText,
+    importedText,
+    manifestDocumentation,
+    propertyDocumentation,
+} from './describe';
 import {
     offsetAt,
     spanToRange,
@@ -155,7 +161,7 @@ function builtinItems(ticker: boolean): CompletionItem[] {
         label: fn.name,
         kind: 'function',
         detail: fn.detail,
-        documentation: `Builtin ${fn.category} function.`,
+        documentation: manifestDocumentation(fn, `Builtin ${fn.category} function.`),
         snippet: fn.snippet,
         sortText: RANK.function + fn.name,
     }));
@@ -163,6 +169,7 @@ function builtinItems(ticker: boolean): CompletionItem[] {
         label: constant.name,
         kind: 'constant',
         detail: constant.detail,
+        documentation: manifestDocumentation(constant),
         sortText: RANK.constant + constant.name,
     }));
     // `dt` is Desmos' in a ticker's handler and an error anywhere else.
@@ -172,6 +179,7 @@ function builtinItems(ticker: boolean): CompletionItem[] {
             label: operator.name,
             kind: operator.name === 'for' || operator.name === 'with' ? 'keyword' : 'constant',
             detail: operator.detail,
+            documentation: manifestDocumentation(operator),
             sortText:
                 (operator.category === 'ticker' ? RANK.parameter : RANK.operator) + operator.name,
         }));

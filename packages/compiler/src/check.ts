@@ -43,6 +43,7 @@ import {
     type Span,
     type Statement,
 } from '@axis-dsl/syntax';
+import type { CompilerDiagnosticCode } from './diagnostics';
 import { located, type Program, type SourceFile } from './program';
 import { styleProperties } from './styles';
 import { definitionOf, RESERVED_NAMES, type Symbols } from './symbols';
@@ -89,7 +90,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     const products = new WeakSet<Call>();
 
     let file: SourceFile = program.entry;
-    const report = (code: string, message: string, span: Span): void => {
+    const report = (code: CompilerDiagnosticCode, message: string, span: Span): void => {
         diagnostics.push(located({ code, severity: 'error', message, span }, file));
     };
 

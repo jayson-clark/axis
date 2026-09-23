@@ -2,7 +2,7 @@
     "name": "axis-dsl",
     "displayName": "Axis — Desmos Scripting Language",
     "description": "Previews the .axis file you have open as a live Desmos graph, with Axis language support",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "publisher": "axis",
     "engines": {
         "vscode": "^1.134.0"
@@ -73,7 +73,7 @@
                 "axis.apiKey": {
                     "type": "string",
                     "default": "",
-                    "markdownDescription": "API key for the Desmos Graphing Calculator. Leave blank to use Desmos’ public demo key, which works with no setup but logs a console warning and is not licensed for distribution. Get your own at https://www.desmos.com/api."
+                    "markdownDescription": "API key for the Desmos Graphing Calculator. Leave blank to use the Axis project’s key. Get your own at https://www.desmos.com/api."
                 },
                 "axis.previewTarget": {
                     "type": "string",

@@ -11,6 +11,14 @@
 // written (`appliesTo`), which is everything the checker needs to reject
 // `color: red` or `collapsed` on a point without a rule of its own for either.
 //
+// Every function, operator and property also carries an `example`, and any of
+// them may carry `documentation` beyond its one-line `detail`: hover shows both,
+// and the reference on the docs site is generated from nothing else. An example
+// is a whole script, read as though it sat in `examples/scripts/` - so it may
+// import `./lib/waves` or draw `./images/wave.png` - and the tests compile every
+// one and load it on a real calculator, so the reference cannot show code that
+// does not work.
+//
 // The lookups below are derived once at module load: the compiler consults them
 // per expression, which on a live preview means per keystroke.
 
@@ -20,6 +28,10 @@ import { KEYWORDS } from './tokens';
 export interface FunctionDefinition {
     name: string;
     detail: string;
+    /** Markdown beyond {@link detail}, for hover and the reference. */
+    documentation?: string;
+    /** A short script that uses it (see the head of this file). */
+    example: string;
     snippet?: string;
     category:
         'trig' | 'math' | 'list' | 'color' | 'statistics' | 'combinatorics' | 'geometry' | 'audio';
@@ -45,6 +57,10 @@ export interface FunctionDefinition {
 export interface OperatorDefinition {
     name: string;
     detail: string;
+    /** Markdown beyond {@link detail}, for hover and the reference. */
+    documentation?: string;
+    /** A short script that uses it (see the head of this file). */
+    example: string;
     category: 'viewport' | 'list' | 'scope' | 'ticker';
 }
 
@@ -52,6 +68,13 @@ export interface OperatorDefinition {
 export interface ConstantDefinition {
     name: string;
     detail: string;
+    /** Markdown beyond {@link detail}, for hover and the reference. */
+    documentation?: string;
+    /**
+     * A short script that uses it. Optional here alone: a Greek letter is a
+     * name like any other, and has nothing to show that `a` would not.
+     */
+    example?: string;
     category: 'greek' | 'mathematical' | 'boolean';
     /**
      * The LaTeX Desmos expects, when it is not simply `\\name`. A constant with
@@ -125,6 +148,10 @@ export const AXIS_PROPERTY_PLACEMENTS: readonly PropertyPlacement[] = [
 export interface PropertyDefinition {
     name: string;
     detail: string;
+    /** Markdown beyond {@link detail}, for hover and the reference. */
+    documentation?: string;
+    /** A short script that uses it (see the head of this file). */
+    example: string;
     snippet: string;
     valueType: PropertyValueType;
     /**
@@ -151,6 +178,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'sin',
             detail: 'Sine function',
+            documentation: 'In radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = sin(x)',
             snippet: 'sin(${1:x})',
             category: 'trig',
             latex: '\\sin',
@@ -158,6 +187,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'cos',
             detail: 'Cosine function',
+            documentation: 'In radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = cos(x)',
             snippet: 'cos(${1:x})',
             category: 'trig',
             latex: '\\cos',
@@ -165,6 +196,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'tan',
             detail: 'Tangent function',
+            documentation: 'In radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = tan(x)',
             snippet: 'tan(${1:x})',
             category: 'trig',
             latex: '\\tan',
@@ -172,6 +205,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'csc',
             detail: 'Cosecant function',
+            documentation:
+                'The reciprocal of `sin`. In radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = csc(x)',
             snippet: 'csc(${1:x})',
             category: 'trig',
             latex: '\\csc',
@@ -179,6 +215,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'sec',
             detail: 'Secant function',
+            documentation:
+                'The reciprocal of `cos`. In radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = sec(x)',
             snippet: 'sec(${1:x})',
             category: 'trig',
             latex: '\\sec',
@@ -186,6 +225,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'cot',
             detail: 'Cotangent function',
+            documentation:
+                'The reciprocal of `tan`. In radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = cot(x)',
             snippet: 'cot(${1:x})',
             category: 'trig',
             latex: '\\cot',
@@ -193,6 +235,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'arcsin',
             detail: 'Arcsine function',
+            documentation: 'Answers in radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = arcsin(x)',
             snippet: 'arcsin(${1:x})',
             category: 'trig',
             latex: '\\arcsin',
@@ -200,6 +244,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'arccos',
             detail: 'Arccosine function',
+            documentation: 'Answers in radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = arccos(x)',
             snippet: 'arccos(${1:x})',
             category: 'trig',
             latex: '\\arccos',
@@ -207,6 +253,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'arctan',
             detail: 'Arctangent function',
+            documentation: 'Answers in radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = arctan(x)',
             snippet: 'arctan(${1:x})',
             category: 'trig',
             latex: '\\arctan',
@@ -214,24 +262,31 @@ export const AXIS_MANIFEST = {
         {
             name: 'arccsc',
             detail: 'Arccosecant function',
+            documentation: 'Answers in radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = arccsc(x)',
             snippet: 'arccsc(${1:x})',
             category: 'trig',
         },
         {
             name: 'arcsec',
             detail: 'Arcsecant function',
+            documentation: 'Answers in radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = arcsec(x)',
             snippet: 'arcsec(${1:x})',
             category: 'trig',
         },
         {
             name: 'arccot',
             detail: 'Arccotangent function',
+            documentation: 'Answers in radians, unless `config { degreeMode: true }` says degrees.',
+            example: 'y = arccot(x)',
             snippet: 'arccot(${1:x})',
             category: 'trig',
         },
         {
             name: 'sinh',
             detail: 'Hyperbolic sine',
+            example: 'y = sinh(x)',
             snippet: 'sinh(${1:x})',
             category: 'trig',
             latex: '\\sinh',
@@ -239,6 +294,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'cosh',
             detail: 'Hyperbolic cosine',
+            example: 'y = cosh(x)',
             snippet: 'cosh(${1:x})',
             category: 'trig',
             latex: '\\cosh',
@@ -246,32 +302,62 @@ export const AXIS_MANIFEST = {
         {
             name: 'tanh',
             detail: 'Hyperbolic tangent',
+            example: 'y = tanh(x)',
             snippet: 'tanh(${1:x})',
             category: 'trig',
             latex: '\\tanh',
         },
-        { name: 'csch', detail: 'Hyperbolic cosecant', snippet: 'csch(${1:x})', category: 'trig' },
-        { name: 'sech', detail: 'Hyperbolic secant', snippet: 'sech(${1:x})', category: 'trig' },
+        {
+            name: 'csch',
+            detail: 'Hyperbolic cosecant',
+            example: 'y = csch(x)',
+            snippet: 'csch(${1:x})',
+            category: 'trig',
+        },
+        {
+            name: 'sech',
+            detail: 'Hyperbolic secant',
+            example: 'y = sech(x)',
+            snippet: 'sech(${1:x})',
+            category: 'trig',
+        },
         {
             name: 'coth',
             detail: 'Hyperbolic cotangent',
+            example: 'y = coth(x)',
             snippet: 'coth(${1:x})',
             category: 'trig',
             latex: '\\coth',
         },
 
         // Mathematical functions
-        { name: 'sqrt', detail: 'Square root', snippet: 'sqrt(${1:x})', category: 'math' },
+        {
+            name: 'sqrt',
+            detail: 'Square root',
+            example: 'y = sqrt(x)',
+            snippet: 'sqrt(${1:x})',
+            category: 'math',
+        },
         {
             name: 'nthroot',
             detail: 'Nth root',
+            documentation: 'The `n`th root of `x`: `nthroot(8, 3)` is 2.',
+            example: 'y = nthroot(x, 3)',
             snippet: 'nthroot(${1:x}, ${2:n})',
             category: 'math',
         },
-        { name: 'abs', detail: 'Absolute value', snippet: 'abs(${1:x})', category: 'math' },
+        {
+            name: 'abs',
+            detail: 'Absolute value',
+            documentation: 'Also written with bars: `|x|`.',
+            example: 'y = abs(x)',
+            snippet: 'abs(${1:x})',
+            category: 'math',
+        },
         {
             name: 'ln',
             detail: 'Natural logarithm',
+            example: 'y = ln(x)',
             snippet: 'ln(${1:x})',
             category: 'math',
             latex: '\\ln',
@@ -279,6 +365,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'log',
             detail: 'Logarithm base 10',
+            example: 'y = log(x)',
             snippet: 'log(${1:x})',
             category: 'math',
             latex: '\\log',
@@ -286,22 +373,65 @@ export const AXIS_MANIFEST = {
         {
             name: 'exp',
             detail: 'Exponential (e^x)',
+            documentation: 'The same as `e ^ x`.',
+            example: 'y = exp(x)',
             snippet: 'exp(${1:x})',
             category: 'math',
             latex: '\\exp',
         },
-        { name: 'floor', detail: 'Floor function', snippet: 'floor(${1:x})', category: 'math' },
-        { name: 'ceil', detail: 'Ceiling function', snippet: 'ceil(${1:x})', category: 'math' },
-        { name: 'round', detail: 'Round function', snippet: 'round(${1:x})', category: 'math' },
-        { name: 'sign', detail: 'Sign function', snippet: 'sign(${1:x})', category: 'math' },
+        {
+            name: 'floor',
+            detail: 'Floor function',
+            example: 'y = floor(x)',
+            snippet: 'floor(${1:x})',
+            category: 'math',
+        },
+        {
+            name: 'ceil',
+            detail: 'Ceiling function',
+            example: 'y = ceil(x)',
+            snippet: 'ceil(${1:x})',
+            category: 'math',
+        },
+        {
+            name: 'round',
+            detail: 'Round function',
+            example: 'y = round(x)',
+            snippet: 'round(${1:x})',
+            category: 'math',
+        },
+        {
+            name: 'sign',
+            detail: 'Sign function',
+            documentation:
+                '-1 for a negative number, 1 for a positive one, and 0 for 0. `sgn` is the same function.',
+            example: 'y = sign(x)',
+            snippet: 'sign(${1:x})',
+            category: 'math',
+        },
         // Desmos accepts `sign` and writes `sgn` back, so both are names Axis
         // has to know: the one an author types and the one a graph read off
         // desmos.com arrives spelled with.
-        { name: 'sgn', detail: 'Sign function', snippet: 'sgn(${1:x})', category: 'math' },
-        { name: 'mod', detail: 'Modulo', snippet: 'mod(${1:x}, ${2:y})', category: 'math' },
+        {
+            name: 'sgn',
+            detail: 'Sign function',
+            documentation: 'Another name for `sign`.',
+            example: 'y = sgn(x)',
+            snippet: 'sgn(${1:x})',
+            category: 'math',
+        },
+        {
+            name: 'mod',
+            detail: 'Modulo',
+            documentation: 'The remainder of `x` divided by `y`.',
+            example: 'y = mod(x, 3)',
+            snippet: 'mod(${1:x}, ${2:y})',
+            category: 'math',
+        },
         {
             name: 'gcd',
             detail: 'Greatest common divisor',
+            example: 'a = gcd(12, 18)',
             snippet: 'gcd(${1:x}, ${2:y})',
             category: 'math',
             latex: '\\gcd',
@@ -309,6 +439,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'lcm',
             detail: 'Least common multiple',
+            example: 'a = lcm(4, 6)',
             snippet: 'lcm(${1:x}, ${2:y})',
             category: 'math',
         },
@@ -317,36 +448,44 @@ export const AXIS_MANIFEST = {
         {
             name: 'total',
             detail: 'Sum of list',
+            example: 'L = [3, 1, 4, 1, 5]\ns = total(L)',
             snippet: 'total(${1:list})',
             category: 'statistics',
         },
         {
             name: 'length',
             detail: 'Length of list',
+            example: 'L = [3, 1, 4, 1, 5]\nn = length(L)',
             snippet: 'length(${1:list})',
             category: 'statistics',
         },
         {
             name: 'count',
             detail: 'Number of elements in a list; also written `list.count`',
+            documentation:
+                'Like every function of one list, it may be written after the list as a member: `L.count`.',
+            example: 'L = [3, 1, 4, 1, 5]\nn = count(L)\nm = L.count',
             snippet: 'count(${1:list})',
             category: 'statistics',
         },
         {
             name: 'mean',
             detail: 'Mean of list',
+            example: 'L = [3, 1, 4, 1, 5]\nm = mean(L)',
             snippet: 'mean(${1:list})',
             category: 'statistics',
         },
         {
             name: 'median',
             detail: 'Median of list',
+            example: 'L = [3, 1, 4, 1, 5]\nm = median(L)',
             snippet: 'median(${1:list})',
             category: 'statistics',
         },
         {
             name: 'min',
             detail: 'Minimum of list',
+            example: 'L = [3, 1, 4, 1, 5]\nm = min(L)',
             snippet: 'min(${1:list})',
             category: 'statistics',
             latex: '\\min',
@@ -354,6 +493,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'max',
             detail: 'Maximum of list',
+            example: 'L = [3, 1, 4, 1, 5]\nm = max(L)',
             snippet: 'max(${1:list})',
             category: 'statistics',
             latex: '\\max',
@@ -361,37 +501,54 @@ export const AXIS_MANIFEST = {
         {
             name: 'stdev',
             detail: 'Standard deviation',
+            documentation: 'The sample standard deviation. `stdevp` is the population one.',
+            example: 'L = [3, 1, 4, 1, 5]\ns = stdev(L)',
             snippet: 'stdev(${1:list})',
             category: 'statistics',
         },
         {
             name: 'stdevp',
             detail: 'Population standard deviation',
+            example: 'L = [3, 1, 4, 1, 5]\ns = stdevp(L)',
             snippet: 'stdevp(${1:list})',
             category: 'statistics',
         },
         {
             name: 'mad',
             detail: 'Mean absolute deviation',
+            example: 'L = [3, 1, 4, 1, 5]\nd = mad(L)',
             snippet: 'mad(${1:list})',
             category: 'statistics',
         },
-        { name: 'var', detail: 'Variance', snippet: 'var(${1:list})', category: 'statistics' },
+        {
+            name: 'var',
+            detail: 'Variance',
+            documentation: 'The sample variance. `varp` is the population one.',
+            example: 'L = [3, 1, 4, 1, 5]\nv = var(L)',
+            snippet: 'var(${1:list})',
+            category: 'statistics',
+        },
         {
             name: 'varp',
             detail: 'Population variance',
+            example: 'L = [3, 1, 4, 1, 5]\nv = varp(L)',
             snippet: 'varp(${1:list})',
             category: 'statistics',
         },
         {
             name: 'discretedist',
             detail: 'Discrete distribution over values with optional weights (new in Desmos v1.12)',
+            documentation: 'Without weights, every value is equally likely.',
+            example: 'D = discretedist([1, 2, 3], [0.2, 0.3, 0.5])',
             snippet: 'discretedist(${1:values}, ${2:weights})',
             category: 'statistics',
         },
         {
             name: 'random',
             detail: 'Random number in [0, 1); random(n) gives a list of n, random(list) shuffles it',
+            documentation:
+                'The numbers stay put until the graph is reseeded; `config { randomSeed: "…" }` fixes the seed.',
+            example: 'a = random()\nL = random(5)',
             snippet: 'random(${1:})',
             category: 'statistics',
         },
@@ -400,30 +557,36 @@ export const AXIS_MANIFEST = {
         {
             name: 'repeat',
             detail: 'Repeat a value or list n times (new in Desmos v1.12)',
+            example: 'L = repeat(2, 3)',
             snippet: 'repeat(${1:value}, ${2:n})',
             category: 'list',
         },
         {
             name: 'join',
             detail: 'Concatenate lists or values into one list',
+            example: 'L = join([1, 2], [3, 4])',
             snippet: 'join(${1:a}, ${2:b})',
             category: 'list',
         },
         {
             name: 'sort',
             detail: 'Sort a list, optionally by a second list',
+            documentation: 'Given a second list, sorts the first by it.',
+            example: 'L = sort([3, 1, 2])\nM = sort([10, 20, 30], [3, 1, 2])',
             snippet: 'sort(${1:list})',
             category: 'list',
         },
         {
             name: 'unique',
             detail: 'The distinct values of a list, in the order they first appear',
+            example: 'L = unique([1, 2, 2, 3, 1])',
             snippet: 'unique(${1:list})',
             category: 'list',
         },
         {
             name: 'shuffle',
             detail: 'A list in random order',
+            example: 'L = shuffle([1, 2, 3, 4, 5])',
             snippet: 'shuffle(${1:list})',
             category: 'list',
         },
@@ -432,30 +595,36 @@ export const AXIS_MANIFEST = {
         {
             name: 'polygon',
             detail: 'Polygon from points or a point list',
+            documentation: 'Takes the vertices as separate points, or one list of points.',
+            example: 'polygon((0, 0), (4, 0), (2, 3))',
             snippet: 'polygon(${1:points})',
             category: 'geometry',
         },
         {
             name: 'polygonGlider',
             detail: "The point a fraction of the way around a polygon's perimeter",
+            example: 'T = polygon((0, 0), (4, 0), (2, 3))\npolygonGlider(T, 0.5)',
             snippet: 'polygonGlider(${1:polygon}, ${2:t})',
             category: 'geometry',
         },
         {
             name: 'polygonInteriorDirectedAngles',
             detail: 'The signed interior angles of a polygon',
+            example: 'T = polygon((0, 0), (4, 0), (2, 3))\nA = polygonInteriorDirectedAngles(T, 1)',
             snippet: 'polygonInteriorDirectedAngles(${1:polygon}, ${2:n})',
             category: 'geometry',
         },
         {
             name: 'distance',
             detail: 'Distance between two points',
+            example: 'd = distance((0, 0), (3, 4))',
             snippet: 'distance(${1:A}, ${2:B})',
             category: 'geometry',
         },
         {
             name: 'midpoint',
             detail: 'Midpoint of two points',
+            example: 'midpoint((0, 0), (4, 2))',
             snippet: 'midpoint(${1:A}, ${2:B})',
             category: 'geometry',
         },
@@ -464,30 +633,38 @@ export const AXIS_MANIFEST = {
         {
             name: 'rgb',
             detail: 'Color from red, green, blue (0-255)',
+            documentation:
+                'Each channel runs from 0 to 255. A colour is a value like any other, so it may be stored in a variable and given to `color:`.',
+            example: 'y = sin(x) @ color: rgb(255, 128, 0)',
             snippet: 'rgb(${1:r}, ${2:g}, ${3:b})',
             category: 'color',
         },
         {
             name: 'hsv',
             detail: 'Color from hue, saturation, value',
+            documentation: 'Hue in degrees, 0 to 360; saturation and value from 0 to 1.',
+            example: 'y = sin(x) @ color: hsv(200, 0.8, 0.9)',
             snippet: 'hsv(${1:h}, ${2:s}, ${3:v})',
             category: 'color',
         },
         {
             name: 'okhsv',
             detail: 'Perceptually uniform color from hue, saturation, value (new in Desmos v1.12)',
+            example: 'y = sin(x) @ color: okhsv(200, 0.8, 0.9)',
             snippet: 'okhsv(${1:h}, ${2:s}, ${3:v})',
             category: 'color',
         },
         {
             name: 'oklab',
             detail: 'Perceptually uniform color from lightness, a, b (new in Desmos v1.12)',
+            example: 'y = sin(x) @ color: oklab(0.6, 0.1, -0.1)',
             snippet: 'oklab(${1:l}, ${2:a}, ${3:b})',
             category: 'color',
         },
         {
             name: 'oklch',
             detail: 'Perceptually uniform color from lightness, chroma, hue (new in Desmos v1.12)',
+            example: 'y = sin(x) @ color: oklch(0.6, 0.15, 30)',
             snippet: 'oklch(${1:l}, ${2:c}, ${3:h})',
             category: 'color',
         },
@@ -496,18 +673,24 @@ export const AXIS_MANIFEST = {
         {
             name: 'nCr',
             detail: 'Combinations',
+            documentation: 'How many ways to choose `r` of `n` things, order not counting.',
+            example: 'a = nCr(5, 2)',
             snippet: 'nCr(${1:n}, ${2:r})',
             category: 'combinatorics',
         },
         {
             name: 'nPr',
             detail: 'Permutations',
+            documentation: 'How many ways to arrange `r` of `n` things, order counting.',
+            example: 'a = nPr(5, 2)',
             snippet: 'nPr(${1:n}, ${2:r})',
             category: 'combinatorics',
         },
         {
             name: 'factorial',
             detail: 'Factorial',
+            documentation: 'Also written postfix: `5!`.',
+            example: 'a = factorial(5)\nb = 5!',
             snippet: 'factorial(${1:n})',
             category: 'combinatorics',
         },
@@ -517,27 +700,49 @@ export const AXIS_MANIFEST = {
         {
             name: 'tone',
             detail: 'Play a tone at a frequency in hertz, at a volume of 0-1',
+            documentation: 'Desmos shows a button to play it.',
+            example: 'tone(440, 0.5)',
             snippet: 'tone(${1:frequency}, ${2:volume})',
             category: 'audio',
         },
     ] satisfies FunctionDefinition[],
 
     operators: [
-        { name: 'width', detail: 'Viewport width, in graph units', category: 'viewport' },
-        { name: 'height', detail: 'Viewport height, in graph units', category: 'viewport' },
+        {
+            name: 'width',
+            detail: 'Viewport width, in graph units',
+            documentation: 'Follows the viewport as it is panned and zoomed.',
+            example: 'x = width / 4',
+            category: 'viewport',
+        },
+        {
+            name: 'height',
+            detail: 'Viewport height, in graph units',
+            documentation: 'Follows the viewport as it is panned and zoomed.',
+            example: 'y = height / 4',
+            category: 'viewport',
+        },
         {
             name: 'for',
             detail: 'List comprehension: [i ^ 2 for i = [1...10]]',
+            documentation:
+                'Builds a list by running the expression before it over every element of a list. More than one binding, `for i = A, j = B`, runs over every pair.',
+            example: 'S = [i ^ 2 for i = [1...10]]\n[(i, i ^ 2) for i = [1...5]]',
             category: 'list',
         },
         {
             name: 'with',
             detail: 'Local definition: f(x) = x n with n = length(a)',
+            documentation:
+                'Substitutes values into the expression before it. The bindings run to the end of the bracket or statement.',
+            example: 'y = a x ^ 2 with a = 0.5',
             category: 'scope',
         },
         {
             name: 'index',
             detail: "The element's 1-based position, inside a list filter or a clickable action",
+            documentation: 'Which element of a list was clicked, counting from 1.',
+            example: 'n = 0\nP = [(1, 1), (2, 2), (3, 3)] @ onClick: n -> index, pointSize: 20',
             category: 'list',
         },
         {
@@ -547,15 +752,30 @@ export const AXIS_MANIFEST = {
             // an undefined variable and offered as a slider.
             name: 'dt',
             detail: 'Milliseconds since the last tick - only valid in a ticker handler',
+            documentation:
+                "Written anywhere but the ticker's handler it is an error, `dt-outside-ticker`.",
+            example: 'n = 0\nticker n -> n + dt @ playing',
             category: 'ticker',
         },
     ] satisfies OperatorDefinition[],
 
     constants: [
         // Greek letters
-        { name: 'pi', detail: 'π ≈ 3.14159', category: 'greek' },
-        { name: 'tau', detail: 'τ = 2π ≈ 6.28318', category: 'greek' },
-        { name: 'theta', detail: 'Greek letter θ', category: 'greek' },
+        { name: 'pi', detail: 'π ≈ 3.14159', example: 'y = sin(pi x)', category: 'greek' },
+        {
+            name: 'tau',
+            detail: 'τ = 2π ≈ 6.28318',
+            example: '(cos(t), sin(t)) @ domain: 0..tau',
+            category: 'greek',
+        },
+        {
+            name: 'theta',
+            detail: 'Greek letter θ',
+            documentation:
+                'The polar angle. `r = …` in terms of `theta` is a polar curve, and `theta` cannot be defined.',
+            example: 'r = 1 + cos(theta)',
+            category: 'greek',
+        },
         { name: 'alpha', detail: 'Greek letter α', category: 'greek' },
         { name: 'beta', detail: 'Greek letter β', category: 'greek' },
         { name: 'gamma', detail: 'Greek letter γ', category: 'greek' },
@@ -587,12 +807,38 @@ export const AXIS_MANIFEST = {
         { name: 'Omega', detail: 'Greek letter Ω', category: 'greek' },
 
         // Mathematical constants
-        { name: 'e', detail: "Euler's number ≈ 2.71828", category: 'mathematical', latex: null },
-        { name: 'infinity', detail: '∞', category: 'mathematical', latex: '\\infty' },
+        {
+            name: 'e',
+            detail: "Euler's number ≈ 2.71828",
+            example: 'y = e ^ x',
+            category: 'mathematical',
+            latex: null,
+        },
+        {
+            name: 'infinity',
+            detail: '∞',
+            example: 'a = 1 / infinity\nb = arctan(infinity)',
+            category: 'mathematical',
+            latex: '\\infty',
+        },
 
         // Boolean
-        { name: 'true', detail: 'Boolean true', category: 'boolean', latex: null },
-        { name: 'false', detail: 'Boolean false', category: 'boolean', latex: null },
+        {
+            name: 'true',
+            detail: 'Boolean true',
+            documentation: 'A metadata value only: Desmos has no booleans in an expression.',
+            example: '(1, 2) @ showLabel: true, label: "P"',
+            category: 'boolean',
+            latex: null,
+        },
+        {
+            name: 'false',
+            detail: 'Boolean false',
+            documentation: 'A metadata value only: Desmos has no booleans in an expression.',
+            example: 'y = x @ lines: false',
+            category: 'boolean',
+            latex: null,
+        },
     ] satisfies ConstantDefinition[],
 
     /**
@@ -608,6 +854,10 @@ export const AXIS_MANIFEST = {
         {
             name: 'use',
             detail: "Apply a style, e.g. `use: emphasis`. Repeatable; applied in order, and the clause's own properties win",
+            documentation:
+                'Styles apply in the order written, and a property written on the statement itself wins over every style.',
+            example:
+                'style thick { lineWidth: 5; lineStyle: DASHED }\ny = sin(x) @ use: thick, color: RED',
             snippet: 'use: ${1:style}',
             valueType: 'style',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -616,6 +866,10 @@ export const AXIS_MANIFEST = {
         {
             name: 'color',
             detail: 'Colour: #hex, a palette name (RED, BLUE, GREEN, PURPLE, ORANGE, BLACK), or any expression such as rgb(255, 0, 0) [default: cycles]',
+            documentation:
+                'A palette name is case-sensitive - `red` would be r·e·d - and any expression that works out a colour may be used.',
+            example:
+                'y = x ^ 2 @ color: RED\ny = x ^ 2 + 1 @ color: #2d70b3\ny = x ^ 2 + 2 @ color: rgb(200, 100, 0)',
             snippet: 'color: ${1|RED,BLUE,GREEN,PURPLE,ORANGE,BLACK|}',
             valueType: 'color',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -623,6 +877,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'suppressTextOutline',
             detail: 'Drop the outline drawn behind a label [default: false]',
+            example: '(1, 2) @ label: "P", showLabel, suppressTextOutline',
             snippet: 'suppressTextOutline',
             valueType: 'boolean',
             appliesTo: ['expression', 'style'],
@@ -630,6 +885,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'lineStyle',
             detail: 'Line style [default: SOLID]',
+            example: 'y = sin(x) @ lineStyle: DASHED',
             snippet: 'lineStyle: ${1|SOLID,DASHED,DOTTED|}',
             valueType: 'enum',
             values: ['SOLID', 'DASHED', 'DOTTED'],
@@ -638,6 +894,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'lineWidth',
             detail: 'Line width in pixels [default: 2.5]',
+            example: 'y = cos(x) @ lineWidth: 5',
             snippet: 'lineWidth: ${1:2.5}',
             valueType: 'expression',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -645,6 +902,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'lineOpacity',
             detail: 'Line opacity 0-1 [default: 0.9]',
+            example: 'y = cos(x) @ lineOpacity: 0.3',
             snippet: 'lineOpacity: ${1:0.9}',
             valueType: 'expression',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -652,6 +910,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pointStyle',
             detail: 'Point style [default: POINT]',
+            example: '(1, 1) @ pointStyle: STAR, pointSize: 16',
             snippet: 'pointStyle: ${1|POINT,OPEN,CROSS,SQUARE,PLUS,TRIANGLE,DIAMOND,STAR|}',
             valueType: 'enum',
             values: ['POINT', 'OPEN', 'CROSS', 'SQUARE', 'PLUS', 'TRIANGLE', 'DIAMOND', 'STAR'],
@@ -660,6 +919,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pointSize',
             detail: 'Point diameter in pixels [default: 9]',
+            example: '(1, 1) @ pointSize: 20',
             snippet: 'pointSize: ${1:9}',
             valueType: 'expression',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -667,6 +927,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'movablePointSize',
             detail: 'Point diameter in pixels while the point is draggable [default: matches pointSize]',
+            example: 'a = 1\n(a, 2) @ movablePointSize: 16',
             snippet: 'movablePointSize: ${1:9}',
             valueType: 'expression',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -674,6 +935,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pointOpacity',
             detail: 'Point opacity 0-1 [default: 0.9]',
+            example: '(1, 1) @ pointOpacity: 0.4',
             snippet: 'pointOpacity: ${1:0.9}',
             valueType: 'expression',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -681,6 +943,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'fillOpacity',
             detail: 'Fill opacity 0-1 [default: 0.4]',
+            example: 'polygon((0, 0), (2, 0), (1, 2)) @ fillOpacity: 0.7',
             snippet: 'fillOpacity: ${1:0.4}',
             valueType: 'expression',
             appliesTo: ['expression', 'style'],
@@ -688,6 +951,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'hidden',
             detail: 'Hide graph [default: false]',
+            documentation: 'The statement still defines what it defines; it is only not drawn.',
+            example: 'f(x) = x ^ 2 @ hidden\ny = f(x) + 1',
             snippet: 'hidden',
             valueType: 'boolean',
             appliesTo: ['expression', 'column', 'table', 'folder', 'image', 'import', 'style'],
@@ -695,6 +960,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'secret',
             detail: 'Hide from the expression list, for authors [default: false]',
+            documentation: 'Hidden from anyone reading the expression list, not from the author.',
+            example: 'k = 3 @ secret\ny = k sin(x)',
             snippet: 'secret',
             valueType: 'boolean',
             appliesTo: ['expression', 'folder', 'image', 'import', 'note', 'style'],
@@ -702,6 +969,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'points',
             detail: 'Show points [default: true]',
+            example: '[(0, 0), (1, 2), (2, 1)] @ lines, points: false',
             snippet: 'points: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -709,6 +977,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'lines',
             detail: 'Show lines [default: true]',
+            documentation: 'A list of points draws only the points unless it says `lines`.',
+            example: '[(0, 0), (1, 2), (2, 1)] @ lines',
             snippet: 'lines: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['expression', 'column', 'table', 'style'],
@@ -716,6 +986,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'fill',
             detail: 'Fill region [default: false]',
+            example: '(cos(t), sin(t)) @ fill, domain: 0..tau',
             snippet: 'fill',
             valueType: 'boolean',
             appliesTo: ['expression', 'style'],
@@ -723,6 +994,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'label',
             detail: 'Point label text [default: empty]',
+            example: 'P = (2, 1) @ label: "P", showLabel',
             snippet: 'label: "${1:}"',
             valueType: 'string',
             appliesTo: ['expression', 'style'],
@@ -730,6 +1002,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showLabel',
             detail: 'Show label [default: false]',
+            example: 'P = (2, 1) @ label: "P", showLabel',
             snippet: 'showLabel',
             valueType: 'boolean',
             appliesTo: ['expression', 'style'],
@@ -737,6 +1010,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'labelSize',
             detail: 'Label size multiplier [default: 1]',
+            example: '(2, 1) @ label: "big", showLabel, labelSize: 2',
             snippet: 'labelSize: ${1:1}',
             valueType: 'expression',
             appliesTo: ['expression', 'style'],
@@ -744,6 +1018,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'labelOrientation',
             detail: 'Label position [default: default]',
+            example: '(2, 1) @ label: "above", showLabel, labelOrientation: above',
             snippet:
                 'labelOrientation: ${1|default,above,below,left,right,above_left,above_right,below_left,below_right|}',
             valueType: 'enum',
@@ -763,6 +1038,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pointOutline',
             detail: 'Ring each point in the background colour [default: false]',
+            example: '(1, 1) @ pointOutline, pointSize: 16',
             snippet: 'pointOutline',
             valueType: 'boolean',
             appliesTo: ['expression', 'style'],
@@ -770,6 +1046,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'dragMode',
             detail: 'Drag mode [default: AUTO]',
+            documentation:
+                '`X` and `Y` let a point move along one axis only; `NONE` pins it. On an image, any mode but `NONE` makes it draggable.',
+            example: 'P = (1, 2) @ dragMode: X',
             snippet: 'dragMode: ${1|AUTO,X,Y,XY,NONE|}',
             valueType: 'enum',
             values: ['AUTO', 'X', 'Y', 'XY', 'NONE'],
@@ -778,6 +1057,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'playing',
             detail: 'Animate slider [default: false]',
+            example: 'a = 1 @ slider: 0..5, playing\ny = a sin(x)',
             snippet: 'playing',
             valueType: 'boolean',
             appliesTo: ['expression', 'style'],
@@ -785,6 +1065,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'onClick',
             detail: 'Action run when the object is clicked, e.g. `onClick: a -> a + 1` or a run `a -> 1, b -> 2`',
+            documentation:
+                'An action, `target -> value`, or a run of them separated by commas, which happen together. The comma after the run starts the next property only when an `identifier:` follows it.',
+            example: 'n = 0\n(n, 0) @ onClick: n -> n + 1, pointSize: 20',
             snippet: 'onClick: ${1:a} -> ${2:value}',
             valueType: 'action',
             appliesTo: ['expression', 'image', 'style'],
@@ -792,6 +1075,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'clickable',
             detail: 'Enable/disable the onClick action [default: true when onClick is set]',
+            example: 'n = 0\n(0, 0) @ onClick: n -> n + 1, clickable: false',
             snippet: 'clickable: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['expression', 'image', 'style'],
@@ -799,6 +1083,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'description',
             detail: 'Screen-reader description, shown for clickable objects',
+            example: 'n = 0\n(0, 0) @ onClick: n -> n + 1, description: "Count up"',
             snippet: 'description: "${1:}"',
             valueType: 'string',
             appliesTo: ['expression', 'style'],
@@ -806,6 +1091,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'slider',
             detail: "Slider range for a defined value, e.g. `slider: -5..5 step 0.5`. Both ends are limits unless `soft`, `soft min` or `soft max` says otherwise, and either end may be left out to keep Desmos' own",
+            documentation:
+                "A stepped slider snaps its value to the step's grid, counted from its `min`.",
+            example: 'a = 2 @ slider: 0..10 step 0.5\nb = 1 @ slider: 0.. soft\ny = a x + b',
             snippet: 'slider: ${1:0}..${2:10}',
             valueType: 'range',
             appliesTo: ['expression', 'style'],
@@ -813,6 +1101,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'loopMode',
             detail: 'What an animating slider does at the end of its range [default: LOOP_FORWARD_REVERSE]',
+            example: 'a = 0 @ slider: 0..5, playing, loopMode: LOOP_FORWARD',
             snippet:
                 'loopMode: ${1|LOOP_FORWARD_REVERSE,LOOP_FORWARD,PLAY_ONCE,PLAY_INDEFINITELY|}',
             valueType: 'enum',
@@ -822,6 +1111,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'playDirection',
             detail: 'Which way an animating slider runs: 1 forwards, -1 backwards [default: 1]',
+            example: 'a = 5 @ slider: 0..5, playing, playDirection: -1',
             snippet: 'playDirection: ${1|1,-1|}',
             valueType: 'number',
             appliesTo: ['expression', 'style'],
@@ -829,6 +1119,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'animationPeriod',
             detail: 'How long one sweep of an animating slider takes, in milliseconds [default: 8000]',
+            example: 'a = 0 @ slider: 0..10, playing, animationPeriod: 2000',
             snippet: 'animationPeriod: ${1:8000}',
             valueType: 'number',
             appliesTo: ['expression', 'style'],
@@ -836,6 +1127,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'domain',
             detail: 'The range a parametric or polar curve is drawn over, e.g. `domain: 0..2pi`',
+            documentation:
+                'A parametric curve given no domain runs `t` over [0, 1], not a whole period.',
+            example: '(cos(t), sin(2t)) @ domain: 0..tau',
             snippet: 'domain: ${1:0}..${2:2pi}',
             valueType: 'range',
             appliesTo: ['expression', 'style'],
@@ -843,6 +1137,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'parametricDomain',
             detail: 'The older copy of `domain` Desmos writes beside it, for a graph whose two disagree',
+            example: '(t, t ^ 2) @ parametricDomain: -2..2',
             snippet: 'parametricDomain: ${1:0}..${2:2pi}',
             valueType: 'range',
             appliesTo: ['expression', 'style'],
@@ -850,6 +1145,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'polarDomain',
             detail: 'The range a polar curve is drawn over in polar mode, e.g. `polarDomain: 0..2pi`',
+            example: 'r = theta / 4 @ polarDomain: 0..6pi',
             snippet: 'polarDomain: ${1:0}..${2:2pi}',
             valueType: 'range',
             appliesTo: ['expression', 'style'],
@@ -857,6 +1153,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'name',
             detail: 'The caption an image carries in the expression list',
+            example: 'image "./images/wave.png" @ name: "A wave"',
             snippet: 'name: "${1:}"',
             valueType: 'string',
             appliesTo: ['image'],
@@ -864,6 +1161,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'center',
             detail: 'The point an image is centred on, e.g. `center: (0, 0)`',
+            example: 'image "./images/wave.png" @ center: (2, 3)',
             snippet: 'center: (${1:0}, ${2:0})',
             valueType: 'expression',
             appliesTo: ['image'],
@@ -871,6 +1169,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'width',
             detail: 'How wide an image is drawn, in graph units',
+            example: 'image "./images/wave.png" @ width: 8',
             snippet: 'width: ${1:10}',
             valueType: 'expression',
             appliesTo: ['image'],
@@ -878,6 +1177,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'height',
             detail: 'How tall an image is drawn, in graph units',
+            example: 'image "./images/wave.png" @ height: 4',
             snippet: 'height: ${1:10}',
             valueType: 'expression',
             appliesTo: ['image'],
@@ -885,6 +1185,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'angle',
             detail: 'How far an image is rotated, anticlockwise, in radians',
+            example: 'image "./images/wave.png" @ angle: pi / 6',
             snippet: 'angle: ${1:0}',
             valueType: 'expression',
             appliesTo: ['image'],
@@ -892,6 +1193,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'opacity',
             detail: 'Image opacity 0-1 [default: 1]',
+            example: 'image "./images/wave.png" @ opacity: 0.5',
             snippet: 'opacity: ${1:1}',
             valueType: 'expression',
             appliesTo: ['image'],
@@ -899,6 +1201,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'foreground',
             detail: 'Draw an image over the graph rather than under it [default: false]',
+            example: 'image "./images/wave.png" @ foreground\ny = sin(x)',
             snippet: 'foreground',
             valueType: 'boolean',
             appliesTo: ['image'],
@@ -906,6 +1209,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'collapsed',
             detail: 'Start a folder collapsed [default: false; an import starts collapsed]',
+            example: 'folder "Waves" { @ collapsed\n    y = sin(x)\n    y = cos(x)\n}',
             snippet: 'collapsed: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['folder', 'import'],
@@ -929,6 +1233,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'minStep',
             detail: 'Shortest gap between ticks, in milliseconds, 0 for every frame [default: 0]',
+            example: 'n = 0\nticker n -> n + 1 @ minStep: 100, playing',
             snippet: 'minStep: ${1:50}',
             valueType: 'expression',
             appliesTo: ['ticker'],
@@ -936,6 +1241,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'playing',
             detail: 'Start the ticker running when the graph opens [default: false]',
+            example: 't = 0\nticker t -> t + dt / 1000 @ playing\ny = sin(x - t)',
             snippet: 'playing',
             valueType: 'boolean',
             appliesTo: ['ticker'],
@@ -943,6 +1249,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'open',
             detail: 'Show the ticker expanded in the expression list [default: false]',
+            example: 'n = 0\nticker n -> n + 1 @ open',
             snippet: 'open',
             valueType: 'boolean',
             appliesTo: ['ticker'],
@@ -954,6 +1261,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'degreeMode',
             detail: 'Use degrees instead of radians [default: false]',
+            example: 'config { degreeMode: true }\ny = sin(x)',
             snippet: 'degreeMode: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -961,6 +1269,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showGrid',
             detail: 'Show coordinate grid [default: true]',
+            example: 'config { showGrid: false }\ny = sin(x)',
             snippet: 'showGrid: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -968,6 +1277,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showXAxis',
             detail: 'Show x-axis [default: true]',
+            example: 'config { showXAxis: false }\ny = sin(x)',
             snippet: 'showXAxis: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -975,6 +1285,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showYAxis',
             detail: 'Show y-axis [default: true]',
+            example: 'config { showYAxis: false }\ny = sin(x)',
             snippet: 'showYAxis: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -982,6 +1293,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xAxisNumbers',
             detail: 'Show numbers on x-axis [default: true]',
+            example: 'config { xAxisNumbers: false }\ny = sin(x)',
             snippet: 'xAxisNumbers: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -989,6 +1301,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'yAxisNumbers',
             detail: 'Show numbers on y-axis [default: true]',
+            example: 'config { yAxisNumbers: false }\ny = sin(x)',
             snippet: 'yAxisNumbers: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -996,6 +1309,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'polarMode',
             detail: 'Use polar coordinates [default: false]',
+            example: 'config { polarMode: true }\nr = 2 + sin(3theta)',
             snippet: 'polarMode: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1003,6 +1317,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'lockViewport',
             detail: 'Lock viewport from panning/zooming [default: false]',
+            example: 'config { lockViewport: true }\ny = sin(x)',
             snippet: 'lockViewport: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1010,6 +1325,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xmin',
             detail: 'Left edge of the viewport [default: -10]',
+            example: 'config { xmin: -2; xmax: 2 }\ny = x ^ 3',
             snippet: 'xmin: ${1:-10}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1017,6 +1333,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xmax',
             detail: 'Right edge of the viewport [default: 10]',
+            example: 'config { xmin: -2; xmax: 2 }\ny = x ^ 3',
             snippet: 'xmax: ${1:10}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1024,6 +1341,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'ymin',
             detail: 'Bottom edge of the viewport [default: fits the aspect ratio]',
+            example: 'config { ymin: -1; ymax: 8 }\ny = x ^ 2',
             snippet: 'ymin: ${1:-10}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1031,6 +1349,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'ymax',
             detail: 'Top edge of the viewport [default: fits the aspect ratio]',
+            example: 'config { ymin: -1; ymax: 8 }\ny = x ^ 2',
             snippet: 'ymax: ${1:10}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1038,6 +1357,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'squareAxes',
             detail: 'Keep one x unit the same length as one y unit [default: true]',
+            example: 'config { squareAxes: false; ymin: -1; ymax: 1 }\ny = sin(x)',
             valueType: 'boolean',
             appliesTo: ['config'],
             snippet: 'squareAxes: ${1|true,false|}',
@@ -1045,6 +1365,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'userLockedViewport',
             detail: "Lock the viewport the way the graph's own settings menu does, so nobody can pan or zoom [default: false]",
+            example: 'config { userLockedViewport: true }\ny = sin(x)',
             valueType: 'boolean',
             appliesTo: ['config'],
             snippet: 'userLockedViewport: ${1|true,false|}',
@@ -1052,6 +1373,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'expressionsCollapsed',
             detail: 'Collapse expressions list [default: true]',
+            example: 'config { expressionsCollapsed: false }\ny = sin(x)',
             snippet: 'expressionsCollapsed: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1059,6 +1381,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'capExpressionSize',
             detail: 'Limit expression complexity [default: true]',
+            example: 'config { capExpressionSize: false }\ny = sin(x)',
             snippet: 'capExpressionSize: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1066,6 +1389,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pointsOfInterest',
             detail: 'Show points of interest [default: true]',
+            example: 'config { pointsOfInterest: false }\ny = sin(x)',
             snippet: 'pointsOfInterest: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1073,6 +1397,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'trace',
             detail: 'Enable trace mode [default: false]',
+            example: 'config { trace: false }\ny = sin(x)',
             snippet: 'trace: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1080,6 +1405,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'border',
             detail: 'Show calculator border [default: false]',
+            example: 'config { border: true }\ny = sin(x)',
             snippet: 'border: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1087,6 +1413,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'keypad',
             detail: 'Show on-screen keypad [default: true]',
+            example: 'config { keypad: false }\ny = sin(x)',
             snippet: 'keypad: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1094,6 +1421,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'graphpaper',
             detail: 'Show graph paper background [default: true]',
+            example: 'config { graphpaper: true }\ny = sin(x)',
             snippet: 'graphpaper: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1101,6 +1429,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'calculus',
             detail: 'Allow derivatives and integrals [default: true] (Desmos v1.12)',
+            example: 'config { calculus: false }\ny = sin(x)',
             snippet: 'calculus: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1108,6 +1437,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'clearIntoDegreeMode',
             detail: 'Clearing the graph keeps degree mode [default: matches degreeMode] (Desmos v1.12)',
+            example: 'config { clearIntoDegreeMode: true }\ny = sin(x)',
             snippet: 'clearIntoDegreeMode: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1115,6 +1445,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'invertedColors',
             detail: 'Invert every displayed color [default: false]',
+            example: 'config { invertedColors: true }\ny = sin(x)',
             snippet: 'invertedColors: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1122,6 +1453,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'invertedColorsControl',
             detail: 'Show the "Reverse Contrast" checkbox [default: true] (Desmos v1.12)',
+            example: 'config { invertedColorsControl: false }\ny = sin(x)',
             snippet: 'invertedColorsControl: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1129,6 +1461,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'backgroundColor',
             detail: 'Calculator background colour, #hex or a palette name [beta, Desmos v1.12]',
+            documentation:
+                'A hex literal or a palette name only: Desmos wants a hex string here, not an expression.',
+            example: 'config { backgroundColor: #1e1e2e }\ny = sin(x)',
             snippet: 'backgroundColor: ${1:#fff}',
             valueType: 'color',
             appliesTo: ['config'],
@@ -1136,6 +1471,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'textColor',
             detail: 'Calculator text colour, #hex or a palette name [beta, Desmos v1.12]',
+            documentation:
+                'A hex literal or a palette name only: Desmos wants a hex string here, not an expression.',
+            example: 'config { textColor: #444444 }\ny = sin(x)',
             snippet: 'textColor: ${1:#000}',
             valueType: 'color',
             appliesTo: ['config'],
@@ -1143,6 +1481,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'accentColor',
             detail: 'Accent colour for buttons and focus outlines, #hex or a palette name [beta, Desmos v1.12]',
+            documentation:
+                'A hex literal or a palette name only: Desmos wants a hex string here, not an expression.',
+            example: 'config { accentColor: PURPLE }\ny = sin(x)',
             snippet: 'accentColor: ${1:#2f72dc}',
             valueType: 'color',
             appliesTo: ['config'],
@@ -1150,6 +1491,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showReducedMotionCover',
             detail: 'Pause animations for prefers-reduced-motion [default: false]',
+            example: 'config { showReducedMotionCover: true }\ny = sin(x)',
             snippet: 'showReducedMotionCover: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1157,6 +1499,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'projectorMode',
             detail: 'Larger fonts and thicker lines [default: false]',
+            example: 'config { projectorMode: true }\ny = sin(x)',
             snippet: 'projectorMode: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1164,6 +1507,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'zoomFit',
             detail: 'Allow expressions to specify a viewport [default: true]',
+            example: 'config { zoomFit: false }\ny = sin(x)',
             snippet: 'zoomFit: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1171,6 +1515,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xAxisLabel',
             detail: 'Label for the x-axis [default: empty]',
+            example: 'config { xAxisLabel: "time"; yAxisLabel: "height" }\ny = sin(x)',
             snippet: 'xAxisLabel: "${1:}"',
             valueType: 'string',
             appliesTo: ['config'],
@@ -1178,6 +1523,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'yAxisLabel',
             detail: 'Label for the y-axis [default: empty]',
+            example: 'config { xAxisLabel: "time"; yAxisLabel: "height" }\ny = sin(x)',
             snippet: 'yAxisLabel: "${1:}"',
             valueType: 'string',
             appliesTo: ['config'],
@@ -1185,6 +1531,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'xAxisScale',
             detail: 'x-axis scale [default: linear]',
+            documentation:
+                'Needs `logScales`, which is on by default: with it off, the scale is linear whatever this says.',
+            example: 'config { xAxisScale: logarithmic; xmin: 0.1; xmax: 1000 }\ny = log(x)',
             snippet: 'xAxisScale: ${1|linear,logarithmic|}',
             valueType: 'enum',
             values: ['linear', 'logarithmic'],
@@ -1193,6 +1542,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'yAxisScale',
             detail: 'y-axis scale [default: linear]',
+            documentation:
+                'Needs `logScales`, which is on by default: with it off, the scale is linear whatever this says.',
+            example: 'config { yAxisScale: logarithmic; ymin: 0.1; ymax: 1000 }\ny = 2 ^ x',
             snippet: 'yAxisScale: ${1|linear,logarithmic|}',
             valueType: 'enum',
             values: ['linear', 'logarithmic'],
@@ -1201,6 +1553,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'randomSeed',
             detail: 'Seed for random() [default: generated]',
+            documentation: 'The same seed gives the same numbers every time the graph opens.',
+            example: 'config { randomSeed: "axis" }\nL = random(5)',
             snippet: 'randomSeed: "${1:}"',
             valueType: 'string',
             appliesTo: ['config'],
@@ -1208,6 +1562,8 @@ export const AXIS_MANIFEST = {
         {
             name: 'includeFunctionParametersInRandomSeed',
             detail: "Vary random() by a function's arguments [default: true]",
+            example:
+                'config { includeFunctionParametersInRandomSeed: false }\nf(a) = random()\nb = f(1)',
             snippet: 'includeFunctionParametersInRandomSeed: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1215,6 +1571,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'fontSize',
             detail: 'Base font size [default: 16]',
+            example: 'config { fontSize: 20 }\ny = sin(x)',
             snippet: 'fontSize: ${1:16}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1222,6 +1579,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'language',
             detail: 'UI language [default: en]',
+            example: 'config { language: "fr" }\ny = sin(x)',
             snippet: 'language: "${1:en}"',
             valueType: 'string',
             appliesTo: ['config'],
@@ -1231,6 +1589,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'expressions',
             detail: 'Show the expressions list [default: true]',
+            example: 'config { expressions: false }\ny = sin(x)',
             snippet: 'expressions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1238,6 +1597,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'expressionsTopbar',
             detail: 'Show the toolbar above the expressions list [default: true]',
+            example: 'config { expressionsTopbar: false }\ny = sin(x)',
             snippet: 'expressionsTopbar: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1245,6 +1605,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'zoomButtons',
             detail: 'Show the zoom buttons [default: false]',
+            example: 'config { zoomButtons: true }\ny = sin(x)',
             snippet: 'zoomButtons: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1252,6 +1613,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'keypadActivated',
             detail: 'Open the keypad on load [default: false]',
+            example: 'config { keypadActivated: true }\ny = sin(x)',
             snippet: 'keypadActivated: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1259,6 +1621,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showResetButtonOnGraphpaper',
             detail: 'Show a reset button on the graph paper [default: false]',
+            example: 'config { showResetButtonOnGraphpaper: true }\ny = sin(x)',
             snippet: 'showResetButtonOnGraphpaper: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1266,6 +1629,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'settingsMenu',
             detail: 'Show the graph settings menu [default: false]',
+            example: 'config { settingsMenu: true }\ny = sin(x)',
             snippet: 'settingsMenu: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1273,6 +1637,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'authorFeatures',
             detail: 'Enable author features such as secret folders [default: false]',
+            example: 'config { authorFeatures: true }\nk = 3 @ secret\ny = k sin(x)',
             snippet: 'authorFeatures: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1280,6 +1645,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'administerSecretFolders',
             detail: 'Reveal the contents of secret folders [default: false]',
+            example: 'config { administerSecretFolders: true }\nk = 3 @ secret\ny = k sin(x)',
             snippet: 'administerSecretFolders: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1287,6 +1653,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'images',
             detail: 'Allow images [default: true]',
+            example: 'config { images: false }\ny = sin(x)',
             snippet: 'images: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1294,6 +1661,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'folders',
             detail: 'Allow folders [default: true]',
+            example: 'config { folders: false }\ny = sin(x)',
             snippet: 'folders: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1301,6 +1669,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'notes',
             detail: 'Allow notes [default: true]',
+            example: 'config { notes: false }\ny = sin(x)',
             snippet: 'notes: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1308,6 +1677,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'sliders',
             detail: 'Allow sliders [default: true]',
+            example: 'config { sliders: false }\ny = sin(x)',
             snippet: 'sliders: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1315,6 +1685,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'substitutions',
             detail: 'Allow "with" substitutions [default: true]',
+            example: 'config { substitutions: true }\ny = a x ^ 2 with a = 0.5',
             snippet: 'substitutions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1322,6 +1693,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'qwertyKeyboard',
             detail: 'Show the QWERTY keyboard on the keypad [default: true]',
+            example: 'config { qwertyKeyboard: false }\ny = sin(x)',
             snippet: 'qwertyKeyboard: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1329,6 +1701,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'distributions',
             detail: 'Allow statistical distributions [default: true]',
+            example: 'config { distributions: false }\ny = sin(x)',
             snippet: 'distributions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1336,6 +1709,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'restrictedFunctions',
             detail: 'Limit the available functions to a basic set [default: false]',
+            example: 'config { restrictedFunctions: true }\ny = sin(x)',
             snippet: 'restrictedFunctions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1343,6 +1717,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'forceEnableGeometryFunctions',
             detail: 'Enable geometry functions [default: false]',
+            example: 'config { forceEnableGeometryFunctions: true }\ny = sin(x)',
             snippet: 'forceEnableGeometryFunctions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1350,6 +1725,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pasteGraphLink',
             detail: 'Allow pasting a graph link to import it [default: false]',
+            example: 'config { pasteGraphLink: true }\ny = sin(x)',
             snippet: 'pasteGraphLink: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1357,6 +1733,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'pasteTableData',
             detail: 'Allow pasting tabular data into a table [default: true]',
+            example: 'config { pasteTableData: false }\ny = sin(x)',
             snippet: 'pasteTableData: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1364,6 +1741,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'autosize',
             detail: 'Resize the calculator with its container [default: true]',
+            example: 'config { autosize: false }\ny = sin(x)',
             snippet: 'autosize: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1371,6 +1749,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'plotInequalities',
             detail: 'Shade inequalities [default: true]',
+            example: 'config { plotInequalities: false }\ny = sin(x)',
             snippet: 'plotInequalities: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1378,6 +1757,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'plotImplicits',
             detail: 'Plot implicit equations and inequalities [default: true]',
+            example: 'config { plotImplicits: false }\ny = sin(x)',
             snippet: 'plotImplicits: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1385,6 +1765,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'plotSingleVariableImplicitEquations',
             detail: 'Plot single-variable implicit equations [default: true]',
+            example: 'config { plotSingleVariableImplicitEquations: false }\ny = sin(x)',
             snippet: 'plotSingleVariableImplicitEquations: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1392,6 +1773,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'brailleControls',
             detail: 'Show braille controls [default: true]',
+            example: 'config { brailleControls: false }\ny = sin(x)',
             snippet: 'brailleControls: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1399,6 +1781,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'audio',
             detail: 'Enable audio trace [default: true]',
+            example: 'config { audio: false }\ny = sin(x)',
             snippet: 'audio: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1406,6 +1789,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'tone',
             detail: 'Allow the tone() function [default: true]',
+            example: 'config { tone: false }\ny = sin(x)',
             snippet: 'tone: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1413,6 +1797,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'muted',
             detail: 'Mute audio output [default: false]',
+            example: 'config { muted: true }\ny = sin(x)',
             snippet: 'muted: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1420,6 +1805,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'forceLogModeRegressions',
             detail: 'Force regressions into log mode [default: false]',
+            example: 'config { forceLogModeRegressions: true }\ny = sin(x)',
             snippet: 'forceLogModeRegressions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1427,6 +1813,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'defaultLogModeRegressions',
             detail: 'Default new regressions to log mode [default: false]',
+            example: 'config { defaultLogModeRegressions: true }\ny = sin(x)',
             snippet: 'defaultLogModeRegressions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1434,6 +1821,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'customRegressions',
             detail: 'Allow custom regressions [default: true]',
+            example: 'config { customRegressions: false }\ny = sin(x)',
             snippet: 'customRegressions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1441,6 +1829,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'regressionTemplates',
             detail: 'Offer regression templates [default: true]',
+            example: 'config { regressionTemplates: false }\ny = sin(x)',
             snippet: 'regressionTemplates: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1448,6 +1837,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'logScales',
             detail: 'Allow logarithmic axis scales [default: true]',
+            example: 'config { logScales: false }\ny = sin(x)',
             snippet: 'logScales: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1455,6 +1845,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'intervalComprehensions',
             detail: 'Allow interval comprehensions [default: true]',
+            example: 'config { intervalComprehensions: false }\ny = sin(x)',
             snippet: 'intervalComprehensions: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1462,6 +1853,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'allowComplex',
             detail: 'Allow complex numbers [default: false]',
+            example: 'config { allowComplex: true }\ny = sin(x)',
             snippet: 'allowComplex: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1469,6 +1861,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'recursion',
             detail: 'Allow recursive definitions [default: false]',
+            example: 'config { recursion: true }\nf(n) = {n <= 1: 1, n f(n - 1)}\na = f(5)',
             snippet: 'recursion: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1476,6 +1869,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'showEvaluationCopyButtons',
             detail: 'Show copy buttons beside evaluations [default: false]',
+            example: 'config { showEvaluationCopyButtons: true }\na = 2 ^ 10',
             snippet: 'showEvaluationCopyButtons: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1483,6 +1877,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'decimalToFraction',
             detail: 'Offer decimal/fraction toggling [default: true]',
+            example: 'config { decimalToFraction: false }\na = 1 / 3',
             snippet: 'decimalToFraction: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1490,6 +1885,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'sixKeyInput',
             detail: 'Enable six-key braille input [default: false]',
+            example: 'config { sixKeyInput: true }\ny = sin(x)',
             snippet: 'sixKeyInput: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1497,6 +1893,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'polarNumbers',
             detail: 'Show numbers on the polar grid [default: true]',
+            example: 'config { polarMode: true; polarNumbers: false }\nr = 2',
             snippet: 'polarNumbers: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -1506,6 +1903,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xAxisStep',
             detail: 'Spacing between x-axis labels, 0 for automatic [default: 0]',
+            example: 'config { xAxisStep: 3.14159 }\ny = sin(x)',
             snippet: 'xAxisStep: ${1:0}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1513,6 +1911,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'yAxisStep',
             detail: 'Spacing between y-axis labels, 0 for automatic [default: 0]',
+            example: 'config { yAxisStep: 0.5 }\ny = sin(x)',
             snippet: 'yAxisStep: ${1:0}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1520,6 +1919,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xAxisMinorSubdivisions',
             detail: 'Minor grid lines per x-axis step, 0 for automatic [default: 0]',
+            example: 'config { xAxisMinorSubdivisions: 2 }\ny = sin(x)',
             snippet: 'xAxisMinorSubdivisions: ${1:0}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1527,6 +1927,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'yAxisMinorSubdivisions',
             detail: 'Minor grid lines per y-axis step, 0 for automatic [default: 0]',
+            example: 'config { yAxisMinorSubdivisions: 2 }\ny = sin(x)',
             snippet: 'yAxisMinorSubdivisions: ${1:0}',
             valueType: 'number',
             appliesTo: ['config'],
@@ -1536,6 +1937,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'xAxisArrowMode',
             detail: 'Arrowheads on the x-axis [default: NONE]',
+            example: 'config { xAxisArrowMode: POSITIVE }\ny = sin(x)',
             snippet: 'xAxisArrowMode: ${1|NONE,POSITIVE,BOTH|}',
             valueType: 'enum',
             values: ['NONE', 'POSITIVE', 'BOTH'],
@@ -1544,6 +1946,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'yAxisArrowMode',
             detail: 'Arrowheads on the y-axis [default: NONE]',
+            example: 'config { yAxisArrowMode: BOTH }\ny = sin(x)',
             snippet: 'yAxisArrowMode: ${1|NONE,POSITIVE,BOTH|}',
             valueType: 'enum',
             values: ['NONE', 'POSITIVE', 'BOTH'],
@@ -1552,6 +1955,9 @@ export const AXIS_MANIFEST = {
         {
             name: 'actions',
             detail: 'Allow action expressions [default: auto]',
+            documentation:
+                '`auto` decides from the expression list, which cannot see a ticker - so the compiler switches actions on for any script with one.',
+            example: 'config { actions: true }\nn = 0\nticker n -> n + 1 @ playing',
             snippet: 'actions: ${1|true,false,auto|}',
             valueType: 'enum',
             values: ['true', 'false', 'auto'],
@@ -1560,6 +1966,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'reportPosition',
             detail: 'Position readout for screen readers [default: default]',
+            example: 'config { reportPosition: coordinates }\ny = sin(x)',
             snippet: 'reportPosition: ${1|default,coordinates,percents|}',
             valueType: 'enum',
             values: ['default', 'coordinates', 'percents'],
@@ -1568,6 +1975,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'brailleMode',
             detail: 'Braille code [default: none]',
+            example: 'config { brailleMode: nemeth }\ny = sin(x)',
             snippet: 'brailleMode: ${1|none,nemeth,ueb|}',
             valueType: 'enum',
             values: ['none', 'nemeth', 'ueb'],
@@ -1576,6 +1984,7 @@ export const AXIS_MANIFEST = {
         {
             name: 'graphDescription',
             detail: 'Screen-reader description of the whole graph [default: empty]',
+            example: 'config { graphDescription: "One period of a sine wave" }\ny = sin(x)',
             snippet: 'graphDescription: "${1:}"',
             valueType: 'string',
             appliesTo: ['config'],

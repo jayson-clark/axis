@@ -69,28 +69,45 @@ const FUNCTIONS = new Map(AXIS_MANIFEST.functions.map(fn => [fn.name, fn]));
 const CONSTANTS = new Map(AXIS_MANIFEST.constants.map(constant => [constant.name, constant]));
 const OPERATORS = new Map(AXIS_MANIFEST.operators.map(operator => [operator.name, operator]));
 
-/** A builtin's signature, as a completion's label would show it, and its doc line. */
+/** What the manifest says about a builtin or a property, beyond its name. */
+interface Documented {
+    detail: string;
+    documentation?: string;
+    example?: string;
+}
+
+export interface BuiltinDescription extends Documented {
+    signature: string;
+    category: string;
+}
+
+/** A builtin's signature, as a completion's label would show it, and its documentation. */
 export function builtinDescription(
     name: string,
     kind: BuiltinKind,
-): { signature: string; detail: string; category: string } | undefined {
-    if (kind === 'function') {
-        const fn = FUNCTIONS.get(name);
-        if (!fn) return undefined;
-        return {
-            signature: snippetSignature(fn.snippet ?? `${name}()`),
-            detail: fn.detail,
-            category: fn.category,
-        };
-    }
-    if (kind === 'constant') {
-        const constant = CONSTANTS.get(name);
-        return (
-            constant && { signature: name, detail: constant.detail, category: constant.category }
-        );
-    }
-    const operator = OPERATORS.get(name);
-    return operator && { signature: name, detail: operator.detail, category: operator.category };
+): BuiltinDescription | undefined {
+    const entry =
+        kind === 'function'
+            ? FUNCTIONS.get(name)
+            : kind === 'constant'
+              ? CONSTANTS.get(name)
+              : OPERATORS.get(name);
+    if (!entry) return undefined;
+    const signature =
+        kind === 'function' ? snippetSignature(FUNCTIONS.get(name)!.snippet ?? `${name}()`) : name;
+    return { ...entry, signature };
+}
+
+/**
+ * The `detail`, then any `documentation` and the `example`, in Markdown - the
+ * body of a hover and of a completion's documentation.
+ */
+export function manifestDocumentation(entry: Documented, ...between: string[]): string {
+    const parts = [entry.detail];
+    if (entry.documentation) parts.push(entry.documentation);
+    parts.push(...between);
+    if (entry.example) parts.push('```axis\n' + entry.example + '\n```');
+    return parts.join('\n\n');
 }
 
 /** `sin(${1:x})` as `sin(x)`: a snippet with its placeholders filled by their defaults. */
@@ -128,7 +145,7 @@ const PLACEMENT_TEXT: Readonly<Record<PropertyPlacement, string>> = {
 
 /** A property's documentation, in Markdown: what it does, what it takes, where it goes. */
 export function propertyDocumentation(property: PropertyDefinition): string {
-    const lines = [property.detail, '', `Takes ${VALUE_TYPE_TEXT[property.valueType]}.`];
+    const lines = [`Takes ${VALUE_TYPE_TEXT[property.valueType]}.`];
     if (property.valueType === 'enum' && property.values) {
         lines.push('', `Values: ${property.values.map(value => `\`${value}\``).join(', ')}.`);
     }
@@ -141,7 +158,7 @@ export function propertyDocumentation(property: PropertyDefinition): string {
     const where = placementsOf(property.name).map(placement => PLACEMENT_TEXT[placement]);
     lines.push('', `Written on ${listOf(where)}.`);
     if (property.repeatable) lines.push('', 'May be given more than once.');
-    return lines.join('\n');
+    return manifestDocumentation(property, lines.join('\n'));
 }
 
 function listOf(items: string[]): string {

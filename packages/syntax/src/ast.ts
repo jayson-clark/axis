@@ -440,8 +440,8 @@ export type DiagnosticSeverity = 'error' | 'warning' | 'info';
  * wording. `path` is set once a diagnostic is known to belong to a file other
  * than the one being compiled - an import's.
  */
-export interface Diagnostic {
-    code: string;
+export interface Diagnostic<Code extends string = string> {
+    code: Code;
     severity: DiagnosticSeverity;
     message: string;
     span: Span;

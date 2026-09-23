@@ -18,7 +18,7 @@ calculator itself is loaded at runtime from `desmos.com` with your API key.
 
 ```ts
 import {
-  DESMOS_DEMO_API_KEY,
+  AXIS_DESMOS_API_KEY,
   desmosScriptUrl,
   type Calculator,
   type DesmosNamespace,
@@ -26,7 +26,7 @@ import {
 } from '@axis-dsl/desmos';
 
 const script = document.createElement('script');
-script.src = desmosScriptUrl(DESMOS_DEMO_API_KEY);
+script.src = desmosScriptUrl(AXIS_DESMOS_API_KEY);
 script.onload = () => {
   const Desmos = (window as unknown as { Desmos: DesmosNamespace }).Desmos;
   const calculator: Calculator = Desmos.GraphingCalculator(element, { expressions: false });
@@ -46,9 +46,10 @@ belong to just one are marked: `sliderBounds` and `playing` are the
 API's, `slider`, `folderId` and `clickableInfo` are the state's. A property
 given to the wrong setter is dropped rather than reported.
 
-`DESMOS_DEMO_API_KEY` is Desmos' public prototyping key. It works with no setup,
-but it logs a console warning and is not licensed for distribution — get your
-own at [desmos.com/api](https://www.desmos.com/api) before you ship.
+`AXIS_DESMOS_API_KEY` is the Axis project's own key, which the extension, the
+playground, the docs site and the harness all default to. Anything you build and
+ship yourself should use your own - get one at
+[desmos.com/api](https://www.desmos.com/api).
 
 ## Not only types
 
@@ -77,6 +78,6 @@ name in its Content-Security-Policy.
 | `GraphState`, `MathBounds`, `ScreenshotOptions`, `HelperExpression`, …     | The rest of the runtime surface                                     |
 | `desmosScriptUrl(apiKey)`                                                  | The `calculator.js` URL for a key                                   |
 | `DESMOS_API_VERSION` / `DESMOS_SCRIPT_ORIGIN` / `DESMOS_DOCS_URL`          | The version these types are written against, and where it is served |
-| `DESMOS_DEMO_API_KEY`                                                      | Desmos' public prototyping key                                      |
+| `AXIS_DESMOS_API_KEY`                                                      | The Axis project's key, every Axis host's default                   |
 
 MIT

@@ -105,3 +105,4 @@ export {
     type ImportedSymbol,
     type ProgramOptions,
 } from './program';
+export { snippetSignature } from './describe';

@@ -5,3 +5,8 @@ pnpm-lock.yaml
 CHANGELOG.md
 # The VSCode build the extension's smoke test downloads.
 .vscode-test/
+# What the site's generate step writes, and Astro's own cache.
+docs/site/.astro/
+docs/site/src/content/docs/spec.md
+docs/site/src/content/docs/reference/
+docs/site/src/content/docs/examples/

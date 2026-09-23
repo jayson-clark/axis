@@ -1,0 +1,13 @@
+---
+title: Playground
+description: Write Axis in the browser and watch the graph it compiles to.
+template: splash
+tableOfContents: false
+editUrl: false
+---
+
+import Playground from '../../components/PlaygroundIsland.tsx';
+
+Type on the left and the graph on the right follows. Drag a point or a slider there and the script catches up. A script here can import `./lib/waves`, `./lib/decay` or `./lib/envelope`, and draw `./images/wave.png`, as the [examples](../examples/01-basics/) do.
+
+<Playground client:only="react" />

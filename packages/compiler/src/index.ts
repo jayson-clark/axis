@@ -3,6 +3,13 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 export { compileAxis } from './compile';
+export { COMPILER_DIAGNOSTICS, DECOMPILER_DIAGNOSTICS } from './diagnostics';
+export type {
+    AxisDiagnostic,
+    AxisDiagnosticCode,
+    CompilerDiagnosticCode,
+    DecompilerDiagnosticCode,
+} from './diagnostics';
 export type { CompilationResult, CompileOptions, StatementOrigin } from './compile';
 
 // The passes `compileAxis` is made of, for a tool that wants one of them on its

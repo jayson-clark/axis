@@ -12,6 +12,7 @@ export { lex, unescapeString, type LexResult } from './lexer';
 export { parse, parseExpression, type SyntaxTree } from './parser';
 export { lineIndex, type LineIndex, type Position } from './lines';
 export { debugTree } from './debug';
+export { SYNTAX_DIAGNOSTICS, type DiagnosticInfo, type SyntaxDiagnosticCode } from './diagnostics';
 export * from './manifest';
 export {
     AXIS_FILE_EXTENSION,

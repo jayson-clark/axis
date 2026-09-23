@@ -7,16 +7,17 @@ disagree, one of them is a bug.
 
 ## Packages
 
-| Package                      | What lives there                                                                                    |
-| ---------------------------- | --------------------------------------------------------------------------------------------------- |
-| `@axis-dsl/syntax`           | The lexer, the parser and its tree, the printer (`format`), the manifest, what a path names         |
-| `@axis-dsl/compiler`         | Checking, macros, styles, lowering and latex; the decompiler and write-back going the other way     |
-| `@axis-dsl/language-service` | Completions, hover, formatting, diagnostics, navigation, semantic tokens, and the Monaco wiring     |
-| `@axis-dsl/language-server`  | The language service over LSP, with imports and images read off disk                                |
-| `@axis-dsl/viewer`           | React components - the graph and the JSON inspector - and, under `./protocol`, the messages to them |
-| `@axis-dsl/desmos`           | The Desmos calculator API, typed by hand                                                            |
-| `@axis-dsl/harness`          | Runs a script against a real headless Desmos calculator                                             |
-| `axis-dsl` (extension)       | The VSCode extension: an LSP client for the server, and the preview                                 |
+| Package                         | What lives there                                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `@axis-dsl/syntax`              | The lexer, the parser and its tree, the printer (`format`), the manifest, what a path names         |
+| `@axis-dsl/compiler`            | Checking, macros, styles, lowering and latex; the decompiler and write-back going the other way     |
+| `@axis-dsl/language-service`    | Completions, hover, formatting, diagnostics, navigation, semantic tokens, and the Monaco wiring     |
+| `@axis-dsl/language-server`     | The language service over LSP, with imports and images read off disk                                |
+| `@axis-dsl/viewer`              | React components - the graph and the JSON inspector - and, under `./protocol`, the messages to them |
+| `@axis-dsl/desmos`              | The Desmos calculator API, typed by hand                                                            |
+| `@axis-dsl/harness`             | Runs a script against a real headless Desmos calculator                                             |
+| `axis-dsl` (extension)          | The VSCode extension: an LSP client for the server, and the preview                                 |
+| `@axis-dsl/site` (`docs/site/`) | The docs site: Astro Starlight, its reference generated from the manifest and the catalogues        |
 
 The layering is syntax ← compiler ← language-service ← language-server, each
 using only what is to its left - so something the compiler and the editor both
@@ -47,6 +48,8 @@ pnpm typecheck      # everything, tests included
 pnpm format         # prettier
 pnpm format:check   # prettier, without writing
 pnpm test:browser   # download the Chromium the harness needs (once)
+pnpm site:dev       # the docs site, live, at localhost:4321/axis/
+pnpm site:build     # the docs site, built into docs/site/dist
 pnpm --filter axis-dsl test:vscode   # the extension, in a real VSCode it downloads
 ```
 
@@ -142,6 +145,7 @@ result goes in `packages/harness/test`:
 | `macros.test.mts`      | what a `macro` expands to, evaluated rather than just compiled                 |
 | `decompile.test.mts`   | decompiling the graph state a real calculator hands back                       |
 | `writeback.test.mts`   | changes made to a live graph, written back into the script                     |
+| `docs.test.mts`        | every manifest example and every `axis` block in the docs, drawn cleanly       |
 | `harness.test.mts`     | the harness itself                                                             |
 
 **Adding a name to the manifest means adding a test.** The first three suites
@@ -152,6 +156,28 @@ the list of names, so a property newly allowed on a column or an image needs a
 case there even when it is already tested on an expression - the same property
 reaches a different part of the graph in each place, and any one of them can
 lose it. That is deliberate, and the fix is a test, not an exemption.
+
+**And an example.** Every function, operator and property in the manifest has
+an `example` - the type will not compile without one - and may have
+`documentation` beyond its `detail`. Hover shows both, and the docs site's
+reference is generated from them and nothing else. An example is a whole
+script, read as though it sat in `examples/scripts/`; the compiler's
+`manifest.test.mts` compiles each one clean and checks it uses the name it
+documents, and the harness' `docs.test.mts` draws it on a calculator.
+
+**A code block in the docs is a claim about the language.** Every ` ```axis `
+block written by hand - on the site, in the spec, in `KEYWORD_INFO` - is
+gathered by `docs/site/scripts/blocks.mts`, compiled clean by the compiler's
+`docs.test.mts` and drawn by the harness'. A block that shows a mistake says
+so, ` ```axis error="unknown-function" `, and must raise exactly that. A
+fragment that is not a whole script gets a plain fence.
+
+**A new diagnostic code means a catalogue entry.** `SYNTAX_DIAGNOSTICS` in
+syntax and `COMPILER_DIAGNOSTICS`/`DECOMPILER_DIAGNOSTICS` in the compiler
+declare every code, and every `report` is typed to take only those - so a new
+code will not compile until it has a summary and an example that raises it and
+nothing else. The same summary goes in the spec's §8 or §11 table, word for
+word: the compiler's `diagnostics.test.mts` compares them.
 
 **Changing how something compiles means changing how it decompiles.** The
 decompiler is the compiler's inverse and is tested as one: `decompile.test.mts`
