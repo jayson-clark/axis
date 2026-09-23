@@ -10,6 +10,8 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+## 2.2.0 - 2026-09-23
+
 ### Added
 
 - `theta-equation`: the checker reports `theta = …`, which Desmos refuses to
