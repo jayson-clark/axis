@@ -9,7 +9,7 @@ data = [2, 4, 4, 4, 5, 5, 7, 9] @ hidden
 folder "Summaries" {
     "Each of these reduces the list to a single number."
     n = length(data) @ hidden
-    sum = total(data) @ hidden
+    tot = total(data) @ hidden
     avg = mean(data) @ hidden
     mid = median(data) @ hidden
     low = min(data) @ hidden

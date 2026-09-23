@@ -7,7 +7,8 @@
 // of its children replaced. Written once here, so that a node kind added to
 // `ast.ts` is taught to all three in one place - and so that none of them has
 // its own idea of which parts of a node are expressions. A `Call`'s callee, a
-// `Member`'s name and a binding's name are identifiers, but they are not
+// `Member`'s name, a binding's name and the variable of a `sum` or a `d/dx`
+// are identifiers, but they are not
 // references to anything a macro could stand for, and every pass agrees on that
 // because it is decided here.
 
@@ -46,7 +47,12 @@ export function childrenOf(node: Expression): Expression[] {
         case 'Comparison':
             return node.operands;
         case 'Call':
+        case 'Prime':
             return node.arguments;
+        case 'BigOperator':
+            return [node.from, node.to, node.body];
+        case 'Derivative':
+            return [node.body];
         case 'Index':
             return [node.target, node.index];
         case 'Member':
@@ -128,9 +134,22 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
             const operands = list(node.operands);
             return operands === node.operands ? node : { ...node, operands };
         }
-        case 'Call': {
+        case 'Call':
+        case 'Prime': {
             const args = list(node.arguments);
             return args === node.arguments ? node : { ...node, arguments: args };
+        }
+        case 'BigOperator': {
+            const from = map(node.from);
+            const to = map(node.to);
+            const body = map(node.body);
+            return from === node.from && to === node.to && body === node.body
+                ? node
+                : { ...node, from, to, body };
+        }
+        case 'Derivative': {
+            const body = map(node.body);
+            return body === node.body ? node : { ...node, body };
         }
         case 'Index': {
             const target = map(node.target);

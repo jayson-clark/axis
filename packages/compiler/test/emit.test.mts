@@ -16,6 +16,8 @@ import {
     act,
     add,
     call,
+    deriv,
+    integral,
     cmp,
     color,
     div,
@@ -34,11 +36,14 @@ import {
     piecewise,
     pos,
     pow,
+    prime,
+    prod,
     range,
     seq,
     show,
     str,
     sub,
+    sum,
     tuple,
     withB,
 } from './support/ast.mts';
@@ -411,6 +416,44 @@ describe('with and for', () => {
         ],
         [withB('a', ['a', cmp('b', '=', 1)]), 'a\\operatorname{with}a=\\left(b=1\\right)'],
         [withB('a', ['theta', 1]), 'a\\operatorname{with}\\theta=1'],
+    ]);
+});
+
+describe('calculus', () => {
+    cases([
+        [sum('n', 1, 10, pow('n', 2)), '\\sum_{n=1}^{10}n^{2}'],
+        [prod('k', 1, 'n', 'k'), '\\prod_{k=1}^{n}k'],
+        [sum('n', sub('a', 1), add('b', 1), 'n'), '\\sum_{n=a-1}^{b+1}n'],
+        [sum('theta', 1, 3, 'theta'), '\\sum_{\\theta=1}^{3}\\theta'],
+        // Its body is a product at most, as Desmos reads one.
+        [sum('n', 1, 3, add('n', 1)), '\\sum_{n=1}^{3}\\left(n+1\\right)'],
+        [add(sum('n', 1, 3, 'n'), 1), '\\sum_{n=1}^{3}n+1'],
+        // And it takes a factor after it, so one that is not its own is kept out.
+        [mul(sum('n', 1, 3, 'n'), 2), '\\left(\\sum_{n=1}^{3}n\\right)\\cdot2'],
+        [imp(sum('n', 1, 3, 'n'), 'x'), '\\left(\\sum_{n=1}^{3}n\\right)x'],
+        [imp(imp(2, sum('n', 1, 3, 'n')), 'x'), '\\left(2\\left(\\sum_{n=1}^{3}n\\right)\\right)x'],
+        [mul(neg(sum('n', 1, 3, 'n')), 2), '\\left(-\\sum_{n=1}^{3}n\\right)\\cdot2'],
+        [pow(sum('n', 1, 3, 'n'), 2), '\\left(\\sum_{n=1}^{3}n\\right)^{2}'],
+        [mul(2, sum('n', 1, 3, 'n')), '2\\cdot\\sum_{n=1}^{3}n'],
+        // An integral names its variable in its differential.
+        [integral('t', 0, 1, pow('t', 2)), '\\int_{0}^{1}t^{2}dt'],
+        [integral('t', 0, 1, add('t', 1)), '\\int_{0}^{1}\\left(t+1\\right)dt'],
+        [integral('t', 0, 1, 'pi'), '\\int_{0}^{1}\\pi dt'],
+        [integral('amp', 0, 1, 'amp'), '\\int_{0}^{1}a_{mp}da_{mp}'],
+        [integral('theta', 0, 1, 'theta'), '\\int_{0}^{1}\\theta d\\theta'],
+        [pow(integral('t', 0, 1, 't'), 2), '\\left(\\int_{0}^{1}tdt\\right)^{2}'],
+        [imp(integral('t', 0, 1, 't'), 'x'), '\\left(\\int_{0}^{1}tdt\\right)x'],
+        [imp(2, integral('t', 0, 1, 't')), '2\\int_{0}^{1}tdt'],
+        [deriv('x', pow('x', 2)), '\\frac{d}{dx}x^{2}'],
+        [deriv('x', add('x', 1)), '\\frac{d}{dx}\\left(x+1\\right)'],
+        [deriv('x_1', 'x_1'), '\\frac{d}{dx_{1}}x_{1}'],
+        [mul(deriv('x', 'x'), 2), '\\left(\\frac{d}{dx}x\\right)\\cdot2'],
+        [imp(2, deriv('x', 'x')), '2\\left(\\frac{d}{dx}x\\right)'],
+        [prime('f', 1, 'x'), "f'\\left(x\\right)"],
+        [prime('f', 2, 'x'), "f''\\left(x\\right)"],
+        [prime('sin', 1, 'x'), "\\sin'\\left(x\\right)"],
+        [call('log', 'x', 2), '\\log_{2}\\left(x\\right)'],
+        [call('log', 'x', add('b', 1)), '\\log_{b+1}\\left(x\\right)'],
     ]);
 });
 

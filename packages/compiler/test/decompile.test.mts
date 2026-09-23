@@ -692,13 +692,13 @@ describe('what Axis cannot write', () => {
                 includeFunctionParametersInRandomSeed: true,
                 ...items(
                     { type: 'expression', id: 'a', latex: 'y=x' },
-                    { type: 'expression', id: 'b', latex: '\\sum_{n=1}^{10}n' },
+                    { type: 'expression', id: 'b', latex: 'y_{1}\\sim mx_{1}+b' },
                     { type: 'expression', id: 'c', latex: 'y=2x' },
                 ),
             },
         });
 
-        assert.equal(source, 'y = x\n// unsupported: \\sum_{n=1}^{10}n\ny = 2x\n');
+        assert.equal(source, 'y = x\n// unsupported: y_{1}\\sim mx_{1}+b\ny = 2x\n');
         assert.equal(diagnostics.length, 1);
         const [diagnostic] = diagnostics;
         assert.equal(diagnostic.code, 'unsupported-latex');
@@ -706,7 +706,7 @@ describe('what Axis cannot write', () => {
         assert.match(diagnostic.message, /Expression b/);
         assert.equal(
             source.slice(diagnostic.span.start, diagnostic.span.end),
-            '// unsupported: \\sum_{n=1}^{10}n',
+            '// unsupported: y_{1}\\sim mx_{1}+b',
         );
         assertWellFormed(source);
         assert.equal(listOf(source).length, 2);
@@ -890,7 +890,7 @@ describe('decompileExpression, decompileSettings and decompileTicker', () => {
         const { statement, diagnostics } = decompileExpression({
             type: 'expression',
             id: 'e',
-            latex: '\\prod_{n=1}^{3}n',
+            latex: 'y_{1}\\sim mx_{1}+b',
         });
         assert.equal(statement, null);
         assert.deepEqual(

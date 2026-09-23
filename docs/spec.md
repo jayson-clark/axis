@@ -62,7 +62,7 @@ read becomes an `error` token and a diagnostic.
 | `string`     | `"a \"b\" c"`                                                               | Escapes: `\"`, `\\`, `\n`. Unterminated at end of line is an error.                  |
 | `color`      | `#c74440`, `#fff`                                                           | `#` followed by exactly 3 or 6 hex digits. Any other `#` is an error.                |
 | keywords     | `folder table config import image ticker style macro as for with step soft` | Reserved: never identifiers. `min`/`max` are contextual (§4.4), not keywords.        |
-| punctuation  | `( ) [ ] { } , ; : . .. ... = < <= > >= + - * / ^ ! \| -> @ @{`             | `@{` is one token only with no space between.                                        |
+| punctuation  | `( ) [ ] { } , ; : . .. ... = < <= > >= + - * / ^ ! \| -> @ @{ '`           | `@{` is one token only with no space between. `'` is a prime, one to a token.        |
 | `newline`    |                                                                             |                                                                                      |
 | `error`      |                                                                             | Anything else.                                                                       |
 
@@ -347,18 +347,18 @@ ignores `dragMode` on one.
 
 Loosest first. Everything is left-associative unless noted.
 
-| Level | Forms                                                                       | Node                                          |
-| ----- | --------------------------------------------------------------------------- | --------------------------------------------- |
-| 1     | `body with a = 1, b = 2`, `body for i = L, j = M`                           | `With`, `For`                                 |
-| 2     | action run `a -> 1, b -> 2` (statement values and `action` properties only) | `Sequence`                                    |
-| 3     | `target -> value`                                                           | `Action`                                      |
-| 4     | `= < <= > >=`, chainable: `1 < x < 2`                                       | `Comparison`                                  |
-| 5     | `+ -`                                                                       | `Binary`                                      |
-| 6     | `* /` **and implicit multiplication**                                       | `Binary` (`op: 'implicit'` for juxtaposition) |
-| 7     | prefix `-`, `+`                                                             | `Unary`                                       |
-| 8     | `^`, **right**-associative; the exponent may start with `-`                 | `Binary`                                      |
-| 9     | postfix: call `f(…)`, index `L[…]`, member `.x`/`.count`, `!`               | `Call`, `Index`, `Member`, `Factorial`        |
-| 10    | atoms                                                                       | see §5.2                                      |
+| Level | Forms                                                                       | Node                                            |
+| ----- | --------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1     | `body with a = 1, b = 2`, `body for i = L, j = M`                           | `With`, `For`                                   |
+| 2     | action run `a -> 1, b -> 2` (statement values and `action` properties only) | `Sequence`                                      |
+| 3     | `target -> value`                                                           | `Action`                                        |
+| 4     | `= < <= > >=`, chainable: `1 < x < 2`                                       | `Comparison`                                    |
+| 5     | `+ -`                                                                       | `Binary`                                        |
+| 6     | `* /` **and implicit multiplication**                                       | `Binary` (`op: 'implicit'` for juxtaposition)   |
+| 7     | prefix `-`, `+`; `d/dx`, whose operand is a whole product (§5.9)            | `Unary`, `Derivative`                           |
+| 8     | `^`, **right**-associative; the exponent may start with `-`                 | `Binary`                                        |
+| 9     | postfix: call `f(…)`, prime `f'(…)`, index `L[…]`, member `.x`, `!`         | `Call`, `Prime`, `Index`, `Member`, `Factorial` |
+| 10    | atoms                                                                       | see §5.2                                        |
 
 Consequences, all deliberate:
 
@@ -408,6 +408,7 @@ That is the only place `=` binds more loosely than `->` and `,`. A chain
 | `[f(i) for i = [1...10]]`                             | `List` holding a `For`                       |
 | `{c1: v1, c2: v2, v3}`, `{x > 0}`                     | `Piecewise`                                  |
 | `\|e\|`                                               | `Abs`                                        |
+| `sum(n = 1..10, e)`, `prod(…)`, `int(t = 0..1, e)`    | `BigOperator` (§5.9)                         |
 
 Desmos' own spelling of a range with commas round the dots, `[1, ..., 10]` or
 `[1, 3, ..., 9]`, is read as the same `ListRange` as `[1...10]` and
@@ -476,6 +477,48 @@ is a restriction (`{x > 0}`). A trailing entry without `: value` is the
 is a bare condition, so `{x > 0, x < 2}` is two restrictions. A piecewise
 immediately after an expression is an
 implicit product and reads as a domain restriction: `y = x^2 {x > 0}`.
+
+### 5.9 Calculus
+
+Sums, products, integrals, derivatives and logarithms to a base:
+
+```axis
+f(x) = x ^ 3
+a = sum(n = 1..10, n ^ 2)
+b = prod(k = 1..5, k)
+c = int(t = 0..1, f(t))
+y = d/dx f(x)
+y = f'(x) + f''(x)
+z = log(8, 2)
+```
+
+`sum`, `prod` and `int` are built-in names, followed always by
+`(name = from..to, body)`: the variable, the range it runs over - both ends
+included, and each end any expression up to a sum - and then the body. A sum or
+a product runs over the integers from `from` to `to`; an integral is a definite
+one, `from` to `to`. The variable is bound in the body and nowhere else, not in
+either bound. It shadows a variable the file defines, but it cannot be a name
+already bound where it stands - a parameter, a `with`/`for` binding, or the
+variable of a sum around it - which is `rebound-variable`. Anything but this
+shape after `sum(` is `expected-bounds`. The form is bracketed, so it is an
+atom: `sum(n = 1..3, n) x` is the sum times `x`. The latex is `\sum_{n=1}^{10}`,
+`\prod_{n=1}^{10}` and `\int_{0}^{1}…dt`.
+
+`d/dx body` is the derivative of `body` with respect to `x`, and any name can
+follow the `d`: `d/dt`, `d/dtheta`, `d/dx_1`. It stands at level 7 like a sign,
+and its operand is the whole product after it, as Desmos reads one:
+`d/dx x^2 + 1` is the derivative, then plus 1, and `d/dx 3x * x` is the
+derivative of `3x * x`. It is a derivative only where an operand follows
+without a sign in between. Otherwise it is the division it looks like, so
+`d/dx` on its own is `d` over `dx`. `\frac{d}{dx}` in latex.
+
+`f'(x)` is the derivative of the function `f`, and `f''(x)` its second
+derivative. A prime is written on a call to a function, a built-in or one the
+file defines: `sin'(x)` is `cos(x)`, and a prime on anything else is
+`unknown-function`.
+
+`log(x, b)` is the logarithm of `x` to the base `b`, `\log_{b}(x)`. With one
+argument `log` is base 10.
 
 ## 6. Macros
 
@@ -559,6 +602,7 @@ rules trip over it.
 | `expected-string`          | an import path, `as` title or image source missing                     |
 | `expected-equals`          | a macro without its `=`                                                |
 | `expected-binding`         | `with` or `for` not followed by `name = value`                         |
+| `expected-bounds`          | `sum`, `prod` or `int` not opened with `name = from..to`               |
 | `expected-property`        | metadata or a block entry that does not start with a property name     |
 | `expected-colon`           | a property name followed by something other than `:` or the next entry |
 | `expected-value`           | `key:` with nothing after it                                           |
@@ -596,6 +640,7 @@ left off, and a statement that cannot be written at all is left out.
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |
+| `rebound-variable`      | a `sum`, `prod` or `int` variable already bound where it stands                  |
 | `unexpected-string`     | a string where a value belongs                                                   |
 | `unknown-property`      | a property no placement has                                                      |
 | `misplaced-property`    | a property this placement does not take, directly or through a style             |

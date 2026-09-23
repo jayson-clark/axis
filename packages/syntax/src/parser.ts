@@ -12,9 +12,9 @@
 //   parseComparison   = < <= > >=, chained             (4)
 //   parseAdditive     + -                              (5)
 //   parseMultiplicative  * / and juxtaposition         (6)
-//   parseUnary        prefix - +                       (7)
+//   parseUnary        prefix - +, d/dx                 (7)
 //   parsePower        ^, right-associative             (8)
-//   parsePostfix      f(…) L[…] P.x n!                 (9)
+//   parsePostfix      f(…) f'(…) L[…] P.x n!           (9)
 //   parseAtom                                          (10)
 //
 // The parser is purely syntactic. Whether a property exists, whether a folder
@@ -88,6 +88,16 @@ const MATCHING_OPENERS: Readonly<Record<string, readonly string[]>> = {
     ')': ['('],
     ']': ['['],
     '}': ['{', '@{'],
+};
+
+/** The words that open a `BigOperator` when a bracket follows them. */
+const BIG_OPERATORS: ReadonlySet<string> = new Set(['sum', 'prod', 'int']);
+
+/** What each one does to its body, for a message. */
+const VERBS: Record<ast.BigOperator['operator'], string> = {
+    sum: 'sum',
+    prod: 'multiply',
+    int: 'integrate',
 };
 
 class Parser {
@@ -938,8 +948,26 @@ class Parser {
         }
     }
 
-    /** Level 7: prefix `-` and `+`, looser than `^` so that `-x^2` is `-(x^2)`. */
+    /**
+     * Level 7: prefix `-` and `+`, looser than `^` so that `-x^2` is `-(x^2)` -
+     * and `d/dx`, which takes the whole product after it, as Desmos' does.
+     */
     private parseUnary(): ast.Expression {
+        if (this.atDerivative()) {
+            const start = this.startOf();
+            this.next();
+            this.next();
+            const denominator = this.next();
+            // `dx` names `x`: the variable is spanned over the name alone, so
+            // hover and rename land on it rather than on the `d`.
+            const variable: ast.Identifier = {
+                kind: 'Identifier',
+                name: denominator.text.slice(1),
+                span: { start: denominator.span.start + 1, end: denominator.span.end },
+            };
+            const body = this.parseMultiplicative();
+            return { kind: 'Derivative', variable, body, span: this.span(start) };
+        }
         if (this.at('-') || this.at('+')) {
             const start = this.startOf();
             const operator = this.next().text as '-' | '+';
@@ -947,6 +975,23 @@ class Parser {
             return { kind: 'Unary', operator, operand, span: this.span(start) };
         }
         return this.parsePower();
+    }
+
+    /**
+     * Whether `d/dx` starts here: `d`, `/`, a name that is `d` and another
+     * name, and an operand after it. Without the operand it is the division it
+     * always was, so `d/dx` on its own still divides two variables.
+     */
+    private atDerivative(): boolean {
+        const [d, slash, denominator, operand] = [0, 1, 2, 3].map(n => this.peekAt(n));
+        return (
+            d.kind === 'identifier' &&
+            d.text === 'd' &&
+            this.at('/', slash) &&
+            denominator.kind === 'identifier' &&
+            /^d[A-Za-z]/.test(denominator.text) &&
+            this.canStartImplicitOperand(operand)
+        );
     }
 
     /** Level 8: `^`, right-associative, with an exponent that may be negated: `2^-1`. */
@@ -979,7 +1024,35 @@ class Parser {
         let expression = this.parseAtom();
         for (;;) {
             const start = expression.span.start;
-            if (this.at('(') && expression.kind === 'Identifier') {
+            if (
+                this.at('(') &&
+                expression.kind === 'Identifier' &&
+                BIG_OPERATORS.has(expression.name)
+            ) {
+                expression = this.parseBigOperator(expression);
+            } else if (this.at("'") && expression.kind === 'Identifier') {
+                let order = 0;
+                while (this.at("'")) {
+                    this.next();
+                    order++;
+                }
+                if (!this.at('(')) {
+                    this.error(
+                        'unexpected-token',
+                        `A prime is written on a call: \`${expression.name}${"'".repeat(order)}(x)\``,
+                        this.missingSpan(),
+                    );
+                    return expression;
+                }
+                const args = this.parseBracket(')', () => this.parseElements(')')).value;
+                expression = {
+                    kind: 'Prime',
+                    callee: expression,
+                    order,
+                    arguments: args,
+                    span: this.span(start),
+                };
+            } else if (this.at('(') && expression.kind === 'Identifier') {
                 const args = this.parseBracket(')', () => this.parseElements(')')).value;
                 expression = {
                     kind: 'Call',
@@ -1022,6 +1095,58 @@ class Parser {
                 return expression;
             }
         }
+    }
+
+    /**
+     * `sum(n = 1..10, body)`, and `prod` and `int` alike. Either bound is any
+     * expression up to a sum; the body is anything an argument can be. A shape
+     * that is not this one is skipped to the closing bracket, so one mistake
+     * is one diagnostic.
+     */
+    private parseBigOperator(name: ast.Identifier): ast.Expression {
+        const open = this.pos;
+        const start = name.span.start;
+        const operator = name.name as ast.BigOperator['operator'];
+        const shape = `\`${operator}(n = from..to, body)\``;
+
+        const inside = this.parseBracket(')', (): ast.Expression | null => {
+            const fail = (): null => {
+                this.error(
+                    'expected-bounds',
+                    `\`${operator}\` is written ${shape}`,
+                    this.missingSpan(),
+                );
+                if (this.closers[open] >= 0) this.skipTo(this.closers[open]);
+                return null;
+            };
+
+            if (this.peek().kind !== 'identifier' || !this.at('=', this.peekAt(1))) return fail();
+            const variable = this.parseIdentifier();
+            this.next();
+            const from = this.parseOperand(() => this.parseAdditive());
+            if (!this.at('..')) return fail();
+            this.next();
+            const to = this.parseOperand(() => this.parseAdditive());
+            if (!this.at(',')) {
+                return this.errorExpression(`Expected \`,\` and what to ${VERBS[operator]}`);
+            }
+            this.next();
+            const body = this.parseTopOrError(false);
+            return {
+                kind: 'BigOperator',
+                operator,
+                name,
+                variable,
+                from,
+                to,
+                body,
+                span: this.span(start),
+            };
+        }).value;
+
+        return inside?.kind === 'BigOperator'
+            ? { ...inside, span: this.span(start) }
+            : { kind: 'ErrorExpression', span: this.span(start) };
     }
 
     /** Level 10. */

@@ -288,8 +288,10 @@ function levelOf(expression: ast.Expression): number {
                     return 6;
             }
         case 'Unary':
+        case 'Derivative':
             return 7;
         case 'Call':
+        case 'Prime':
         case 'Index':
         case 'Member':
         case 'Factorial':
@@ -322,6 +324,23 @@ function startsFactor(token: Token | undefined, inAbs: boolean): boolean {
     if (token.kind === 'number' || token.kind === 'identifier') return true;
     if (token.kind !== 'punctuation') return false;
     return token.text === '(' || token.text === '{' || (token.text === '|' && !inAbs);
+}
+
+/**
+ * Whether a node's last operand is a `d/dx`, which takes every factor after it:
+ * `(d/dx x) * 2` loses its meaning without the brackets.
+ */
+function opensRight(expression: ast.Expression): boolean {
+    switch (expression.kind) {
+        case 'Derivative':
+            return true;
+        case 'Unary':
+            return opensRight(expression.operand);
+        case 'Binary':
+            return expression.operator !== '^' && opensRight(expression.right);
+        default:
+            return false;
+    }
 }
 
 /** `2`, `-2`: a number written straight against what it multiplies, `2x`. */
@@ -553,6 +572,51 @@ class Printer {
                     ),
                 ];
             }
+            case 'Prime': {
+                const opener = this.find('(', expression.callee.span.end);
+                return [
+                    expression.callee.name,
+                    "'".repeat(expression.order),
+                    group(
+                        '(',
+                        this.elements(expression.arguments),
+                        ')',
+                        this.authorBroke(opener, expression.arguments[0]),
+                    ),
+                ];
+            }
+            case 'BigOperator': {
+                const opener = this.find('(', expression.name.span.end);
+                const to = this.expression(expression.to, 5, ELEMENT);
+                return [
+                    expression.operator,
+                    group(
+                        '(',
+                        [
+                            [
+                                expression.variable.name,
+                                ' = ',
+                                this.expression(expression.from, 5, ELEMENT),
+                                // `1.. .5`, not `1...5`, which is a list range.
+                                flat(to).startsWith('.') ? '.. ' : '..',
+                                to,
+                            ],
+                            this.expression(expression.body, 1, ELEMENT),
+                        ],
+                        ')',
+                        this.authorBroke(opener, expression.variable),
+                    ),
+                ];
+            }
+            case 'Derivative': {
+                // The body must open with something that multiplies, or `d/dx`
+                // reads as the division it would otherwise be: `d/dx (-x)`.
+                let body = this.expression(expression.body, 6, inner);
+                if (!startsFactor(edgeTokens(flat(body)).first, context.inAbs)) {
+                    body = this.parenthesized(expression.body);
+                }
+                return [`d/d${expression.variable.name} `, body];
+            }
             case 'Index':
                 return [
                     this.expression(expression.target, 9, context),
@@ -606,7 +670,7 @@ class Printer {
             case '*':
             case '/':
                 return [
-                    this.expression(left, 6, context),
+                    opensRight(left) ? this.parenthesized(left) : this.expression(left, 6, context),
                     ` ${operator} `,
                     this.expression(right, 7, inner),
                 ];
@@ -640,7 +704,9 @@ class Printer {
      * it multiplies, and anything else is spaced.
      */
     private juxtaposition(expression: ast.Binary, context: Context, inner: Context): Doc {
-        let left = this.expression(expression.left, 6, context);
+        let left = opensRight(expression.left)
+            ? this.parenthesized(expression.left)
+            : this.expression(expression.left, 6, context);
         let right = this.expression(expression.right, 8, inner);
 
         let { first } = edgeTokens(flat(right));

@@ -37,6 +37,7 @@ import {
     type Identifier,
     type Metadata,
     placementsOf,
+    type Prime,
     type Property,
     type PropertyDefinition,
     type PropertyPlacement,
@@ -337,6 +338,39 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 }
                 return;
 
+            case 'Prime':
+                checkCall(node, scope);
+                for (const arg of node.arguments) {
+                    checkExpression(arg, scope);
+                }
+                return;
+
+            case 'BigOperator': {
+                // The bounds are read outside the variable, as Desmos reads
+                // them, and the body inside it. A name already bound here - a
+                // parameter, a binding, the variable of a sum around this one -
+                // Desmos will not take as the variable, though a variable the
+                // file defines it shadows without a word.
+                checkSubscripts(node.variable);
+                if (scope.bound.has(node.variable.name)) {
+                    report(
+                        'rebound-variable',
+                        `\`${node.variable.name}\` is already bound here, so it cannot also be the variable of this \`${node.operator}\`; choose another name.`,
+                        node.variable.span,
+                    );
+                }
+                checkExpression(node.from, scope);
+                checkExpression(node.to, scope);
+                const bound = new Set(scope.bound).add(node.variable.name);
+                checkExpression(node.body, { ...scope, bound });
+                return;
+            }
+
+            case 'Derivative':
+                checkSubscripts(node.variable);
+                checkExpression(node.body, scope);
+                return;
+
             case 'With':
             case 'For': {
                 // A binding's value is read outside the bindings, and the body
@@ -402,9 +436,22 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
      * because Desmos would read it as a product in silence and nobody who
      * wrote `sine(x)` meant that.
      */
-    const checkCall = (node: Call, scope: Scope): void => {
+    const checkCall = (node: Call | Prime, scope: Scope): void => {
         const name = node.callee.name;
         checkSubscripts(node.callee);
+
+        // `f'(x)` differentiates a function, so there has to be one: never a
+        // product, and never a macro, which is gone by the time Desmos looks.
+        if (node.kind === 'Prime') {
+            if (!AXIS_FUNCTION_NAME_SET.has(name) && !symbols.functions.has(name)) {
+                report(
+                    'unknown-function',
+                    `\`${name}${"'".repeat(node.order)}\` differentiates a function, and \`${name}\` is not one.`,
+                    node.callee.span,
+                );
+            }
+            return;
+        }
 
         if (scope.bound.has(name)) {
             if (node.arguments.length !== 1) {

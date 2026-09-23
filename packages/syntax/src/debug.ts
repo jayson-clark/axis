@@ -141,6 +141,18 @@ export function debugTree(node: Node | null): string {
             );
         case 'Call':
             return list('call', node.callee.name, ...all(node.arguments));
+        case 'Prime':
+            return list("'".repeat(node.order), node.callee.name, ...all(node.arguments));
+        case 'BigOperator':
+            return list(
+                node.operator,
+                node.variable.name,
+                debugTree(node.from),
+                debugTree(node.to),
+                debugTree(node.body),
+            );
+        case 'Derivative':
+            return list(`d/d${node.variable.name}`, debugTree(node.body));
         case 'Index':
             return list('index', debugTree(node.target), debugTree(node.index));
         case 'Member':

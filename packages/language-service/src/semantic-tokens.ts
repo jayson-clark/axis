@@ -80,7 +80,44 @@ export function getSemanticTokenList(
 
     const result: SemanticToken[] = [];
     let previous: Token | undefined;
+    const significant = tree.tokens.filter(
+        token => token.kind !== 'whitespace' && token.kind !== 'comment',
+    );
     for (const token of tree.tokens) {
+        // `d/dx`: neither `d` is a name, and the `x` of `dx` is - the tree
+        // records it one character in, so that is how a derivative is known.
+        // Both `d`s are coloured as operators and the name as what it is.
+        if (token.kind === 'identifier' && token.text.length > 1 && token.text[0] === 'd') {
+            const variable = byStart.get(token.span.start + 1);
+            if (variable) {
+                const d = { start: token.span.start, end: token.span.start + 1 };
+                const name = { start: d.end, end: token.span.end };
+                result.push({ range: spanToRange(tree, d), type: 'operator', modifiers: [] });
+                result.push({
+                    range: spanToRange(tree, name),
+                    ...classifyOccurrence(variable, imported),
+                });
+                previous = token;
+                continue;
+            }
+        }
+        if (token.kind === 'identifier' && token.text === 'd' && !byStart.has(token.span.start)) {
+            const at = significant.indexOf(token);
+            const denominator = significant[at + 2];
+            if (
+                significant[at + 1]?.text === '/' &&
+                denominator?.kind === 'identifier' &&
+                byStart.has(denominator.span.start + 1)
+            ) {
+                result.push({
+                    range: spanToRange(tree, token.span),
+                    type: 'operator',
+                    modifiers: [],
+                });
+                previous = token;
+                continue;
+            }
+        }
         const classified = classify(token, previous, byStart, imported);
         if (classified && token.span.end > token.span.start) {
             result.push({ range: spanToRange(tree, token.span), ...classified });
@@ -135,6 +172,7 @@ const OPERATORS: ReadonlySet<string> = new Set([
     '->',
     '..',
     '...',
+    "'",
     '@',
     '@{',
 ]);

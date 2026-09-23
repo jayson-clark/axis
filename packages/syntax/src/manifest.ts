@@ -364,11 +364,42 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'log',
-            detail: 'Logarithm base 10',
-            example: 'y = log(x)',
+            detail: 'Logarithm base 10, or to any base with a second argument',
+            documentation: '`log(x, b)` is the logarithm of `x` to the base `b`: `log(8, 2)` is 3.',
+            example: 'y = log(x)\nz = log(8, 2)',
             snippet: 'log(${1:x})',
             category: 'math',
             latex: '\\log',
+        },
+        {
+            name: 'sum',
+            detail: 'Sum of a body over a range: `sum(n = 1..10, n^2)`',
+            documentation:
+                'The variable is named once, with the range it runs over - both ends included, and either end any expression - and is bound in the body alone.',
+            example: 'a = sum(n = 1..10, n^2)\ny = sum(k = 0..5, x^k / k!)',
+            snippet: 'sum(${1:n} = ${2:1}..${3:10}, ${4:n})',
+            category: 'math',
+            latex: '\\sum',
+        },
+        {
+            name: 'prod',
+            detail: 'Product of a body over a range: `prod(n = 1..5, n)`',
+            documentation:
+                'The variable is named once, with the range it runs over - both ends included, and either end any expression - and is bound in the body alone.',
+            example: 'a = prod(n = 1..5, n)\ny = prod(k = 1..3, x - k)',
+            snippet: 'prod(${1:n} = ${2:1}..${3:10}, ${4:n})',
+            category: 'math',
+            latex: '\\prod',
+        },
+        {
+            name: 'int',
+            detail: 'Definite integral of a body: `int(t = 0..1, t^2)`',
+            documentation:
+                'The variable of integration is named once, with the bounds - either of them any expression - and is bound in the body alone.',
+            example: 'a = int(t = 0..1, t^2)\ny = int(t = 0..x, cos(t))',
+            snippet: 'int(${1:t} = ${2:0}..${3:1}, ${4:t})',
+            category: 'math',
+            latex: '\\int',
         },
         {
             name: 'exp',

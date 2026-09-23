@@ -18,6 +18,8 @@ import {
     act,
     add,
     call,
+    deriv,
+    integral,
     cmp,
     div,
     eq,
@@ -33,11 +35,14 @@ import {
     paren,
     piecewise,
     pow,
+    prime,
+    prod,
     range,
     seq,
     shape,
     show,
     sub,
+    sum,
     tuple,
     withB,
 } from './support/ast.mts';
@@ -277,6 +282,38 @@ describe('what Desmos writes', () => {
     });
 });
 
+describe('calculus, as Desmos writes it', () => {
+    cases([
+        ['\\sum_{n=1}^{10}n^{2}', sum('n', 1, 10, pow('n', 2))],
+        ['\\sum_{n=1}^{3}n+1', add(sum('n', 1, 3, 'n'), 1)],
+        ['\\sum_{n=1}^{3}n\\cdot2', sum('n', 1, 3, mul('n', 2))],
+        ['2\\sum_{n=1}^{3}n', imp(2, sum('n', 1, 3, 'n'))],
+        ['\\prod_{k=1}^{n}k', prod('k', 1, 'n', 'k')],
+        ['\\sum_{\\theta=0}^{2}\\theta', sum('theta', 0, 2, 'theta')],
+        ['\\int_{0}^{1}t^{2}dt', integral('t', 0, 1, pow('t', 2))],
+        ['\\int_0^1t\\ dt', integral('t', 0, 1, 't')],
+        [
+            '\\int_{0}^{1}\\int_{0}^{1}ts\\ ds\\ dt',
+            integral('t', 0, 1, integral('s', 0, 1, imp('t', 's'))),
+        ],
+        ['\\int_{0}^{1}tdt\\cdot3', mul(integral('t', 0, 1, 't'), 3)],
+        ['\\int_{0}^{1}\\frac{d}{dt}t^{2}dt', integral('t', 0, 1, deriv('t', pow('t', 2)))],
+        ['\\frac{d}{dx}x^{2}+1', add(deriv('x', pow('x', 2)), 1)],
+        ['\\frac{d}{dx}3x\\cdot x', deriv('x', mul(imp(3, 'x'), 'x'))],
+        ['\\frac{d}{d\\theta}\\theta', deriv('theta', 'theta')],
+        ['\\frac{d}{dx_{1}}x_{1}', deriv('x_1', 'x_1')],
+        // Not a derivative: a fraction that happens to have a d in it.
+        ['\\frac{d}{2}', div('d', 2)],
+        ['\\frac{d}{dx+1}', div('d', add(imp('d', 'x'), 1))],
+        ["f'\\left(x\\right)", prime('f', 1, 'x')],
+        ["f''\\left(3\\right)", prime('f', 2, 3)],
+        ["\\sin'\\left(x\\right)", prime('sin', 1, 'x')],
+        ['\\log_{2}\\left(8\\right)', call('log', 8, 2)],
+        ['\\log_28', call('log', 8, 2)],
+        ['\\log_{b}x', call('log', 'x', 'b')],
+    ]);
+});
+
 describe('spans', () => {
     test('are offsets into the latex', () => {
         const tree = parseLatex('a+bc');
@@ -295,8 +332,10 @@ describe('spans', () => {
 
 describe('latex it has no reading for', () => {
     const unreadable = [
-        '\\sum_{n=0}^{10}n',
-        '\\int_{0}^{1}xdx',
+        'y_{1}\\sim mx_{1}+b',
+        '\\int_{0}^{1}x',
+        '\\sum_{n}^{10}n',
+        "f'",
         '\\lfloor x\\rfloor',
         '\\left(x',
         'x\\right)',
@@ -314,7 +353,7 @@ describe('latex it has no reading for', () => {
 
     test('says where the trouble is', () => {
         assert.throws(
-            () => parseLatex('1+\\sum_{n=0}^{2}n'),
+            () => parseLatex('1+\\lfloor x\\rfloor'),
             (error: unknown) => error instanceof LatexParseError && error.offset === 2,
         );
     });
@@ -352,7 +391,25 @@ function bracketedAsFactor(tree: Expression): boolean {
         case 'Comparison':
             return true;
         case 'Binary':
-            return tree.operator === '+' || tree.operator === '-';
+            return tree.operator === '+' || tree.operator === '-' || opensRight(tree);
+        case 'Unary':
+        case 'BigOperator':
+        case 'Derivative':
+            return opensRight(tree);
+    }
+    return false;
+}
+
+/** A sum, a product, an integral or a `d/dx` at the right-hand end, which takes the factors after it. */
+function opensRight(tree: Expression): boolean {
+    switch (tree.kind) {
+        case 'BigOperator':
+        case 'Derivative':
+            return true;
+        case 'Unary':
+            return opensRight(tree.operand);
+        case 'Binary':
+            return tree.operator !== '^' && tree.operator !== '/' && opensRight(tree.right);
     }
     return false;
 }
@@ -424,6 +481,11 @@ describe('round trip', () => {
         fact(add('n', 1)),
         abs(sub(abs('x'), 1)),
         call('nthroot', add('x', 1), 3),
+        mul(sum('n', 1, 3, 'n'), 2),
+        imp(integral('t', 0, 1, 't'), 'x'),
+        add(deriv('x', pow('x', 2)), 1),
+        prime('f', 2, 'x'),
+        call('log', 'x', 2),
     ];
 
     for (const tree of hand) {

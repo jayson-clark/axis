@@ -477,7 +477,7 @@
                 },
                 {
                     "name": "support.function.math.axis",
-                    "match": "\\b(?:sqrt|nthroot|abs|ln|log|exp|floor|ceil|round|sign|sgn|mod|gcd|lcm)\\b"
+                    "match": "\\b(?:sqrt|nthroot|abs|ln|log|sum|prod|int|exp|floor|ceil|round|sign|sgn|mod|gcd|lcm)\\b"
                 },
                 {
                     "name": "support.function.statistics.axis",

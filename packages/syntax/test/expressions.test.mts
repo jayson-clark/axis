@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { expr, tree } from './support.mts';
+import { parseExpression } from '../dist/index.js';
+import { expr, recover, tree } from './support.mts';
 
 describe('precedence (spec §5.1)', () => {
     // The consequences table, one row each, exactly as the spec writes them.
@@ -245,5 +246,71 @@ describe('trailing commas', () => {
     test('a list or a call may end with one', () => {
         assert.equal(expr('[1, 2,\n]'), '(list 1 2)');
         assert.equal(expr('f(1, 2,)'), '(call f 1 2)');
+    });
+});
+
+describe('calculus (spec §5.9)', () => {
+    test('sum, prod and int name their variable and its range', () => {
+        assert.equal(expr('sum(n = 1..10, n^2)'), '(sum n 1 10 (^ n 2))');
+        assert.equal(expr('prod(k = 1..n, k)'), '(prod k 1 n k)');
+        assert.equal(expr('int(t = 0..x, cos(t))'), '(int t 0 x (call cos t))');
+    });
+
+    test('either bound is any expression up to a sum', () => {
+        assert.equal(expr('sum(n = a - 1..b + 1, n)'), '(sum n (- a 1) (+ b 1) n)');
+        assert.equal(expr('int(t = -pi..2pi, t)'), '(int t (- pi) (implicit 2 pi) t)');
+        assert.equal(expr('sum(n = .5.. .5, n)'), '(sum n .5 .5 n)');
+    });
+
+    test('a sum is an atom: nothing outside the brackets is its', () => {
+        assert.equal(expr('sum(n = 1..3, n) + 1'), '(+ (sum n 1 3 n) 1)');
+        assert.equal(expr('2 sum(n = 1..3, n) x'), '(implicit (implicit 2 (sum n 1 3 n)) x)');
+        assert.equal(expr('sum(n = 1..3, n) ^ 2'), '(^ (sum n 1 3 n) 2)');
+    });
+
+    test('its body is anything an argument can be', () => {
+        assert.equal(expr('sum(n = 1..3, n + 1)'), '(sum n 1 3 (+ n 1))');
+        assert.equal(expr('sum(n = 1..3, a with a = n)'), '(sum n 1 3 (with a (a n)))');
+    });
+
+    test("a prime differentiates a call: f'(x), f''(x)", () => {
+        assert.equal(expr("f'(x)"), "(' f x)");
+        assert.equal(expr("f''(x) + 1"), "(+ ('' f x) 1)");
+        assert.equal(expr("sin'(x)"), "(' sin x)");
+    });
+
+    test('d/dx takes the product after it, as a sign does', () => {
+        assert.equal(expr('d/dx x^2'), '(d/dx (^ x 2))');
+        assert.equal(expr('d/dx x^2 + 1'), '(+ (d/dx (^ x 2)) 1)');
+        assert.equal(expr('d/dx 3x * x'), '(d/dx (* (implicit 3 x) x))');
+        assert.equal(expr('2 d/dx x^2'), '(implicit 2 (d/dx (^ x 2)))');
+        assert.equal(expr('d/dx d/dx x^3'), '(d/dx (d/dx (^ x 3)))');
+        assert.equal(expr('d/dt f(t)'), '(d/dt (call f t))');
+        assert.equal(expr('d/dx_1 x_1^2'), '(d/dx_1 (^ x_1 2))');
+        assert.equal(expr('d/dtheta theta^2'), '(d/dtheta (^ theta 2))');
+    });
+
+    test('without an operand after it, d/dx is the division it was', () => {
+        assert.equal(expr('d/dx'), '(/ d dx)');
+        assert.equal(expr('d/dx - 1'), '(- (/ d dx) 1)');
+        assert.equal(expr('d/x y'), '(implicit (/ d x) y)');
+    });
+
+    test('the variable of d/dx is spanned over its name alone', () => {
+        const { expression } = parseExpression('d/dx x');
+        assert.ok(expression.kind === 'Derivative');
+        assert.deepEqual(expression.variable.span, { start: 3, end: 4 });
+    });
+
+    test('a sum not opened with name = from..to is one diagnostic', () => {
+        assert.deepEqual(recover('y = sum(n, n)').codes, ['expected-bounds']);
+        assert.deepEqual(recover('y = sum(n = 1, n)').codes, ['expected-bounds']);
+        assert.deepEqual(recover('y = int()').codes, ['expected-bounds']);
+        assert.deepEqual(recover('y = sum(n = 1..3)').codes, ['expected-expression']);
+        assert.deepEqual(recover('y = sum(n = 1..3, n)\nz = 1').codes, []);
+    });
+
+    test("a prime without a call is an error: f'", () => {
+        assert.deepEqual(recover("y = f'").codes, ['unexpected-token']);
     });
 });

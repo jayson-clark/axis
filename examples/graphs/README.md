@@ -5,7 +5,7 @@ Read in order, each file assumes only what came before it.
 | File                            | Covers                                                                                 |
 | ------------------------------- | -------------------------------------------------------------------------------------- |
 | `01-basics.axis`                | Statements, `;`, comments, notes, definitions, `@` metadata, palette names, bare flags |
-| `02-functions.axis`             | Definitions, composition, the built-in function library                                |
+| `02-functions.axis`             | Definitions, composition, the built-in library, `sum`, `int`, `d/dx` and `f'(x)`       |
 | `03-piecewise.axis`             | `{condition: value}` branches and domain restrictions                                  |
 | `04-styling.axis`               | Colour, line and point styles, fills, opacity, labels                                  |
 | `05-folders-and-notes.axis`     | Grouping a graph; folder metadata after the `{`, `collapsed`, untitled `folder { … }`  |

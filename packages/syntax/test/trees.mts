@@ -185,6 +185,36 @@ export const forB = (body: Operand, ...pairs: [string, Operand][]): Expression =
     span: SPAN,
 });
 
+export const prime = (name: string, order: number, ...args: Operand[]): Expression => ({
+    kind: 'Prime',
+    callee: id(name),
+    order,
+    arguments: args.map(node),
+    span: SPAN,
+});
+export const bigOp = (
+    operator: 'sum' | 'prod' | 'int',
+    variable: string,
+    from: Operand,
+    to: Operand,
+    body: Operand,
+): Expression => ({
+    kind: 'BigOperator',
+    operator,
+    name: id(operator),
+    variable: id(variable),
+    from: node(from),
+    to: node(to),
+    body: node(body),
+    span: SPAN,
+});
+export const deriv = (variable: string, body: Operand): Expression => ({
+    kind: 'Derivative',
+    variable: id(variable),
+    body: node(body),
+    span: SPAN,
+});
+
 // Properties
 
 export const prop = (key: string, value?: PropertyValue | Operand): Property => ({
@@ -318,7 +348,23 @@ export function expression(random: Random, depth = 4): Expression {
     const d = depth - 1;
     const sub = () => expression(random, d);
 
-    switch (Math.floor(random() * 26)) {
+    switch (Math.floor(random() * 29)) {
+        case 24:
+            return bigOp(
+                pick(random, ['sum', 'prod', 'int'] as const),
+                pick(random, NAMES),
+                sub(),
+                sub(),
+                sub(),
+            );
+        case 25:
+            return deriv(pick(random, NAMES), sub());
+        case 26:
+            return prime(
+                pick(random, ['f', 'sin']),
+                count(random, 1, 3),
+                ...Array.from({ length: count(random, 0, 2) }, sub),
+            );
         case 0:
         case 1:
             return leaf(random);

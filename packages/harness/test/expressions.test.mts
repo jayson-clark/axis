@@ -22,19 +22,23 @@ import {
     act,
     add,
     call,
+    deriv,
     div,
     evaluate,
     type Expression,
     fact,
     id,
     imp,
+    integral,
     mul,
     neg,
     num,
     paren,
     pow,
+    prod,
     show,
     sub,
+    sum,
 } from '../../compiler/test/support/ast.mts';
 import { NUMERIC_SCOPE, numeric, seeded } from '../../compiler/test/support/generate.mts';
 
@@ -116,6 +120,22 @@ describe('expressions in a real calculator', { skip }, () => {
         ['1e-3', num('1e-3'), 0.001],
         ['e^1', pow('e', 1), Math.E],
         ['tau/pi', div('tau', 'pi'), 2],
+        // A sum takes the product after it, so what is not its own is kept out.
+        ['sum(k = 1..3, k) + 1', add(sum('k', 1, 3, 'k'), 1), 7],
+        ['sum(k = 1..3, k) * 2', mul(sum('k', 1, 3, 'k'), 2), 12],
+        ['sum(k = 1..3, k) a', imp(sum('k', 1, 3, 'k'), 'a'), 6 * a],
+        ['2 sum(k = 1..3, k)', imp(2, sum('k', 1, 3, 'k')), 12],
+        ['sum(k = 1..3, k)^2', pow(sum('k', 1, 3, 'k'), 2), 36],
+        ['-sum(k = 1..3, k) * 2', mul(neg(sum('k', 1, 3, 'k')), 2), -12],
+        ['sum(k = 1..n, k + 1)', sum('k', 1, 'n', add('k', 1)), 14],
+        ['sum(k = a - 1..b + 1, k)', sum('k', sub('a', 1), add('b', 1), 'k'), 10],
+        ['sum(k = 1..2, sum(j = 1..k, j))', sum('k', 1, 2, sum('j', 1, 'k', 'j')), 4],
+        ['prod(k = 1..n, k)', prod('k', 1, 'n', 'k'), 24],
+        ['prod(k = 1..3, k) / 2', div(prod('k', 1, 3, 'k'), 2), 3],
+        // A logarithm to a base.
+        ['log(8, 2)', call('log', 8, 2), 3],
+        ['log(a + 7, b)', call('log', add('a', 7), 'b'), 2],
+        ['log(8, 2)^2', pow(call('log', 8, 2), 2), 9],
     ];
 
     for (const [name, tree, expected] of table) {
@@ -123,6 +143,41 @@ describe('expressions in a real calculator', { skip }, () => {
             assert.ok(agree(evaluate(tree, NUMERIC_SCOPE), expected), 'the evaluator disagrees');
             const actual = await desmos(tree);
             assert.ok(agree(actual, expected), `Desmos says ${actual}, not ${expected}`);
+        });
+    }
+
+    // Integrals and derivatives, which the evaluator leaves to Desmos: the
+    // value each has to come to is written out, and Desmos' integral is a
+    // numerical one, so it is held to what that can promise.
+    const calculus: [string, Expression, number][] = [
+        ['int(t = 0..1, t^2)', integral('t', 0, 1, pow('t', 2)), 1 / 3],
+        ['int(t = 0..1, t + 1)', integral('t', 0, 1, add('t', 1)), 1.5],
+        ['int(t = 0..1, t) * 3', mul(integral('t', 0, 1, 't'), 3), 1.5],
+        ['int(t = 0..1, t) a', imp(integral('t', 0, 1, 't'), 'a'), a / 2],
+        ['int(t = 0..1, 2)^2', pow(integral('t', 0, 1, 2), 2), 4],
+        ['int(t = 0..b, t)', integral('t', 0, 'b', 't'), b ** 2 / 2],
+        [
+            'int(s = 0..1, int(t = 0..1, s t))',
+            integral('s', 0, 1, integral('t', 0, 1, imp('s', 't'))),
+            0.25,
+        ],
+        ['d/da a^3', deriv('a', pow('a', 3)), 3 * a ** 2],
+        ['d/da a^2 + 1', add(deriv('a', pow('a', 2)), 1), 2 * a + 1],
+        ['(d/da a^2) * a', mul(deriv('a', pow('a', 2)), 'a'), 2 * a * a],
+        ['d/da 3a^2', deriv('a', imp(3, pow('a', 2))), 6 * a],
+        ['d/da (a^2 + a)', deriv('a', add(pow('a', 2), 'a')), 2 * a + 1],
+        ['2 d/da a^2', imp(2, deriv('a', pow('a', 2))), 4 * a],
+        ['d/da d/da a^3', deriv('a', deriv('a', pow('a', 3))), 6 * a],
+        ['d/da sum(k = 1..2, a^k)', deriv('a', sum('k', 1, 2, pow('a', 'k'))), 1 + 2 * a],
+    ];
+
+    for (const [name, tree, expected] of calculus) {
+        test(`${name}: ${emitLatex(tree)}`, async () => {
+            const actual = await desmos(tree);
+            assert.ok(
+                Math.abs(actual - expected) <= 1e-7 * Math.max(1, Math.abs(expected)),
+                `Desmos says ${actual}, not ${expected}`,
+            );
         });
     }
 

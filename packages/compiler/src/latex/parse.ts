@@ -17,9 +17,9 @@
 // is what the latex means on the graph it came from.
 //
 // Spans are offsets into the latex, not into any source: a tree read from a
-// graph has no source yet. Anything this cannot read - a `\sum`, which the
-// tree has no node for, or latex that is not well-formed - throws a
-// `LatexParseError` carrying the offset.
+// graph has no source yet. Anything this cannot read - a command the tree has
+// no node for, or latex that is not well-formed - throws a `LatexParseError`
+// carrying the offset.
 
 import type {
     Binding,
@@ -222,7 +222,7 @@ function tokenize(latex: string): Token[] {
             continue;
         }
 
-        const symbol = /^(?:\.\.\.|<=|>=|[-+*/=<>,:!.^_])/.exec(rest);
+        const symbol = /^(?:\.\.\.|<=|>=|[-+*/=<>,:!.^_'])/.exec(rest);
         if (symbol) {
             push({ type: 'symbol', text: symbol[0], start, end: start + symbol[0].length });
             continue;
@@ -603,6 +603,13 @@ class Parser {
         const latex = `\\${name}`;
 
         if (name === 'frac') {
+            const variable = this.differential();
+            if (variable) {
+                // As Desmos reads it, the derivative takes the product after
+                // it: `\frac{d}{dx}x^{2}+1` is 2x + 1.
+                const body = this.product();
+                return { kind: 'Derivative', variable, body, span: this.span(start) };
+            }
             this.advance();
             const left = this.script();
             const right = this.script();
@@ -620,6 +627,10 @@ class Parser {
                 return this.call('nthroot', [radicand, index], start, start);
             }
             return this.call('sqrt', [this.script()], start, start);
+        }
+
+        if (name === 'sum' || name === 'prod' || name === 'int') {
+            return this.bigOperator(name, start);
         }
 
         const constant = CONSTANT_FOR_COMMAND.get(latex);
@@ -643,12 +654,159 @@ class Parser {
     }
 
     /**
+     * `\frac{d}{dx}`, read whole, and the variable it names - or nothing,
+     * leaving the position where it was, when the `\frac` is a fraction.
+     * `\frac{d}{dx}` is only ever a derivative to Desmos, so reading it as
+     * d/(d·x) would be a quiet misreading rather than a fraction.
+     */
+    private differential(): Identifier | undefined {
+        const saved = this.position;
+        const letter = (text: string): boolean => {
+            const token = this.peek();
+            return token.type === 'letter' && token.text === text && this.advance();
+        };
+        const group = (type: 'group-open' | 'group-close'): boolean =>
+            this.peek().type === type && this.advance();
+
+        try {
+            this.advance();
+            if (
+                group('group-open') &&
+                letter('d') &&
+                group('group-close') &&
+                group('group-open') &&
+                letter('d')
+            ) {
+                const variable = this.bindingName();
+                if (group('group-close')) {
+                    return variable;
+                }
+            }
+        } catch {
+            // Not a name after the `d`: a fraction after all.
+        }
+        this.position = saved;
+        return undefined;
+    }
+
+    /**
+     * `\sum_{n=1}^{10}body`, `\prod` alike, and `\int_{0}^{1}body\,dt`.
+     *
+     * A sum's body is the product after it, as Desmos reads one. An integral's
+     * is everything before its differential - the first `d` at the top level
+     * with a name after it - which is found first, so the body can be read up
+     * to it and no further.
+     */
+    private bigOperator(operator: 'sum' | 'prod' | 'int', start: number): Expression {
+        const nameToken = this.peek();
+        this.advance();
+        const name: Identifier = {
+            kind: 'Identifier',
+            name: operator,
+            span: { start: nameToken.start, end: nameToken.end },
+        };
+
+        if (!this.eatSymbol('_')) {
+            throw this.error(`Expected the bounds of '\\${operator}'`);
+        }
+        let variable: Identifier | undefined;
+        let from: Expression;
+        if (operator === 'int') {
+            from = this.script();
+        } else {
+            this.expect('group-open', `Expected '{' after '\\${operator}_'`);
+            variable = this.bindingName();
+            if (!this.eatSymbol('=')) {
+                throw this.error("Expected '=' in the bounds");
+            }
+            from = this.additive();
+            this.expect('group-close', "Expected '}'");
+        }
+        if (!this.eatSymbol('^')) {
+            throw this.error(`Expected the upper bound of '\\${operator}'`);
+        }
+        const to = this.script();
+
+        let body: Expression;
+        if (operator === 'int') {
+            const differential = this.findDifferential();
+            const inner = new Parser(this.latex, [
+                ...this.tokens.slice(this.position, differential),
+                {
+                    type: 'end',
+                    start: this.tokens[differential].start,
+                    end: this.tokens[differential].start,
+                },
+            ]);
+            body = inner.product();
+            inner.expectEnd();
+            this.position = differential + 1;
+            variable = this.bindingName();
+        } else {
+            body = this.product();
+        }
+
+        return {
+            kind: 'BigOperator',
+            operator,
+            name,
+            variable: variable!,
+            from,
+            to,
+            body,
+            span: this.span(start),
+        };
+    }
+
+    /**
+     * Where an integral's `d` is: the first at the top level with a name after
+     * it that is not the differential of an integral inside this one -
+     * `\int\int ts\,ds\,dt` closes the inner integral with `ds`.
+     */
+    private findDifferential(): number {
+        let depth = 0;
+        let inner = 0;
+        for (let index = this.position; index < this.tokens.length; index++) {
+            const token = this.tokens[index];
+            if (depth === 0 && token.type === 'command' && token.name === 'int') inner++;
+            else if (token.type === 'open' || token.type === 'group-open') depth++;
+            else if (token.type === 'close' || token.type === 'group-close') depth--;
+            else if (token.type === 'end' || depth < 0) break;
+            else if (depth === 0 && token.type === 'letter' && token.text === 'd') {
+                const next = this.tokens[index + 1];
+                if (
+                    index > this.position &&
+                    (next.type === 'letter' ||
+                        (next.type === 'command' && CONSTANT_FOR_COMMAND.has(`\\${next.name}`)))
+                ) {
+                    if (inner === 0) return index;
+                    inner--;
+                }
+            }
+        }
+        throw this.error("Expected the integral's differential, such as 'dt'");
+    }
+
+    /** `'`, `''`: how many primes follow a name. */
+    private primes(): number {
+        let order = 0;
+        while (this.eatSymbol("'")) order++;
+        return order;
+    }
+
+    /**
      * A built-in function, however Desmos wrote its argument: bracketed, or
      * bare - `\sin x`, `\sin 2\pi t` - where the argument is the whole product
      * that follows, as Desmos reads it (`\sin a\cdot b` is sin(ab)). `\sin^{2}x`
      * is the square of the call, and `\sin^{-1}` is arcsin.
      */
     private builtin(name: string, start: number): Expression {
+        // `\log_{2}` is the logarithm to base 2, which Axis writes `log(x, 2)`.
+        const base = name === 'log' && this.eatSymbol('_') ? this.script() : undefined;
+        const order = this.primes();
+        if (order > 0) {
+            return this.prime({ kind: 'Identifier', name, span: this.span(start) }, order);
+        }
         const exponent = this.eatSymbol('^') ? this.script() : undefined;
         const inverse =
             exponent &&
@@ -663,9 +821,11 @@ class Parser {
         const next = this.peek();
         if (next.type === 'open' && next.delimiter === '(') {
             this.advance();
-            result = this.call(callee, this.elements('(', false), start, start);
+            const args = this.elements('(', false);
+            result = this.call(callee, base ? [...args, base] : args, start, start);
         } else if (this.opensOperand(next)) {
-            result = this.call(callee, [this.product()], start, start);
+            const args = [this.product()];
+            result = this.call(callee, base ? [...args, base] : args, start, start);
         } else {
             // A function's name on its own - `\max` with nothing after it.
             result = { kind: 'Identifier', name: callee, span: this.span(start) };
@@ -691,8 +851,29 @@ class Parser {
         };
     }
 
+    /** `f'\left(x\right)`: a prime is only ever on a call. */
+    private prime(callee: Identifier, order: number): Expression {
+        const next = this.peek();
+        if (next.type !== 'open' || next.delimiter !== '(') {
+            throw this.error("Expected '(' after a prime");
+        }
+        this.advance();
+        const args = this.elements('(', false);
+        return {
+            kind: 'Prime',
+            callee,
+            order,
+            arguments: args,
+            span: this.span(callee.span.start),
+        };
+    }
+
     /** A name with a bracket straight after it is called with what is inside. */
     private maybeCall(callee: Identifier): Expression {
+        const order = this.primes();
+        if (order > 0) {
+            return this.prime(callee, order);
+        }
         const next = this.peek();
         if (next.type !== 'open' || next.delimiter !== '(') {
             return callee;
@@ -961,6 +1142,9 @@ class Parser {
                 return (
                     token.name === 'frac' ||
                     token.name === 'sqrt' ||
+                    token.name === 'sum' ||
+                    token.name === 'prod' ||
+                    token.name === 'int' ||
                     CONSTANT_FOR_COMMAND.has(latex) ||
                     FUNCTION_FOR_COMMAND.has(latex)
                 );

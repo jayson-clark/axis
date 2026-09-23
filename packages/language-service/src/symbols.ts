@@ -466,6 +466,22 @@ class Analyzer {
                 this.name(node.callee, scopes, true);
                 node.arguments.forEach(argument => this.expression(argument, scopes));
                 return;
+            case 'Prime':
+                this.name(node.callee, scopes, true);
+                node.arguments.forEach(argument => this.expression(argument, scopes));
+                return;
+            case 'BigOperator': {
+                // The variable is bound in the body alone: the bounds are read
+                // where the `sum` stands, as Desmos reads them.
+                this.name(node.name, scopes, true);
+                this.expression(node.from, scopes);
+                this.expression(node.to, scopes);
+                const scope = new Map<string, SymbolDefinition>([
+                    [node.variable.name, this.local(node.variable, 'binding', node.span)],
+                ]);
+                this.expression(node.body, [...scopes, scope]);
+                return;
+            }
             case 'Member': {
                 this.expression(node.target, scopes);
                 this.record({
@@ -533,7 +549,12 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
         case 'Comparison':
             return node.operands;
         case 'Call':
+        case 'Prime':
             return [node.callee, ...node.arguments];
+        case 'BigOperator':
+            return [node.name, node.variable, node.from, node.to, node.body];
+        case 'Derivative':
+            return [node.variable, node.body];
         case 'Index':
             return [node.target, node.index];
         case 'Member':

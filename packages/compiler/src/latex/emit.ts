@@ -82,8 +82,19 @@ function levelOf(node: Expression): number {
                     return LEVEL.power;
             }
             break;
+        // A sum, a product and a derivative take the whole product after them,
+        // as a sign does - `\sum_{n=1}^{3}n\cdot2` is 12 - so they bind like
+        // one. `opensRight` keeps them from taking a factor that was not
+        // theirs.
         case 'Unary':
+        case 'Derivative':
             return LEVEL.prefix;
+        case 'BigOperator':
+            // An integral is closed by its `dt`, and is an atom to what follows
+            // it - but not as the base of a power, where `dt^{2}` squares the
+            // differential.
+            return node.operator === 'int' ? LEVEL.fraction : LEVEL.prefix;
+        case 'Prime':
         case 'Call':
         case 'Index':
         case 'Member':
@@ -91,6 +102,31 @@ function levelOf(node: Expression): number {
             return LEVEL.postfix;
     }
     return LEVEL.atom;
+}
+
+/**
+ * Whether the latex for `node` ends in something that takes every factor
+ * written after it: a `\sum`, a `\prod`, a `\frac{d}{dx}` - or an integral,
+ * whose `dt` would run into a name after it. As the left of a product it has
+ * to be bracketed, or the product's right side joins its body.
+ */
+function opensRight(node: Expression): boolean {
+    switch (node.kind) {
+        case 'BigOperator':
+        case 'Derivative':
+            return true;
+        case 'Unary':
+            return opensRight(node.operand);
+        case 'Binary':
+            return node.operator !== '^' && node.operator !== '/' && opensRight(node.right);
+        default:
+            return false;
+    }
+}
+
+/** The left side of a product: `at(node, LEVEL.product)`, or bracketed if it opens right. */
+function factor(node: Expression): string {
+    return opensRight(node) ? `\\left(${emit(node)}\\right)` : at(node, LEVEL.product);
 }
 
 /**
@@ -149,6 +185,23 @@ function emit(node: Expression): string {
                 .reduce(join);
         case 'Call':
             return call(node);
+        case 'Prime':
+            return `${identifierLatex(node.callee.name)}${"'".repeat(node.order)}\\left(${elements(node.arguments)}\\right)`;
+        case 'BigOperator': {
+            const variable = identifierLatex(node.variable.name);
+            // A sum names its variable in its lower bound; an integral names it
+            // in its differential instead.
+            const lower = node.operator === 'int' ? '' : `${variable}=`;
+            const bounds = `_{${lower}${braced(node.from)}}^{${braced(node.to)}}`;
+            // The body is a product at most: `\sum_{n=1}^{3}n+1` is 7, the sum
+            // then 1, and `\int_{0}^{1}t+1dt` is not read at all.
+            const body = at(node.body, LEVEL.product);
+            return node.operator === 'int'
+                ? join(join(`\\int${bounds}`, body), `d${variable}`)
+                : join(`\\${node.operator}${bounds}`, body);
+        }
+        case 'Derivative':
+            return `\\frac{d}{d${identifierLatex(node.variable.name)}}${at(node.body, LEVEL.product)}`;
         case 'Index':
             return `${at(node.target, LEVEL.postfix)}\\left[${at(node.index, LEVEL.action)}\\right]`;
         case 'Member':
@@ -229,10 +282,10 @@ function binary(
         case '-':
             return join(at(left, LEVEL.additive) + operator, at(right, LEVEL.product));
         case '*':
-            return join(join(at(left, LEVEL.product), '\\cdot'), at(right, LEVEL.prefix));
+            return join(join(factor(left), '\\cdot'), at(right, LEVEL.prefix));
         case 'implicit':
             return juxtapose(
-                at(left, LEVEL.product),
+                factor(left),
                 // A negation has to be bracketed here, where `*` did not: with
                 // nothing in front of it, `2-x` is a subtraction.
                 at(right, LEVEL.fraction),
@@ -321,6 +374,10 @@ function call({ callee, arguments: args }: Call): string {
 
     if (name === 'sqrt' && args.length === 1) {
         return `\\sqrt{${braced(args[0])}}`;
+    }
+    if (name === 'log' && args.length === 2) {
+        const [argument, base] = args;
+        return `\\log_{${braced(base)}}\\left(${at(argument, LEVEL.action)}\\right)`;
     }
     if (name === 'nthroot' && args.length === 2) {
         const [radicand, index] = args;

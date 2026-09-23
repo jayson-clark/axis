@@ -25,7 +25,8 @@ const KEYWORD_SET: ReadonlySet<string> = new Set(KEYWORDS);
 
 /**
  * Punctuation, longest first, so that `...` is tried before `..` and `..`
- * before `.`, and `->` before `-`. `@{` is here as one token and only matches
+ * before `.`, and `->` before `-`. `'` is a prime, one to a token, so `f''`
+ * is `f` and two of them. `@{` is here as one token and only matches
  * with nothing between the two characters, which is the spec's rule.
  */
 const PUNCTUATION = [
@@ -56,6 +57,7 @@ const PUNCTUATION = [
     '!',
     '|',
     '@',
+    "'",
 ] as const;
 
 const isDigit = (c: string) => c >= '0' && c <= '9';

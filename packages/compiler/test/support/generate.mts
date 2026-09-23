@@ -17,8 +17,10 @@ import {
     abs,
     act,
     add,
+    bigOp,
     binary,
     call,
+    deriv,
     cmp,
     div,
     eq,
@@ -36,6 +38,7 @@ import {
     piecewise,
     pos,
     pow,
+    prime,
     range,
     seq,
     sub,
@@ -154,7 +157,7 @@ function arithmetic(random: Random, depth: number): Expression {
         return leaf(random);
     }
     const d = depth - 1;
-    const roll = Math.floor(random() * 22);
+    const roll = Math.floor(random() * 25);
 
     switch (roll) {
         case 0:
@@ -216,6 +219,22 @@ function arithmetic(random: Random, depth: number): Expression {
             return fact(arithmetic(random, d));
         case 18:
             return piecewiseOf(random, d);
+        case 19:
+            return bigOp(
+                pick(random, ['sum', 'prod', 'int'] as const),
+                pick(random, ['n', 'k', 't', 'x_1', 'theta']),
+                arithmetic(random, d),
+                arithmetic(random, d),
+                arithmetic(random, d),
+            );
+        case 20:
+            return deriv(pick(random, ['x', 't', 'amp', 'x_1', 'theta']), arithmetic(random, d));
+        case 21:
+            return prime(
+                pick(random, [...USER_FUNCTIONS, 'sin']),
+                1 + Math.floor(random() * 2),
+                arithmetic(random, d),
+            );
         default:
             return binary('implicit', arithmetic(random, d), productRight(random, d));
     }
@@ -264,7 +283,9 @@ function productRight(random: Random, depth: number): Expression {
 function callOf(random: Random, depth: number): Expression {
     const d = depth - 1;
     const arg = () => arithmetic(random, d);
-    switch (Math.floor(random() * 7)) {
+    switch (Math.floor(random() * 8)) {
+        case 6:
+            return call('log', arg(), arg());
         case 0:
             return call(pick(random, ['sin', 'cos', 'ln', 'floor']), arg());
         case 1:
@@ -324,7 +345,31 @@ export function numeric(random: Random, depth = 4): Expression {
     }
     const d = depth - 1;
 
-    switch (Math.floor(random() * 16)) {
+    switch (Math.floor(random() * 18)) {
+        case 16: {
+            // A sum or a product over a few integers, with the variable in
+            // its body - and the body a product or looser, which is where
+            // latex is tempted to let it run on.
+            // A name of its own at each depth: Desmos will not bind one a sum
+            // around this one already has.
+            const k = id(['k', 'j', 'm', 'p', 'q'][d % 5]);
+            const body = pick(random, [
+                () => add(k, numeric(random, d)),
+                () => mul(k, numeric(random, d)),
+                () => imp(numeric(random, d), k),
+                () => pow(k, num('2')),
+                () => numeric(random, d),
+            ])();
+            return bigOp(
+                pick(random, ['sum', 'prod'] as const),
+                k.name,
+                num(pick(random, ['0', '1', '2'])),
+                pick(random, [num('3'), id('n'), add(1, 'a')]),
+                body,
+            );
+        }
+        case 17:
+            return call('log', numeric(random, d), num(pick(random, ['2', '3', '10'])));
         case 0:
             return numericLeaf(random);
         case 1:

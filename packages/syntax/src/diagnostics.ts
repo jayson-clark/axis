@@ -72,6 +72,10 @@ export const SYNTAX_DIAGNOSTICS = {
         summary: '`with` or `for` not followed by `name = value`',
         example: 'y = a x with 3',
     },
+    'expected-bounds': {
+        summary: '`sum`, `prod` or `int` not opened with `name = from..to`',
+        example: 'y = sum(n, n)',
+    },
     'expected-property': {
         summary: 'metadata or a block entry that does not start with a property name',
         example: 'y = x @ 3',
