@@ -12,5 +12,5 @@ export type {
     LoadOptions,
 } from './calculator';
 export { loadAxisSource, nodeImageHost, nodeImportHost, readAxisFile } from './files';
-export type { LoadedSource } from './files';
+export type { LoadedScript, LoadedSource } from './files';
 export { cacheDirectory } from './cache';

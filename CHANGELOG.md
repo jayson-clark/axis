@@ -10,6 +10,17 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Changed
+
+- Axis is described as a language for Desmos graphs rather than a scripting
+  language, and a `.axis` file as a file rather than a script, across the docs,
+  the site, hover and the READMEs. The extension's display name is now
+  **Axis — Desmos Graph Language**.
+- Diagnostic messages that said "script" now say "file", such as "`config`
+  belongs at the top level of a file". No diagnostic code changed.
+- `@axis-dsl/harness` exports its loaded-source type as `LoadedSource`.
+  `LoadedScript` remains as a deprecated alias.
+
 ## 2.1.1-rc.0 - 2026-09-23
 
 Releases are published from CI

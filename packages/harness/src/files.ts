@@ -59,6 +59,12 @@ export interface LoadedSource {
 }
 
 /**
+ * @deprecated Use `LoadedSource`. Kept so the rename is not a breaking change;
+ * it goes in the next major version.
+ */
+export type LoadedScript = LoadedSource;
+
+/**
  * Read the file at `path`, every file it imports, transitively, and every
  * image any of them draws.
  */
