@@ -45,6 +45,11 @@ const CASES: Record<string, DiagnosticCase> = {
         expected: [['assign-to-builtin', 'mean']],
         rejected: true,
     },
+    'theta-equation': {
+        source: 'theta = 1',
+        expected: [['theta-equation', 'theta']],
+        rejected: true,
+    },
     'unknown-function': {
         source: 'y = notAFunction(x)',
         expected: [['unknown-function', 'notAFunction']],
@@ -348,17 +353,4 @@ describe('diagnostics', { skip }, () => {
         assert.deepEqual(diagnostics, []);
         assert.match(error.message, /defining 'm'/);
     });
-
-    test(
-        'theta = 1 is reported, since Desmos will not define it',
-        {
-            todo: 'the checker is silent on `theta = 1` (spec §5.5 makes it a definition outside polar mode), and Desmos rejects it in every mode',
-        },
-        async () => {
-            const { diagnostics } = await calculator().load('theta = 1');
-
-            assert.equal((await calculator().getErrors()).length, 1);
-            assert.equal(diagnostics.length, 1);
-        },
-    );
 });

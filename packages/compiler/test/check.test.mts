@@ -68,7 +68,11 @@ describe('names', () => {
     test('a Greek letter is a letter, and theta is polar', () => {
         clean('alpha = 2');
         clean('r = theta');
-        clean('theta = 1');
+        clean('r = 1');
+        clean('theta_1 = 1');
+        clean('y = theta');
+        reports('theta = 1', 'theta-equation');
+        reports('theta = r', 'theta-equation');
     });
 
     test('a name has one subscript', () => {
