@@ -1,0 +1,54 @@
+name: Bug report
+description: A file that compiles, draws, formats or writes back wrong, or a tool that misbehaves.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. The smallest `.axis` source that shows the problem is the most useful thing you can give.
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: The `.axis` source that shows the problem, as short as you can make it.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What the graph, the diagnostic or the editor should have done.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: What Desmos drew, the diagnostic or error you saw, or what the editor did. A screenshot helps.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - VSCode extension
+        - Playground on the docs site
+        - An npm package, in my own code
+        - The language server, in another editor
+        - axis-inspect or the harness
+        - Somewhere else
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Axis version
+      description: The extension's or the package's version, or the commit if you built it yourself.
+  - type: textarea
+    id: inspect
+    attributes:
+      label: axis-inspect output
+      description: Optional. `npx axis-inspect <file.axis>` from `@axis-dsl/harness` shows what a real Desmos calculator made of each expression.
+      render: text

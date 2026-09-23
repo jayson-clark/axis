@@ -2,7 +2,7 @@
 
 The Desmos calculator API, typed: its TypeScript surface, its style enums, and
 the script URL every host loads. Written for
-[Axis](https://github.com/jayson-clark/axis), useful to anything that drives
+[Axis](https://jayson-clark.github.io/axis/), useful to anything that drives
 Desmos from TypeScript.
 
 ```sh

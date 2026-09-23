@@ -46,4 +46,30 @@ Releases are published from CI
 ## 2.0.0
 
 The second version of the language, and the first release of every package in
-lockstep.
+lockstep. Axis 1 read a file by rewriting its text in passes, and every pass had
+to guess where the one before it had left things. Axis 2 reads it with a real
+lexer and parser into a syntax tree, and everything - the compiler, the
+formatter, the editor services, the decompiler - works on that tree.
+
+### Changed
+
+- **New syntax.** Metadata is `@` and `@{ … }` rather than `#` and `#{ … }`,
+  which frees `#` for colours. Statements are separated by a newline or `;`,
+  never a comma. A slider is a range, `-5..5 step 0.5`, rather than `min`,
+  `max` and `step` properties. Colours may be palette names, a boolean property
+  may be written bare, a folder may be untitled, a macro is `macro f(x) = …`
+  with an `=`, and `style` is new.
+- **No migrator.** A 1.x file has to be rewritten by hand; `examples/graphs`
+  and the spec are the guide to what it becomes.
+- **Precedence is a table, not an accident.** Every expression is emitted from
+  the tree with exactly the brackets it needs, so `2^10` is 1024 and `4^2/2` is
+  8 - both of which Axis 1 wrote as valid latex with a different value - and
+  `1/2x`, `a/b^2` and `-x^2` all mean what the spec says they do.
+- **Errors instead of silent miscompiles.** A misspelt function, a property in
+  the wrong place, a colour Desmos would read as three variables, `dt` outside
+  a ticker, a macro called with the wrong arguments - each is a diagnostic with
+  a code and a span, where Axis 1 would compile it into a graph that quietly
+  did something else.
+- **Macros are expressions.** A macro is substituted into the tree, so it
+  cannot capture a neighbouring operator - and can no longer stand for
+  metadata, which is what styles are for.

@@ -1,6 +1,6 @@
 # @axis-dsl/compiler
 
-Compiles [Axis](https://github.com/jayson-clark/axis) source into a Desmos
+Compiles [Axis](https://jayson-clark.github.io/axis/) source into a Desmos
 graph: one graph state for `setState`, and the calculator options.
 
 ```sh
@@ -63,7 +63,8 @@ const { diagnostics } = compileAxis('y = sine(x) @ color: red');
 
 Each has a stable `code` to match on, and a `span` of UTF-16 offsets into the
 file it is about - the entry, unless the diagnostic carries a `path`, in which
-case it is the imported file of that name. `docs/spec.md` §8 lists the codes.
+case it is the imported file of that name. [The reference](https://jayson-clark.github.io/axis/reference/diagnostics/)
+lists the codes.
 
 Every code is declared once, in a catalogue - `SYNTAX_DIAGNOSTICS` in
 `@axis-dsl/syntax` for the lexer and parser, `COMPILER_DIAGNOSTICS` and
@@ -258,7 +259,7 @@ a = 2 @ slider: 0..5 step 0.5
 Each is a warning in `diagnostics` - `unsupported-latex`, `unsupported-item` or
 `unsupported-value` - whose span is that comment in `source`. The check that
 matters beyond the round trip is that a real calculator reads the two graphs
-the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
+the same way, which the harness' tests ask one.
 
 `decompileExpression`, `decompileSettings` and `decompileTicker` hand back one
 item's statement node on its own - a folder as its header, with an empty body -

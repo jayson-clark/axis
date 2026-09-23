@@ -1,6 +1,6 @@
 # @axis-dsl/harness
 
-Runs [Axis](https://github.com/jayson-clark/axis) source against a **real
+Runs [Axis](https://jayson-clark.github.io/axis/) source against a **real
 Desmos calculator**, headless, so a test — or an agent — can read what Desmos
 actually made of a file rather than what the compiler hoped it would.
 
@@ -150,35 +150,6 @@ import { createCalculator, readAxisFile } from '@axis-dsl/harness';
 const { source, ...options } = await readAxisFile('examples/graphs/16-imports.axis');
 const { diagnostics } = await calculator.load(source, options);
 ```
-
-## What the suites here check
-
-`packages/harness/test` is the Axis language checked against the calculator that
-has to accept it, rather than against the compiler's own idea of itself:
-
-| Suite         | What it pins                                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `metadata`    | every `@ key: value` property in every placement it is legal in, read back off the graph; ranges, colours, flags |
-| `config`      | every `config { … }` entry, off `calculator.settings` and the graph state                                        |
-| `language`    | every function, operator and constant in the manifest is one Desmos knows, and comes to what it should           |
-| `graph`       | folders, tables, notes, imports, images, `;`, and every example file: no diagnostics, no errors                  |
-| `ticker`      | every `ticker` property, and that a playing ticker, its runs and `dt` actually tick                              |
-| `macros`      | what a `macro` expands to, evaluated rather than just compiled                                                   |
-| `styles`      | how `use:` styles combine: composition, precedence, a style carrying a slider                                    |
-| `diagnostics` | each compile diagnostic for a representative mistake, and that the rest of the file still graphs                 |
-| `expressions` | emitted latex evaluated against a plain evaluator of the same tree                                               |
-| `decompile`   | decompiling the graph state a real calculator hands back                                                         |
-| `writeback`   | changes made to a live graph, written back into the file                                                         |
-| `docs`        | every example in the manifest, drawn on a calculator with no expression in error                                 |
-| `harness`     | the harness itself, and `axis-inspect`                                                                           |
-
-`metadata`, `config`, `language` and `ticker` are driven from the manifest in
-`@axis-dsl/syntax` - its properties by placement, its functions, operators and
-constants - and fail if a name is added there without a test, so the coverage
-cannot quietly rot. They caught real bugs when they were written: `sliderBounds`
-never reaching the calculator, `3cos(t)` compiling to three variables
-multiplied together, a double inequality in an example that Desmos will not
-shade, and a miscased palette colour drawn as three variables.
 
 ## The calculator it runs
 

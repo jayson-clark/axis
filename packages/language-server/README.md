@@ -1,6 +1,6 @@
 # @axis-dsl/language-server
 
-The [Axis](https://github.com/jayson-clark/axis) language server: everything
+The [Axis](https://jayson-clark.github.io/axis/) language server: everything
 `@axis-dsl/language-service` knows about an Axis file, spoken over the Language
 Server Protocol, plus the file-system work the service leaves to a host -
 resolving and reading imports and images, listing a directory for a path
