@@ -30,6 +30,10 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # npm's trusted publisher names this environment, so a publish from
+    # anywhere else is refused; on GitHub it can require an approval and admit
+    # only `v*` tags, so write access to the repo is not publish access.
+    environment: release
     env:
       VERSION: ${{ github.ref_name }}
       # Here rather than on the step, so the step's `if` can see whether it is set.
