@@ -57,6 +57,20 @@ export function parseLatex(latex: string): Expression {
     return new Parser(latex, tokenize(latex)).parse();
 }
 
+/**
+ * Read Desmos latex as the value of a statement - an expression list's row -
+ * rather than as an expression.
+ *
+ * The difference is the `=`. A statement's `=` is looser than anything else
+ * (spec §5.1), so `g=a-b\operatorname{with}a=2,b=1` is `g` defined as
+ * `a - b` with the bindings, where `parseLatex` reads the `with` as binding
+ * the whole equation. Desmos reads a row the first way, and so does the Axis
+ * parser, so a row read with this is the tree its source would be read as.
+ */
+export function parseLatexStatement(latex: string): Expression {
+    return new Parser(latex, tokenize(latex)).parseStatement();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tokens
 // ─────────────────────────────────────────────────────────────────────────────
@@ -322,6 +336,36 @@ class Parser {
         const expression = this.bindingLevel(true);
         this.expectEnd();
         return expression;
+    }
+
+    /**
+     * `lhs = rhs`, where the `=` takes everything after it, as the Axis
+     * parser's `parseStatementValue` reads it. Until the `=` turns up there
+     * is no telling a definition from an expression that starts the same
+     * way, so the left-hand side is read and then, if no `=` follows, read
+     * again as the start of an expression.
+     */
+    parseStatement(): Expression {
+        const start = this.peek().start;
+        const position = this.position;
+        const bars = this.bars;
+        const target = this.additive();
+
+        if (!this.isSymbol('=')) {
+            this.position = position;
+            this.bars = bars;
+            return this.parse();
+        }
+
+        this.advance();
+        const value = this.bindingLevel(true);
+        this.expectEnd();
+        return {
+            kind: 'Comparison',
+            operands: [target, value],
+            operators: ['='],
+            span: this.span(start),
+        };
     }
 
     // ── Levels, loosest first ───────────────────────────────────────────────

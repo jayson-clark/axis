@@ -299,6 +299,10 @@ describe('colours', () => {
             roundTrip('RED = 1\ny = x @ color: #c74440'),
             'RED = 1\ny = x @ color: #c74440\n',
         );
+        assert.equal(
+            roundTrip('RED = a with a = 1\ny = x @ color: #c74440'),
+            'RED = a with a = 1\ny = x @ color: #c74440\n',
+        );
     });
 
     test('prefers the expression when a calculator hands back both keys', () => {
@@ -811,6 +815,23 @@ describe('a graph written in Desmos rather than in Axis', () => {
             (listOf(source)[0] as Expression).latex,
             'g_{ap}=\\left(a-b\\operatorname{with}a=2,b=1\\right)',
         );
+    });
+
+    test('gives back a `with` or `for` definition without the brackets it compiled to', () => {
+        // The compiler brackets the value so its latex never depends on how
+        // `=` and `with` bind; the statement's `=` does that in source.
+        for (const source of [
+            'g = a - b with a = 2, b = 3\n',
+            'f(x) = x n with n = 3\n',
+            'L = [i for i = [1...3]]\n',
+        ]) {
+            assert.equal(roundTrip(source), source);
+        }
+    });
+
+    test('keeps brackets round a `with` that is not the whole value', () => {
+        const source = 'g = (a with a = 2) + 1\n';
+        assert.equal(roundTrip(source), source);
     });
 
     test('reads a point style a calculator stashed as the style it is', () => {

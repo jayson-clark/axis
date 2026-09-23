@@ -26,6 +26,9 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   refuses.
 - `expected-bounds`: `sum(`, `prod(` or `int(` not followed by
   `name = from..to`.
+- `parseLatexStatement` in `@axis-dsl/compiler` reads latex as a row of the
+  expression list, whose `=` takes everything after it, where `parseLatex`
+  reads it as an expression.
 
 ### Changed
 
@@ -44,6 +47,14 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   belongs at the top level of a file". No diagnostic code changed.
 - `@axis-dsl/harness` exports its loaded-source type as `LoadedSource`.
   `LoadedScript` remains as a deprecated alias.
+
+### Fixed
+
+- A definition whose value is a `with` or `for`, such as
+  `g = a - b with a = 2, b = 3`, decompiles and writes back from the preview
+  as it was written, instead of gaining brackets round its value.
+- A graph that defines a palette name with a `with`, such as
+  `RED = a with a = 1`, no longer has its colours decompiled as that name.
 
 ## 2.1.1-rc.0 - 2026-09-23
 

@@ -258,6 +258,26 @@ describe('what Desmos leaves out of a graph state', { skip }, () => {
         assert.equal((await calculator().evaluate('r')).numericValue, drawn);
     });
 
+    test('a `with` definition comes back as it was written, and binds the same', async () => {
+        // The compiler brackets the value and desmos.com does not; both mean
+        // `g` defined as `a - b` with the bindings, not the outer `a` and `b`.
+        for (const latex of [
+            'g=\\left(a-b\\operatorname{with}a=2,b=3\\right)',
+            'g=a-b\\operatorname{with}a=2,b=3',
+        ]) {
+            await calculator().setExpressions([
+                { type: 'expression', id: '1', latex: 'a=7' },
+                { type: 'expression', id: '2', latex: 'b=1' },
+                { type: 'expression', id: '3', latex },
+            ]);
+            assert.equal((await calculator().evaluate('g')).numericValue, -1, latex);
+
+            const { source } = await reload(calculator());
+            assert.match(source, /^g = a - b with a = 2, b = 3 @/m);
+            assert.equal((await calculator().evaluate('g')).numericValue, -1, source);
+        }
+    });
+
     test('the words Desmos writes as operators survive as themselves', async () => {
         await calculator().load(
             [

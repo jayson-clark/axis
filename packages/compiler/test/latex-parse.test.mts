@@ -12,7 +12,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Expression } from '@axis-dsl/syntax';
-import { emitLatex, LatexParseError, parseLatex } from '../dist/index.js';
+import { emitLatex, LatexParseError, parseLatex, parseLatexStatement } from '../dist/index.js';
 import {
     abs,
     act,
@@ -279,6 +279,38 @@ describe('what Desmos writes', () => {
             ['a\\operatorname{with}\\theta=1', withB('a', ['theta', 1])],
             ['\\left(a\\operatorname{with}a=1\\right),2', seq(paren(withB('a', ['a', 1])), 2)],
         ]);
+    });
+});
+
+describe("a statement's =", () => {
+    // Read as a row of the expression list, where the `=` takes everything
+    // after it - which is where this differs from `parseLatex`.
+    const table: [string, Expression][] = [
+        [
+            'g_{ap}=a-b\\operatorname{with}a=2,b=1',
+            eq('gap', withB(sub('a', 'b'), ['a', 2], ['b', 1])),
+        ],
+        [
+            'f\\left(x\\right)=xn\\operatorname{with}n=3',
+            eq(call('f', 'x'), withB(imp('x', 'n'), ['n', 3])),
+        ],
+        ['g=\\left(a\\operatorname{with}a=2\\right)', eq('g', paren(withB('a', ['a', 2])))],
+        ['A=a\\to1,b\\to2', eq('A', seq(act('a', 1), act('b', 2)))],
+        ['y=2x+1', eq('y', add(imp(2, 'x'), 1))],
+        ['a\\operatorname{with}a=5', withB('a', ['a', 5])],
+        ['x^{2}+y^{2}<4', cmp(add(pow('x', 2), pow('y', 2)), '<', 4)],
+        ['\\left|x\\right|+1', add(abs('x'), 1)],
+    ];
+    for (const [latex, tree] of table) {
+        test(`${latex} → ${show(tree)}`, () => {
+            assert.deepEqual(shape(parseLatexStatement(latex), true), shape(tree, true));
+        });
+    }
+
+    test('reads the same as an expression where there is no `with` to bind', () => {
+        for (const latex of ['y=x', 'x=1', '0<y<x', 'y=x^{2}', 'A=a\\to1']) {
+            assert.deepEqual(shape(parseLatexStatement(latex)), shape(parseLatex(latex)));
+        }
     });
 });
 

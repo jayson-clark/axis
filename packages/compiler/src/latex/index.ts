@@ -7,4 +7,4 @@
 
 export { emitLatex } from './emit';
 export { identifierLatex } from './names';
-export { LatexParseError, parseLatex } from './parse';
+export { LatexParseError, parseLatex, parseLatexStatement } from './parse';
