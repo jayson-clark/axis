@@ -74,7 +74,7 @@ folder "Parabola" { @ collapsed
 
 "Drag P."
 P = (1, 2) @ color: BLUE, dragMode: XY, label: "P", showLabel
-// unsupported: y=\sum_{n=0}^{3}x^{n}
+y = sum(n = 0..3, x ^ n) @ color: GREEN
 ```
 
 The statements are built as syntax trees and printed with the formatter's own
@@ -127,7 +127,7 @@ still parses.
 
 ## What Axis cannot write
 
-Some latex has no Axis spelling yet - `\sum`, `\int` and the like - and some
+Some latex has no Axis spelling yet - a regression's `\sim`, say - and some
 items have no statement. The decompiler never throws on them. It leaves the
 expression out (or, if the trouble is in one property, only that property),
 puts a `// unsupported: …` comment where it would have been, and reports a

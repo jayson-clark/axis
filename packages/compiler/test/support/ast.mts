@@ -168,6 +168,47 @@ export const seq = (...elements: Operand[]): Expression => ({
     span: SPAN,
 });
 
+/** `f'(x)`: `order` primes on a call. */
+export const prime = (name: string, order: number, ...args: Operand[]): Expression => ({
+    kind: 'Prime',
+    callee: id(name),
+    order,
+    arguments: args.map(node),
+    span: SPAN,
+});
+
+/** `sum(n = from..to, body)`, and `prod` and `int` alike. */
+export const bigOp = (
+    operator: 'sum' | 'prod' | 'int',
+    variable: string,
+    from: Operand,
+    to: Operand,
+    body: Operand,
+): Expression => ({
+    kind: 'BigOperator',
+    operator,
+    name: id(operator),
+    variable: id(variable),
+    from: node(from),
+    to: node(to),
+    body: node(body),
+    span: SPAN,
+});
+export const sum = (variable: string, from: Operand, to: Operand, body: Operand) =>
+    bigOp('sum', variable, from, to, body);
+export const prod = (variable: string, from: Operand, to: Operand, body: Operand) =>
+    bigOp('prod', variable, from, to, body);
+export const integral = (variable: string, from: Operand, to: Operand, body: Operand) =>
+    bigOp('int', variable, from, to, body);
+
+/** `d/dx body` */
+export const deriv = (variable: string, body: Operand): Expression => ({
+    kind: 'Derivative',
+    variable: id(variable),
+    body: node(body),
+    span: SPAN,
+});
+
 const bindings = (pairs: [string, Operand][]): Binding[] =>
     pairs.map(([name, value]) => ({
         kind: 'Binding',
@@ -251,6 +292,12 @@ export function show(tree: Expression): string {
             return `(${tree.operands.map((o, i) => (i ? `${tree.operators[i - 1]} ` : '') + show(o)).join(' ')})`;
         case 'Call':
             return `${tree.callee.name}(${tree.arguments.map(show).join(', ')})`;
+        case 'Prime':
+            return `${tree.callee.name}${"'".repeat(tree.order)}(${tree.arguments.map(show).join(', ')})`;
+        case 'BigOperator':
+            return `${tree.operator}(${tree.variable.name} = ${show(tree.from)}..${show(tree.to)}, ${show(tree.body)})`;
+        case 'Derivative':
+            return `(d/d${tree.variable.name} ${show(tree.body)})`;
         case 'Index':
             return `${show(tree.target)}[${show(tree.index)}]`;
         case 'Member':
@@ -358,8 +405,31 @@ export function evaluate(tree: Expression, scope: Record<string, number> = {}): 
             break;
         }
         case 'Call': {
+            if (tree.callee.name === 'log' && tree.arguments.length === 2) {
+                const [x, base] = tree.arguments.map(at);
+                return Math.log(x) / Math.log(base);
+            }
             const fn = FUNCTIONS[tree.callee.name];
             return fn ? fn(...tree.arguments.map(at)) : NaN;
+        }
+        case 'BigOperator': {
+            // A sum and a product run over the integers between the bounds, as
+            // Desmos' do, and are empty the wrong way round. An integral is
+            // Desmos' to approximate, not this evaluator's.
+            if (tree.operator === 'int') {
+                return NaN;
+            }
+            const from = at(tree.from);
+            const to = at(tree.to);
+            if (!Number.isInteger(from) || !Number.isInteger(to) || to - from > 1000) {
+                return NaN;
+            }
+            let result = tree.operator === 'sum' ? 0 : 1;
+            for (let k = from; k <= to; k++) {
+                const term = evaluate(tree.body, { ...scope, [tree.variable.name]: k });
+                result = tree.operator === 'sum' ? result + term : result * term;
+            }
+            return result;
         }
     }
     return NaN;

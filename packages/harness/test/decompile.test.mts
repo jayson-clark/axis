@@ -488,7 +488,7 @@ describe('a graph written in Desmos rather than in Axis', { skip }, () => {
                 expressions: {
                     list: [
                         { type: 'expression', id: '1', latex: 'y=x' },
-                        { type: 'expression', id: '2', latex: '\\sum_{n=1}^{10}n' },
+                        { type: 'expression', id: '2', latex: 'y_{1}\\sim mx_{1}+b' },
                         { type: 'expression', id: '3', latex: 'y=2x' },
                     ],
                 },

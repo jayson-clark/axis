@@ -75,6 +75,29 @@ describe('names', () => {
         reports('theta = r', 'theta-equation');
     });
 
+    test('a sum, a product and an integral bind their variable in the body', () => {
+        clean('a = sum(n = 1..10, n^2)');
+        clean('f(x) = prod(k = 1..x, k)');
+        clean('k = 2\na = int(k = 0..1, k)');
+        clean('a = sum(k = 1..3, k) + sum(k = 1..2, k)');
+        clean('a = sum(i = 1..3, sum(j = 1..i, j))');
+        clean("f(x) = x^2\ny = f'(x) + f''(x)");
+        clean("y = sin'(x)");
+        clean('y = d/dx x^2');
+        clean('y = log(x, 2)');
+    });
+
+    test('but not one already bound where it stands', () => {
+        reports('f(k) = sum(k = 1..3, k)', 'rebound-variable');
+        reports('a = sum(k = 1..2, int(k = 0..1, k))', 'rebound-variable');
+        reports('L = [sum(i = 1..3, i) for i = [1, 2]]', 'rebound-variable');
+    });
+
+    test('a prime differentiates a function, and nothing else', () => {
+        reports("y = g'(x)", 'unknown-function');
+        reports("a = 2\ny = a'(x)", 'unknown-function');
+    });
+
     test('a name has one subscript', () => {
         reports('x_1_2 = 3', 'multiple-subscripts');
         reports('y = a_1_b + 1', 'multiple-subscripts');

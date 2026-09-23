@@ -76,6 +76,17 @@ const CASES: Record<string, DiagnosticCase> = {
         expected: [['dt-outside-ticker', 'dt']],
         rejected: true,
     },
+    // Desmos refuses it too - "already defined" - but only once it is on
+    // the graph, and without saying what bound it.
+    'rebound-variable': {
+        source: 'f(k) = sum(k = 1..3, k)',
+        expected: [['rebound-variable', 'k']],
+        rejected: true,
+    },
+    'expected-bounds': {
+        source: 'k = sum(n, n)',
+        expected: [['expected-bounds', 'n']],
+    },
     'unexpected-string': {
         source: 'k = "hello" + 1',
         expected: [['unexpected-string', '"hello"']],

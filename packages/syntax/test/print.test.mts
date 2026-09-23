@@ -15,9 +15,11 @@ import {
     abs,
     act,
     add,
+    bigOp,
     call,
     cmp,
     color,
+    deriv,
     div,
     eq,
     fact,
@@ -35,6 +37,7 @@ import {
     piecewise,
     pos,
     pow,
+    prime,
     prop,
     range,
     seeded,
@@ -133,6 +136,35 @@ describe('printExpression: every node', () => {
         assert.equal(print(seq(act('a', 1), act('b', 2))), 'a -> 1, b -> 2');
         assert.equal(print(withB(mul('a', 'x'), ['a', 2], ['b', 3])), 'a * x with a = 2, b = 3');
         assert.equal(print(forB('i', ['i', 'L'])), 'i for i = L');
+    });
+});
+
+describe('printExpression: calculus', () => {
+    test('sum, prod and int, with their ranges', () => {
+        assert.equal(print(bigOp('sum', 'n', 1, 10, pow('n', 2))), 'sum(n = 1..10, n ^ 2)');
+        assert.equal(print(bigOp('int', 't', neg('pi'), 'pi', 't')), 'int(t = -pi..pi, t)');
+        assert.equal(print(bigOp('prod', 'k', 1, num('.5'), 'k')), 'prod(k = 1.. .5, k)');
+        assert.equal(
+            print(bigOp('sum', 'n', add('a', 1), sub('b', 1), add('n', 1))),
+            'sum(n = a + 1..b - 1, n + 1)',
+        );
+    });
+
+    test('primes', () => {
+        assert.equal(print(prime('f', 1, 'x')), "f'(x)");
+        assert.equal(print(prime('f', 2, 'x')), "f''(x)");
+    });
+
+    test('d/dx, bracketed where it would take a factor that is not its own', () => {
+        assert.equal(print(deriv('x', pow('x', 2))), 'd/dx x ^ 2');
+        assert.equal(print(deriv('x', add('x', 1))), 'd/dx (x + 1)');
+        assert.equal(print(add(deriv('x', 'x'), 1)), 'd/dx x + 1');
+        assert.equal(print(mul(deriv('x', 'x'), 2)), '(d/dx x) * 2');
+        assert.equal(print(imp(deriv('x', 'x'), 'y')), '(d/dx x) y');
+        assert.equal(print(mul(neg(deriv('x', 'x')), 2)), '(-d/dx x) * 2');
+        assert.equal(print(deriv('x', neg('x'))), 'd/dx (-x)');
+        assert.equal(print(deriv('x', list(1, 2))), 'd/dx ([1, 2])');
+        assert.equal(print(deriv('x_1', 'x_1')), 'd/dx_1 x_1');
     });
 });
 

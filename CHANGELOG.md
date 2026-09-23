@@ -14,9 +14,28 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 - `theta-equation`: the checker reports `theta = …`, which Desmos refuses to
   graph in any mode, and suggests writing the curve as `r = …`.
+- Sums, products and integrals: `sum(n = 1..10, n^2)`, `prod(k = 1..5, k)` and
+  `int(t = 0..1, f(t))`, with either end of the range any expression. They
+  compile to `\sum`, `\prod` and `\int`, and graphs from desmos.com that use
+  them now decompile in full instead of as `// unsupported:` comments.
+- Derivatives: `d/dx f(x)` differentiates the product after it, as Desmos does,
+  and `f'(x)` and `f''(x)` differentiate a function.
+- `log(x, b)`, the logarithm to base `b`, written `\log_{b}` in latex.
+- `rebound-variable`: a `sum`, `prod` or `int` variable that is already a
+  parameter, a binding, or the variable of a sum around it, which Desmos
+  refuses.
+- `expected-bounds`: `sum(`, `prod(` or `int(` not followed by
+  `name = from..to`.
 
 ### Changed
 
+- **Breaking:** `sum`, `prod` and `int` are built-in names now, so a file that
+  defines one - `sum = total(L)`, `int(x) = …` - reports `assign-to-builtin`.
+  Rename the definition.
+- **Breaking:** `d/dx` followed by an operand is a derivative. It used to be `d`
+  divided by `dx` and multiplied by the operand, which only a file with
+  variables named `d` and `dx` could have meant. `d/dx` with nothing after it
+  is still that division.
 - Axis is described as a language for Desmos graphs rather than a scripting
   language, and a `.axis` file as a file rather than a script, across the docs,
   the site, hover and the READMEs. The extension's display name is now

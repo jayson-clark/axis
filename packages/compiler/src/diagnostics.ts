@@ -41,6 +41,10 @@ export const COMPILER_DIAGNOSTICS = {
         summary: "`dt` anywhere but the ticker's handler (or a macro's body)",
         example: 'a = dt',
     },
+    'rebound-variable': {
+        summary: 'a `sum`, `prod` or `int` variable already bound where it stands',
+        example: 'f(k) = sum(k = 1..3, k)',
+    },
     'unexpected-string': {
         summary: 'a string where a value belongs',
         example: 'a = "one" + 1',

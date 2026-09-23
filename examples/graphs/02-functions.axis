@@ -32,6 +32,19 @@ folder "Powers and roots" {
     y = exp(x) @ color: GREEN
     y = ln(x) @ color: PURPLE
     y = log(x) @ color: ORANGE
+    y = log(x, 2) @ color: ORANGE, lineStyle: DASHED
+}
+
+folder "Calculus" {
+    "f's slope, its second derivative, and the area under it from 0 to x."
+    y = f'(x) @ color: RED, lineStyle: DASHED
+    y = d/dx f'(x) @ color: RED, lineStyle: DOTTED
+    y = int(t = 0..x, f(t)) @ color: BLUE
+    "The first six terms of the series for e^x, beside the real thing."
+    y = sum(k = 0..5, x ^ k / k!) @ color: GREEN
+    y = exp(x) @ color: GREEN, lineStyle: DASHED
+    s = sum(n = 1..100, 1 / n ^ 2) @ hidden
+    p = prod(n = 1..5, n) @ hidden
 }
 
 folder "Rounding and sign" {

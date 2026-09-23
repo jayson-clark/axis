@@ -136,6 +136,38 @@ of a definition binds more loosely than anything else, so
 `f(x) = x n with n = 3` defines `f` as `x n with n = 3`, rather than applying
 `with` to the whole definition.
 
+## Sums, integrals and derivatives
+
+`sum`, `prod` and `int` name their variable once, with the range it runs over,
+and then the body the variable is bound in. Either end of the range can be any
+expression.
+
+```axis
+a = sum(n = 1..10, n ^ 2)
+b = prod(k = 1..5, k)
+y = int(t = 0..x, cos(t))
+y = sum(k = 0..5, x ^ k / k!)
+```
+
+`d/dx` differentiates the product after it, the way Desmos does, so
+`d/dx x ^ 2 + 1` is the derivative, then plus 1. Bracket a sum to differentiate
+all of it. A prime differentiates a function, and `log` takes an optional base:
+
+```axis
+f(x) = x ^ 3
+y = d/dx f(x)
+y = d/dx (x ^ 2 + x)
+y = f'(x) + f''(x)
+z = log(8, 2)
+```
+
+A sum's variable has to be free where the sum stands. Desmos will not take a
+name that is already a parameter or bound by a sum around it:
+
+```axis error="rebound-variable"
+f(k) = sum(k = 1..3, k)
+```
+
 ## Calls and products
 
 `name(…)` is a call when `name` is a function - a built-in one, or one the

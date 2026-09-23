@@ -224,6 +224,9 @@ export type Expression =
     | Binary
     | Comparison
     | Call
+    | Prime
+    | BigOperator
+    | Derivative
     | Index
     | Member
     | Factorial
@@ -361,6 +364,44 @@ export interface Call extends NodeBase {
     kind: 'Call';
     callee: Identifier;
     arguments: Expression[];
+}
+
+/**
+ * `f'(x)`, `f''(x)`: a derivative of a function, taken by Desmos. `order` is
+ * the number of primes.
+ */
+export interface Prime extends NodeBase {
+    kind: 'Prime';
+    callee: Identifier;
+    order: number;
+    arguments: Expression[];
+}
+
+/**
+ * `sum(n = 1..10, f(n))`, `prod(n = 1..10, n)`, `int(t = 0..1, f(t))`.
+ *
+ * `name` is the word as written, kept for its span. `variable` is bound in the
+ * body and nowhere else - not in either bound, as in Desmos.
+ */
+export interface BigOperator extends NodeBase {
+    kind: 'BigOperator';
+    operator: 'sum' | 'prod' | 'int';
+    name: Identifier;
+    variable: Identifier;
+    from: Expression;
+    to: Expression;
+    body: Expression;
+}
+
+/**
+ * `d/dx f(x)`: the derivative of `body` with respect to `variable`. The body
+ * is a product, as `-` takes one: `d/dx x^2 + 1` is the derivative plus 1.
+ * `variable` is spanned over the `x` of `dx`.
+ */
+export interface Derivative extends NodeBase {
+    kind: 'Derivative';
+    variable: Identifier;
+    body: Expression;
 }
 
 /** `L[1]`, `L[2...5]`, `L[L > 2]` */
