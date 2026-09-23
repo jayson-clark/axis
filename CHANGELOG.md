@@ -10,6 +10,8 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+## 2.3.0 - 2026-09-23
+
 ### Added
 
 - A diagnostic's code links to its entry in the
