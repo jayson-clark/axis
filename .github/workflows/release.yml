@@ -1,0 +1,87 @@
+# Publishes a release when a `v*` tag is pushed.
+#
+# A release is cut locally with `node scripts/release.mjs <version>`, which
+# sets every package to the version and moves the changelog's "Unreleased"
+# entries under it; the commit is tagged and the tag pushed, and this does the
+# rest. It checks the tag is on main and agrees with the packages, runs every
+# suite, harness included, and only then publishes: the npm packages, a GitHub
+# release carrying the changelog section and the extension's .vsix, and the
+# extension to the Marketplace once a VSCE_PAT secret exists.
+#
+# npm is published with trusted publishing when each package has this
+# workflow set as its trusted publisher on npmjs.com, or with an NPM_TOKEN
+# secret otherwise. Every step can be re-run: versions already on npm are
+# skipped.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # the GitHub release
+  id-token: write # npm provenance and trusted publishing
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # npm's trusted publisher names this environment, so a publish from
+    # anywhere else is refused; on GitHub it can require an approval and admit
+    # only `v*` tags, so write access to the repo is not publish access.
+    environment: release
+    env:
+      VERSION: ${{ github.ref_name }}
+      # Here rather than on the step, so the step's `if` can see whether it is set.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later; Node 22 ships with 10.
+      - run: npm install --global npm@11
+
+      - name: Check the tag is a commit on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Read the changelog for this version
+        run: node scripts/changelog.mjs "${VERSION#v}" > "$RUNNER_TEMP/notes.md"
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm --filter @axis-dsl/harness exec playwright-core install --with-deps chromium
+      - run: pnpm test
+
+      - name: Publish to npm
+        run: node scripts/publish.mjs "${VERSION#v}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Package the extension
+        run: pnpm --filter axis-dsl package --out "$RUNNER_TEMP/axis-dsl-${VERSION#v}.vsix"
+      - name: Create the GitHub release
+        run: >-
+          gh release create "$VERSION" "$RUNNER_TEMP/axis-dsl-${VERSION#v}.vsix"
+          --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+          $([[ "$VERSION" == *-* ]] && echo --prerelease)
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # The Marketplace takes no semver prerelease, so a prerelease stops at
+      # the .vsix on its GitHub release.
+      - name: Publish the extension to the Marketplace
+        if: env.VSCE_PAT != '' && !contains(github.ref_name, '-')
+        working-directory: packages/extension
+        run: >-
+          ./node_modules/.bin/vsce publish --no-dependencies
+          --packagePath "$RUNNER_TEMP/axis-dsl-${VERSION#v}.vsix"
