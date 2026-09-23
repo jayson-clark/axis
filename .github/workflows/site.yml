@@ -1,0 +1,58 @@
+# Builds the docs site and publishes it to GitHub Pages on every push to main.
+#
+# The site is generated from the packages - the reference from the manifest and
+# the diagnostic catalogues - so they are built first, and the suites that
+# check what the site shows run before anything is published: every example
+# compiles, and every diagnostic example raises its code. (Whether Desmos draws
+# them is the harness' job, which needs a browser and runs with `pnpm test`.)
+
+name: Site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push supersedes one still queued.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --build
+      - name: Check what the site shows
+        run: >-
+          node --test
+          packages/syntax/test/diagnostics.test.mts
+          packages/compiler/test/diagnostics.test.mts
+          packages/compiler/test/manifest.test.mts
+          packages/compiler/test/docs.test.mts
+      - run: pnpm site:build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
