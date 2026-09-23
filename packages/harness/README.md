@@ -132,7 +132,7 @@ axis-inspect - < graph.axis           # source on stdin
   --errors-only                       # only what Desmos rejected
   --eval '<expr>'                     # also evaluate an Axis expression (repeatable)
   --screenshot out.png                # write a PNG of the graphpaper
-  --api-key <key>                     # default: the public demo key
+  --api-key <key>                     # default: the Axis project's key
   --offline                           # fail rather than fetch from desmos.com
 ```
 
@@ -194,14 +194,14 @@ answered out of the cache, and a request to any other host is aborted — but
 sharing the origin means calculator.js resolves its own assets to URLs the same
 interceptor recognizes, and no API key referrer rule has anything to object to.
 
-Desmos' public demo key is the default, as it is elsewhere in Axis. Pass
-`apiKey` (or `--api-key`) to use your own.
+The Axis project's key is the default, as it is elsewhere in Axis. Pass `apiKey`
+(or `--api-key`) to use your own.
 
 ## Options
 
 ```ts
 await createCalculator({
-    apiKey,        // default: the Desmos demo key
+    apiKey,        // default: the Axis project's key
     settings,      // CalculatorOptions the calculator is constructed with
     viewport,      // initial math bounds; fixed rather than fitted, for stability
     offline,       // fail on a cache miss instead of fetching

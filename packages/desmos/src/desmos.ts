@@ -14,10 +14,14 @@ export const DESMOS_API_VERSION = 'v1.13';
 export const DESMOS_SCRIPT_ORIGIN = 'https://www.desmos.com';
 
 /**
- * Desmos' public prototyping key. It works with no setup, but logs a console
- * warning and is not licensed for distribution — https://www.desmos.com/api
+ * The Axis project's own key, which every host defaults to: the extension's
+ * preview, the playground, the docs site and the harness. Desmos' public demo
+ * key is for prototyping and not licensed for distribution, so Axis does not
+ * use it anywhere. A key is not a secret - it travels in the script's URL on
+ * every page that loads the calculator - but anyone building their own product
+ * on these packages should get their own at https://www.desmos.com/api.
  */
-export const DESMOS_DEMO_API_KEY = 'dcb31709b452b1cf9dc26972add0fda6';
+export const AXIS_DESMOS_API_KEY = '66c0e18dd997410cb8d9efc89b4a82bb';
 
 /** Documentation for the API version this package is written against. */
 export const DESMOS_DOCS_URL = `${DESMOS_SCRIPT_ORIGIN}/api/${DESMOS_API_VERSION}/docs/index.html`;

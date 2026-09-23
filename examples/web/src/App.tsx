@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { applySourceEdits, writeBackGraph } from '@axis-dsl/compiler';
-import { DESMOS_DEMO_API_KEY } from '@axis-dsl/desmos';
+import { AXIS_DESMOS_API_KEY } from '@axis-dsl/desmos';
 import { AxisEditor } from './AxisEditor';
 import { monaco } from './monaco';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
@@ -8,11 +8,10 @@ import { SplitPane } from './SplitPane';
 import { useCompiledAxis } from './useCompiledAxis';
 
 /**
- * Put your own Desmos API key here. It defaults to Desmos' public demo key so
- * the example runs with no setup — that key logs a console warning and is not
- * licensed for distribution, so replace it before deploying this anywhere.
+ * The Axis project's Desmos API key. Put your own here if you deploy a copy of
+ * this playground as part of something else - https://www.desmos.com/api
  */
-const DESMOS_API_KEY = DESMOS_DEMO_API_KEY;
+const DESMOS_API_KEY = AXIS_DESMOS_API_KEY;
 
 const STARTER_SOURCE = `// Welcome to Axis — a scripting language for Desmos.
 // Edit on the left, watch the graph update on the right -

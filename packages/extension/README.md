@@ -43,7 +43,7 @@ From the Axis language server, the same one other editors use:
 
 | Setting                     | Meaning                                                     |
 | --------------------------- | ----------------------------------------------------------- |
-| `axis.apiKey`               | Your Desmos API key. Blank uses Desmos' public demo key.    |
+| `axis.apiKey`               | Your Desmos API key. Blank uses the Axis project's key.     |
 | `axis.previewTarget`        | `ask`, `editor` or `browser`.                               |
 | `axis.preview.debug`        | Show the preview's Graph and JSON tabs and the file's path. |
 | `axis.format.maxLineLength` | The column the formatter breaks a long line at. `0`: never. |

@@ -105,9 +105,9 @@ piecewise, styling, folders, sliders, lists, tables, parametric and polar
 curves, inequalities, click actions, colours, config, imports, macros, images
 and styles - plus four complete graphs to read as finished work.
 
-Desmos' public demo key is built in, so the graph works with no setup. To ship
-your own, [get a key](https://www.desmos.com/api) and set `axis.apiKey` in
-VSCode settings.
+The Axis project's Desmos API key is built in, so the graph works with no setup.
+To use your own, [get a key](https://www.desmos.com/api) and set `axis.apiKey`
+in VSCode settings.
 
 ## Imports
 

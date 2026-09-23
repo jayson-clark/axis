@@ -45,7 +45,7 @@ Options
       --eval <expr>       also evaluate an Axis expression against the loaded
                           graph, e.g. --eval 'f(20)' (repeatable)
   --screenshot <file>     write a PNG of the graphpaper
-  --api-key <key>         Desmos API key (default: the public demo key)
+  --api-key <key>         Desmos API key (default: the Axis project's key)
   --offline               fail rather than fetch from desmos.com
   -h, --help              show this
 
