@@ -13,7 +13,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { AXIS_MANIFEST } from '@axis-dsl/syntax';
-import { documentationBlocks } from '../../../site/scripts/blocks.mts';
+import { documentationBlocks } from '../../../docs/site/scripts/blocks.mts';
 import { loadAxisSource, type AxisCalculator } from '../dist/index.js';
 import { exampleDirectory, skip, useCalculator } from './support.mts';
 

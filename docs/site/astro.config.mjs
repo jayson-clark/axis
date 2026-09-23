@@ -12,7 +12,7 @@ import starlight from '@astrojs/starlight';
 import { playgroundLink } from './src/components/playground-link.ts';
 import grammar from '@axis-dsl/language-service/syntaxes/axis.tmLanguage.json' with { type: 'json' };
 
-const packagesDir = fileURLToPath(new URL('../packages/', import.meta.url));
+const packagesDir = fileURLToPath(new URL('../../packages/', import.meta.url));
 const base = '/axis';
 
 export default defineConfig({
@@ -29,7 +29,7 @@ export default defineConfig({
             social: [
                 { icon: 'github', label: 'GitHub', href: 'https://github.com/jayson-clark/axis' },
             ],
-            editLink: { baseUrl: 'https://github.com/jayson-clark/axis/edit/main/site/' },
+            editLink: { baseUrl: 'https://github.com/jayson-clark/axis/edit/main/docs/site/' },
             customCss: ['./src/styles/axis.css'],
             expressiveCode: {
                 plugins: [playgroundLink(base)],

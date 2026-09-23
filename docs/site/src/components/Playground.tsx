@@ -16,9 +16,9 @@ import { applySourceEdits, writeBackGraph } from '@axis-dsl/compiler';
 import { AXIS_DESMOS_API_KEY } from '@axis-dsl/desmos';
 import { registerAxisLanguage } from '@axis-dsl/language-service/monaco';
 import { AxisViewer, useLocalViewerHost } from '@axis-dsl/viewer';
-import { AxisEditor } from '../../../examples/web/src/AxisEditor';
-import { monaco } from '../../../examples/web/src/monaco';
-import { useCompiledAxis } from '../../../examples/web/src/useCompiledAxis';
+import { AxisEditor } from '../../../../examples/web/src/AxisEditor';
+import { monaco } from '../../../../examples/web/src/monaco';
+import { useCompiledAxis } from '../../../../examples/web/src/useCompiledAxis';
 import { PLAYGROUND_OPTIONS } from './files';
 import { decodeSource } from './share';
 

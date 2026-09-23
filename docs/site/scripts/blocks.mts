@@ -24,8 +24,8 @@ export interface DocBlock {
     error?: string;
 }
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const PAGES = join(ROOT, 'site/src/content/docs');
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+const PAGES = join(ROOT, 'docs/site/src/content/docs');
 
 /** What `scripts/generate.mjs` writes under the site's pages, and is not written by hand. */
 const GENERATED = new Set(['reference', 'examples', 'spec.md']);

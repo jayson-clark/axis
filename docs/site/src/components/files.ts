@@ -18,7 +18,7 @@ const key = (path: string) => ROOT + path.slice(path.indexOf('/examples/scripts/
 
 const scripts = Object.fromEntries(
     Object.entries(
-        import.meta.glob<string>('../../../examples/scripts/lib/**/*.axis', {
+        import.meta.glob<string>('../../../../examples/scripts/lib/**/*.axis', {
             query: '?raw',
             import: 'default',
             eager: true,
@@ -28,7 +28,7 @@ const scripts = Object.fromEntries(
 
 const pictures = Object.fromEntries(
     Object.entries(
-        import.meta.glob<string>('../../../examples/scripts/images/**/*', {
+        import.meta.glob<string>('../../../../examples/scripts/images/**/*', {
             query: '?inline',
             import: 'default',
             eager: true,

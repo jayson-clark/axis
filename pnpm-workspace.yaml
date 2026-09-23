@@ -3,7 +3,7 @@ packages:
   # examples/scripts holds .axis files, not a package; pnpm skips any directory
   # here without a package.json.
   - 'examples/*'
-  - 'site'
+  - 'docs/site'
 
 # All third-party dependency versions are pinned here. Packages reference them
 # with "catalog:" instead of a version range.

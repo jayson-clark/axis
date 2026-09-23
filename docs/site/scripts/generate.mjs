@@ -14,7 +14,7 @@ import { examplePages } from './examples.mjs';
 import { referencePages } from './reference.mjs';
 
 const site = join(dirname(fileURLToPath(import.meta.url)), '..');
-const root = join(site, '..');
+const root = join(site, '../..');
 const docs = join(site, 'src/content/docs');
 
 const REPO = 'https://github.com/jayson-clark/axis/blob/main';
