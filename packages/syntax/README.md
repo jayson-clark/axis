@@ -129,6 +129,7 @@ extension.
 | `sameTree(a, b)` / `stripParens(node)`                               | Trees compared for meaning rather than layout                                        |
 | `lineIndex(source)`                                                  | Offsets to `{ line, character }` and back                                            |
 | `debugTree(node)`                                                    | A node as an s-expression, for tests and debugging                                   |
+| `SYNTAX_DIAGNOSTICS`                                                 | Every code the lexer and parser report, with a summary and a script that raises it   |
 | `AXIS_MANIFEST`                                                      | Every function, operator, constant, property and setting                             |
 | `findProperty`, `propertiesFor`, `placementsOf`, `enumValue`         | The manifest's lookups, by name and placement                                        |
 | `AXIS_PALETTE`, `AXIS_PALETTE_HEX`                                   | The palette names `color` takes, and their hex                                       |

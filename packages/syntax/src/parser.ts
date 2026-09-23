@@ -26,6 +26,7 @@
 // tool after it still sees the rest of the file.
 
 import type * as ast from './ast';
+import type { SyntaxDiagnosticCode } from './diagnostics';
 import { lex, unescapeString } from './lexer';
 import { isTrivia, type Token } from './tokens';
 
@@ -36,7 +37,7 @@ export interface SyntaxTree {
     tokens: Token[];
     file: ast.File;
     /** The lexer's diagnostics and the parser's, in source order. */
-    diagnostics: ast.Diagnostic[];
+    diagnostics: ast.Diagnostic<SyntaxDiagnosticCode>[];
 }
 
 export function parse(source: string): SyntaxTree {
@@ -54,7 +55,7 @@ export function parse(source: string): SyntaxTree {
 export function parseExpression(source: string): {
     expression: ast.Expression;
     tokens: Token[];
-    diagnostics: ast.Diagnostic[];
+    diagnostics: ast.Diagnostic<SyntaxDiagnosticCode>[];
 } {
     const { tokens, diagnostics } = lex(source);
     const parser = new Parser(tokens, diagnostics);
@@ -105,15 +106,15 @@ class Parser {
     private readonly contexts: Context[] = [{ newlines: false, commaRule: false, inAbs: false }];
     /** How many blocks we are inside, so recovery knows a `}` is not its to skip. */
     private blockDepth = 0;
-    private readonly diagnostics: ast.Diagnostic[];
+    private readonly diagnostics: ast.Diagnostic<SyntaxDiagnosticCode>[];
 
-    constructor(tokens: Token[], diagnostics: ast.Diagnostic[]) {
+    constructor(tokens: Token[], diagnostics: ast.Diagnostic<SyntaxDiagnosticCode>[]) {
         this.tokens = tokens.filter(token => !isTrivia(token));
         this.diagnostics = [...diagnostics];
         this.closers = matchBrackets(this.tokens);
     }
 
-    finish(): ast.Diagnostic[] {
+    finish(): ast.Diagnostic<SyntaxDiagnosticCode>[] {
         return this.diagnostics.sort((a, b) => a.span.start - b.span.start);
     }
 
@@ -201,7 +202,7 @@ class Parser {
      * one an inner rule reported before giving up, is not reported again by the
      * rule that finds it next.
      */
-    private error(code: string, message: string, span: ast.Span): void {
+    private error(code: SyntaxDiagnosticCode, message: string, span: ast.Span): void {
         if (this.diagnostics.some(d => d.span.start === span.start)) return;
         this.diagnostics.push({ code, severity: 'error', message, span });
     }

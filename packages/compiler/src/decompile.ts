@@ -75,6 +75,7 @@ import {
     type TableColumn,
     type TickerStatement,
 } from '@axis-dsl/syntax';
+import type { DecompilerDiagnosticCode } from './diagnostics';
 import { parseLatex } from './latex/index';
 
 /** A graph to decompile: what {@link compileAxis} hands back, or a calculator's own state. */
@@ -292,7 +293,7 @@ function range(
 
 /** What one expression, property or item could not be written as, to report and comment. */
 interface Problem {
-    code: 'unsupported-latex' | 'unsupported-item' | 'unsupported-value';
+    code: DecompilerDiagnosticCode;
     /** The comment written in its place, without the `// `. */
     comment: string;
     message: string;

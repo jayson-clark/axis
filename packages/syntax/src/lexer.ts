@@ -13,11 +13,12 @@
 // rest of the file down with it.
 
 import type { Diagnostic } from './ast';
+import type { SyntaxDiagnosticCode } from './diagnostics';
 import { KEYWORDS, type Token, type TokenKind } from './tokens';
 
 export interface LexResult {
     tokens: Token[];
-    diagnostics: Diagnostic[];
+    diagnostics: Diagnostic<SyntaxDiagnosticCode>[];
 }
 
 const KEYWORD_SET: ReadonlySet<string> = new Set(KEYWORDS);
@@ -78,7 +79,7 @@ function startsToken(source: string, at: number): boolean {
 
 export function lex(source: string): LexResult {
     const tokens: Token[] = [];
-    const diagnostics: Diagnostic[] = [];
+    const diagnostics: Diagnostic<SyntaxDiagnosticCode>[] = [];
     let at = 0;
 
     const push = (kind: TokenKind, end: number) => {
@@ -86,7 +87,7 @@ export function lex(source: string): LexResult {
         at = end;
     };
 
-    const report = (code: string, message: string, start: number, end: number) => {
+    const report = (code: SyntaxDiagnosticCode, message: string, start: number, end: number) => {
         diagnostics.push({ code, severity: 'error', message, span: { start, end } });
     };
 
@@ -220,7 +221,7 @@ function scanNumber(source: string, start: number): number {
 function scanString(
     source: string,
     start: number,
-    report: (code: string, message: string, start: number, end: number) => void,
+    report: (code: SyntaxDiagnosticCode, message: string, start: number, end: number) => void,
 ): number {
     let end = start + 1;
     while (end < source.length) {

@@ -26,6 +26,7 @@ import {
     parse,
     type SyntaxTree,
 } from '@axis-dsl/syntax';
+import type { AxisDiagnostic } from './diagnostics';
 import type { ResolveImport } from './imports';
 import { forEachStatement } from './walk';
 
@@ -158,6 +159,6 @@ export function loadProgram(source: string, options: LoadProgramOptions = {}): P
  * The entry's are left bare: they are about the script the caller handed over,
  * which needs no naming.
  */
-export function located(diagnostic: Diagnostic, file: SourceFile): Diagnostic {
+export function located(diagnostic: AxisDiagnostic, file: SourceFile): Diagnostic {
     return file.entry ? diagnostic : { ...diagnostic, path: file.path };
 }

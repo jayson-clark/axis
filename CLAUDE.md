@@ -162,6 +162,13 @@ script, read as though it sat in `examples/scripts/`; the compiler's
 `manifest.test.mts` compiles each one clean and checks it uses the name it
 documents, and the harness' `docs.test.mts` draws it on a calculator.
 
+**A new diagnostic code means a catalogue entry.** `SYNTAX_DIAGNOSTICS` in
+syntax and `COMPILER_DIAGNOSTICS`/`DECOMPILER_DIAGNOSTICS` in the compiler
+declare every code, and every `report` is typed to take only those - so a new
+code will not compile until it has a summary and an example that raises it and
+nothing else. The same summary goes in the spec's §8 or §11 table, word for
+word: the compiler's `diagnostics.test.mts` compares them.
+
 **Changing how something compiles means changing how it decompiles.** The
 decompiler is the compiler's inverse and is tested as one: `decompile.test.mts`
 in the compiler package holds `compile ∘ decompile ∘ compile ≡ compile` over

@@ -65,6 +65,13 @@ Each has a stable `code` to match on, and a `span` of UTF-16 offsets into the
 file it is about - the script, unless the diagnostic carries a `path`, in which
 case it is the imported file of that name. `docs/spec.md` §8 lists the codes.
 
+Every code is declared once, in a catalogue - `SYNTAX_DIAGNOSTICS` in
+`@axis-dsl/syntax` for the lexer and parser, `COMPILER_DIAGNOSTICS` and
+`DECOMPILER_DIAGNOSTICS` here - with the spec's summary of it and a script
+that raises it. Everything that reports one is typed to take only a
+catalogued code, so `AxisDiagnosticCode` is the complete list, and the tests
+hold the spec's tables and the catalogues to each other.
+
 ## The passes
 
 `compileAxis` is a pipeline over a syntax tree, and each stage is exported on
@@ -379,6 +386,7 @@ folder it was made in, or of the script; one deleted there is deleted here.
 | `applySourceEdits(source, edits)`                                | Applies one file's edits to its text                                                            |
 | `propertyWrites` / `applyPropertyWrites`                         | Which properties two decompiled readings of one item disagree on, merged onto a clause          |
 | `mergeExpression(source, before, after)`                         | A changed expression with every unchanged part kept as the author wrote it                      |
+| `COMPILER_DIAGNOSTICS`, `DECOMPILER_DIAGNOSTICS`                 | Every code the checker, compiler and decompiler report, with a summary and an example           |
 | `CompileOptions`                                                 | `{ path?, resolveImport?, resolveImage? }`                                                      |
 | `CompilationResult`                                              | `{ state, options, diagnostics, sourceMap, configOrigin?, dependencies }`                       |
 | `StatementOrigin`                                                | `{ path, line, endLine, span, writable, reason? }` - where one item was written                 |
