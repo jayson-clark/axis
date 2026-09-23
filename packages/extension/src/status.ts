@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { basename, PreviewServer } from './server';
+import { basename, PreviewServer } from './preview-server';
 import { reopenPreview } from './preview';
 
 /**

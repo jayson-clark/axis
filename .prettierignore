@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 pnpm-lock.yaml
 CHANGELOG.md
+# The VSCode build the extension's smoke test downloads.
+.vscode-test/

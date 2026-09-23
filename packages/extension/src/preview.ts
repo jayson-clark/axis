@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { basename, PreviewServer } from './server';
+import { basename, PreviewServer } from './preview-server';
 
 /** Where a preview opens. Mirrors the `axis.previewTarget` setting's values. */
 export type PreviewTarget = 'editor' | 'browser';

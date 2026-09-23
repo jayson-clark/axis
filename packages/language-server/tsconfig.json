@@ -2,6 +2,8 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
         "composite": true,
+        // The server reads imports and images off disk with node's fs.
+        "types": ["node"],
         "outDir": "./dist",
         "rootDir": "src"
     },

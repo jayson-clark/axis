@@ -11,8 +11,11 @@
         "Other"
     ],
     "scripts": {
-        "build": "node scripts/copy-assets.mjs",
-        "watch": "tsc --watch"
+        "build": "tsc --noEmit && node scripts/build.mjs",
+        "watch": "node scripts/build.mjs --watch",
+        "typecheck": "tsc --noEmit",
+        "package": "pnpm run build && node scripts/package.mjs",
+        "test:vscode": "node test-vscode/run.mjs"
     },
     "activationEvents": [
         "onLanguage:axis"
@@ -111,14 +114,17 @@
         }
     },
     "devDependencies": {
-        "@types/node": "catalog:",
-        "@types/vscode": "catalog:"
-    },
-    "dependencies": {
         "@axis-dsl/compiler": "workspace:*",
-        "@axis-dsl/language": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
-        "@axis-dsl/viewer": "workspace:*"
+        "@axis-dsl/language-server": "workspace:*",
+        "@axis-dsl/language-service": "workspace:*",
+        "@axis-dsl/viewer": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/vscode": "catalog:",
+        "@vscode/test-electron": "catalog:",
+        "@vscode/vsce": "catalog:",
+        "esbuild": "catalog:",
+        "vscode-languageclient": "catalog:"
     },
     "private": true,
     "license": "MIT",

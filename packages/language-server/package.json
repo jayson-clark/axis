@@ -1,18 +1,26 @@
 {
     "name": "@axis-dsl/language-server",
     "version": "2.0.0-dev",
-    "description": "An LSP server for Axis",
+    "description": "An LSP server for Axis: diagnostics, completion, hover, formatting, semantic tokens and navigation for any editor",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
+    "bin": {
+        "axis-language-server": "./dist/bin.js"
+    },
     "scripts": {
         "watch": "tsc --watch"
     },
     "dependencies": {
+        "@axis-dsl/compiler": "workspace:*",
         "@axis-dsl/language-service": "workspace:*",
-        "@axis-dsl/compiler": "workspace:*"
+        "@axis-dsl/syntax": "workspace:*",
+        "vscode-languageserver": "catalog:",
+        "vscode-languageserver-textdocument": "catalog:",
+        "vscode-uri": "catalog:"
     },
     "devDependencies": {
-        "@types/node": "catalog:"
+        "@types/node": "catalog:",
+        "vscode-jsonrpc": "catalog:"
     },
     "license": "MIT",
     "author": "Jayson Clark",
@@ -30,7 +38,9 @@
         "axis-dsl",
         "desmos",
         "graphing",
-        "dsl"
+        "dsl",
+        "lsp",
+        "language-server"
     ],
     "exports": {
         ".": {
