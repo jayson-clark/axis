@@ -24,7 +24,13 @@ export { expandMacros } from './macros';
 export type { Expansion } from './macros';
 export { resolveProperties } from './styles';
 
-export { emitLatex, identifierLatex, LatexParseError, parseLatex } from './latex/index';
+export {
+    emitLatex,
+    identifierLatex,
+    LatexParseError,
+    parseLatex,
+    parseLatexStatement,
+} from './latex/index';
 export {
     decompileAxis,
     decompileExpression,

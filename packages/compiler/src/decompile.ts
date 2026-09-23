@@ -76,7 +76,7 @@ import {
     type TickerStatement,
 } from '@axis-dsl/syntax';
 import type { DecompilerDiagnosticCode } from './diagnostics';
-import { parseLatex } from './latex/index';
+import { parseLatex, parseLatexStatement } from './latex/index';
 
 /** A graph to decompile: what {@link compileAxis} hands back, or a calculator's own state. */
 export interface DecompileInput {
@@ -355,18 +355,21 @@ class Context {
     /**
      * Latex read as an expression, or undefined - with the problem recorded -
      * for latex the tree has no node for. `what` names it in the comment and
-     * the message: the item, and the property if it is one.
+     * the message: the item, and the property if it is one. An expression
+     * list's row is read with `parseLatexStatement` instead, since its `=`
+     * is a statement's.
      */
     private latex(
         latex: string | number,
         what: { id?: string; property?: string },
         pending: Statement[],
+        read: (latex: string) => Expression = parseLatex,
     ): Expression | undefined {
         if (typeof latex === 'number') {
             return number(latex);
         }
         try {
-            return parseLatex(latex);
+            return read(latex);
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             const oneLine = latex.replace(/\s*\n\s*/g, ' ');
@@ -466,13 +469,13 @@ class Context {
         if (item.latex === undefined || item.latex.trim() === '') {
             return null;
         }
-        const expression = this.latex(item.latex, { id: item.id }, pending);
+        const expression = this.latex(item.latex, { id: item.id }, pending, parseLatexStatement);
         if (!expression) {
             return null;
         }
         return {
             kind: 'ExpressionStatement',
-            expression: statementValue(expression),
+            expression: unbracketed(expression),
             metadata: metadata(this.expressionProperties(item, pending)),
             span: span(),
         };
@@ -979,27 +982,30 @@ class Context {
 }
 
 /**
- * Latex read as a statement rather than as an expression.
+ * A definition's value, without the brackets the compiler put round it.
  *
- * `g_{ap}=a-b\operatorname{with}a=2,b=1` is how Desmos writes the definition
- * of `gap`, and `parseLatex` - which reads an expression - takes the `with`
- * for the loosest thing there, binding the whole equation. A statement's `=`
- * is looser still (spec §5.1), which is how Desmos reads it too: `gap` is
- * defined as `a - b` with the bindings, not substituted into. The compiler
- * brackets the value, so its own latex never says it this way, but a graph
- * made at desmos.com does - and printed as it was parsed it would compile to
- * `(gap = a - b) with …`, which is another graph.
+ * The compiler brackets a `with` or `for` on the right of a definition -
+ * `g=\left(a-b\operatorname{with}a=2\right)` - so that its latex never
+ * depends on how `=` and `with` bind. In source the statement's `=` already
+ * does that grouping (spec §5.1), so the brackets would come back as ones
+ * nobody wrote.
  */
-function statementValue(expression: Expression): Expression {
-    if (expression.kind !== 'With' && expression.kind !== 'For') {
+function unbracketed(expression: Expression): Expression {
+    if (
+        expression.kind !== 'Comparison' ||
+        expression.operators.length !== 1 ||
+        expression.operators[0] !== '='
+    ) {
         return expression;
     }
-    const body = statementValue(expression.body);
-    if (body.kind !== 'Comparison' || body.operators.length !== 1 || body.operators[0] !== '=') {
-        return { ...expression, body };
+    const [target, value] = expression.operands;
+    if (
+        value.kind !== 'Paren' ||
+        (value.expression.kind !== 'With' && value.expression.kind !== 'For')
+    ) {
+        return expression;
     }
-    const [target, value] = body.operands;
-    return { ...body, operands: [target, { ...expression, body: value }] };
+    return { ...expression, operands: [target, value.expression] };
 }
 
 /** "expr_3", "expr_3's color" - what a message says a problem is about. */
@@ -1024,10 +1030,10 @@ function definedNames(list: readonly DesmosExpression[]): Set<string> {
         if (node.kind === 'Identifier') names.add(node.name);
         if (node.kind === 'Call') names.add(node.callee.name);
     };
-    const read = (latex: string | undefined) => {
+    const read = (latex: string | undefined, parse = parseLatex) => {
         if (!latex) return undefined;
         try {
-            return parseLatex(latex);
+            return parse(latex);
         } catch {
             return undefined;
         }
@@ -1041,7 +1047,7 @@ function definedNames(list: readonly DesmosExpression[]): Set<string> {
             }
             continue;
         }
-        const tree = read((item as DesmosExpressionItem).latex);
+        const tree = read((item as DesmosExpressionItem).latex, parseLatexStatement);
         if (
             tree?.kind === 'Comparison' &&
             tree.operators.length === 1 &&
