@@ -45,3 +45,7 @@ From the Axis language server, the same one other editors use:
 From the repository root, `pnpm install` and `pnpm build`. The extension is
 bundled by `scripts/build.mjs` into `dist/`; `pnpm --filter axis-dsl package`
 builds a `.vsix`.
+
+`pnpm test` checks the bundle and the language server inside it.
+`pnpm --filter axis-dsl test:vscode` runs a smoke test in a real VSCode, which
+it downloads into `.vscode-test/` the first time.
