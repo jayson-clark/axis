@@ -22,8 +22,10 @@ disagree, one of them is a bug.
 The layering is syntax ← compiler ← language-service ← language-server, each
 using only what is to its left - so something the compiler and the editor both
 need belongs in syntax or the compiler, never in the language service.
-Everything is released together at one version, and `node scripts/version.mjs
-2.0.1` sets it everywhere.
+Everything is released together at one version. A change leaves the versions
+alone and adds a line under **Unreleased** in `CHANGELOG.md`; the release itself
+is `node scripts/release.mjs 2.2.0`, a commit and a `v2.2.0` tag, and
+`.github/workflows/release.yml` publishes from the tag.
 
 ### Where each stage lives
 

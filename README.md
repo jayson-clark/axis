@@ -393,7 +393,26 @@ several editors. What only the extension has is the live preview.
 | `@axis-dsl/harness`          | Runs a script against a real headless Desmos                                   |
 | `axis-dsl`                   | The VSCode extension                                                           |
 
-Every package is released together, at one version.
+Every package is released together, at one version, and
+[`CHANGELOG.md`](./CHANGELOG.md) says what changed in each.
+
+### Releasing
+
+A pull request leaves the versions alone and adds a line under **Unreleased**
+in the changelog. A release is cut from an up-to-date `main`:
+
+```sh
+node scripts/release.mjs 2.2.0   # set every version, date the changelog
+git commit -am "Release 2.2.0"
+git tag v2.2.0
+git push origin main v2.2.0
+```
+
+The tag starts [the release workflow](./.github/workflows/release.yml), which
+runs every suite and then publishes the npm packages, a GitHub release with the
+changelog's notes and the extension's `.vsix`, and the extension to the
+Marketplace. A version with a prerelease suffix, `2.2.0-beta.1`, goes to npm
+under `next` rather than `latest`.
 
 ## Testing against a real Desmos graph
 
@@ -466,16 +485,17 @@ changes for a script:
 
 ## Scripts
 
-| Command                              | Description                                     |
-| ------------------------------------ | ----------------------------------------------- |
-| `pnpm build`                         | Build every package in dependency order         |
-| `pnpm dev`                           | Build once, then watch every package            |
-| `pnpm test`                          | Build, then run the suites on `node --test`     |
-| `pnpm test:browser`                  | Download the Chromium the harness needs         |
-| `pnpm typecheck`                     | Typecheck everything, tests included            |
-| `pnpm format`                        | Rewrite with Prettier                           |
-| `pnpm clean`                         | Remove every `dist/` and `*.tsbuildinfo`        |
-| `node scripts/version.mjs <version>` | Set every package to one version, for a release |
+| Command                              | Description                                          |
+| ------------------------------------ | ---------------------------------------------------- |
+| `pnpm build`                         | Build every package in dependency order              |
+| `pnpm dev`                           | Build once, then watch every package                 |
+| `pnpm test`                          | Build, then run the suites on `node --test`          |
+| `pnpm test:browser`                  | Download the Chromium the harness needs              |
+| `pnpm typecheck`                     | Typecheck everything, tests included                 |
+| `pnpm format`                        | Rewrite with Prettier                                |
+| `pnpm clean`                         | Remove every `dist/` and `*.tsbuildinfo`             |
+| `node scripts/release.mjs <version>` | Cut a release: set every version, date the changelog |
+| `node scripts/version.mjs <version>` | Set every package to one version, and nothing else   |
 
 ## License
 
