@@ -28,7 +28,7 @@ builds them once and stops.
 
 Open the repository in VSCode and press <kbd>F5</kbd> (the "Extension" launch
 configuration) to start an Extension Development Host with Axis loaded. Open
-any file from `examples/graphs/` in it - they are a tour of the language, one
+any file from `examples/` in it - they are a tour of the language, one
 topic per file - and the language support starts straight away: diagnostics as
 you type, completion of keywords, properties, names and paths, hover, go to
 definition (into imported files too), formatting, and the outline.
@@ -90,18 +90,19 @@ same server. What only the VSCode extension has is the live preview.
 
 The quickest way to try Axis needs no checkout at all: the
 [playground](../../playground/) on this site, where every example on these
-pages also opens with its "Open in playground" link. The same thing runs
-locally from `examples/web` - a Monaco editor beside a live Desmos graph:
+pages also opens with its "Open in playground" link. From a checkout, the
+docs site runs locally with the playground in it:
 
 ```sh
-pnpm --filter @axis-dsl/web dev
+pnpm site:dev
 ```
 
 Edit on the left and the graph updates on the right; drag something on the
 right and the source on the left catches up, exactly as in the VSCode preview.
 It is also the example to copy for embedding Axis in an app of your own -
-`examples/web/src/AxisEditor.tsx` is a short React wrapper around Monaco, and
-`examples/web/src/monaco.ts` shows the loading and worker setup.
+`docs/site/src/components/AxisEditor.tsx` is a short React wrapper around
+Monaco, and `docs/site/src/components/monaco.ts` shows the loading and worker
+setup.
 
 ## The command line
 
@@ -118,7 +119,7 @@ pnpm test:browser
 and is then run on a file:
 
 ```sh
-node packages/harness/dist/cli.js examples/graphs/06-sliders-and-animation.axis
+node packages/harness/dist/cli.js examples/06-sliders-and-animation.axis
 ```
 
 ```

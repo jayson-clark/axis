@@ -7,7 +7,7 @@ import { format, parse, printExpression, sameTree } from '../dist/index.js';
 import { seeded, statementValue } from './trees.mts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const examples = resolve(here, '../../../examples/graphs');
+const examples = resolve(here, '../../../examples');
 const fixtures = resolve(here, 'fixtures');
 
 const axisFiles = (directory: string): string[] =>

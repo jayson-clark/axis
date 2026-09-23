@@ -22,11 +22,11 @@ pnpm test:browser   # download the Chromium the harness tests need, once
 
 - **In VSCode.** Open the repository and press <kbd>F5</kbd> (the "Extension"
   launch configuration) for an Extension Development Host with Axis loaded.
-  Open a file from [`examples/graphs/`](./examples/graphs) and run **Axis:
-  Preview Graph**. `pnpm --filter axis-dsl package` builds a `.vsix` to install
-  in an everyday VSCode.
-- **In a browser.** `pnpm --filter @axis-dsl/web dev` runs the playground from
-  `examples/web`: an editor beside a live graph.
+  Open a file from [`examples/`](./examples) and run **Axis: Preview Graph**.
+  `pnpm --filter axis-dsl package` builds a `.vsix` to install in an everyday
+  VSCode.
+- **In a browser.** `pnpm site:dev` serves the docs site, whose playground is
+  an editor beside a live graph, at `localhost:4321/axis/playground/`.
 - **On a real calculator.** `node packages/harness/dist/cli.js <file.axis>`
   compiles a file, loads it into a headless Desmos, and prints what Desmos made
   of every expression. Use it on anything you change that reaches a graph: the

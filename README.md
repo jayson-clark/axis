@@ -61,8 +61,9 @@ ticker n -> n + dt / 1000 @ playing
 | [`@axis-dsl/desmos`](./packages/desmos)                     | The Desmos calculator API, typed                                       |
 | [`@axis-dsl/harness`](./packages/harness)                   | Runs a file on a real headless Desmos calculator, for tests and agents |
 
-Each package's README covers its API. [`examples/web`](./examples/web) is a
-runnable app that embeds the editor and the graph.
+Each package's README covers its API. The docs site's
+[playground](./docs/site/src/components/Playground.tsx) is an app that embeds
+the editor and the graph.
 
 ## Contributing
 

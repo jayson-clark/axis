@@ -60,9 +60,9 @@ export default defineConfig({
     ],
     vite: {
         resolve: {
-            // Bundle the workspace packages from their TypeScript source, as
-            // the playground in `examples/web` does: their built output is
-            // CommonJS for Node, and this way there is nothing to rebuild.
+            // Bundle the workspace packages from their TypeScript source:
+            // their built output is CommonJS for Node, and this way there is
+            // nothing to rebuild.
             alias: [
                 {
                     find: /^@axis-dsl\/([^/]+)\/(monaco)$/,

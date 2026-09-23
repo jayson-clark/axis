@@ -27,9 +27,6 @@ catalogs:
     '@types/vscode':
       specifier: 1.134.0
       version: 1.134.0
-    '@vitejs/plugin-react':
-      specifier: 6.1.0
-      version: 6.1.0
     '@vscode/test-electron':
       specifier: 3.1.0
       version: 3.1.0
@@ -63,9 +60,6 @@ catalogs:
     unist-util-visit:
       specifier: 5.1.0
       version: 5.1.0
-    vite:
-      specifier: 8.2.2
-      version: 8.2.2
     vscode-jsonrpc:
       specifier: 9.0.2
       version: 9.0.2
@@ -147,43 +141,6 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.5(@types/react@19.2.18)
-
-  examples/web:
-    dependencies:
-      '@axis-dsl/compiler':
-        specifier: workspace:*
-        version: link:../../packages/compiler
-      '@axis-dsl/desmos':
-        specifier: workspace:*
-        version: link:../../packages/desmos
-      '@axis-dsl/language-service':
-        specifier: workspace:*
-        version: link:../../packages/language-service
-      '@axis-dsl/viewer':
-        specifier: workspace:*
-        version: link:../../packages/viewer
-    devDependencies:
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.2.18
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.2.5(@types/react@19.2.18)
-      '@vitejs/plugin-react':
-        specifier: 'catalog:'
-        version: 6.1.0(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2))
-      monaco-editor:
-        specifier: 'catalog:'
-        version: 0.56.0
-      react:
-        specifier: 'catalog:'
-        version: 19.2.8
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.2.8(react@19.2.8)
-      vite:
-        specifier: 'catalog:'
-        version: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)
 
   packages/compiler:
     dependencies:
@@ -1497,22 +1454,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
-
-  '@vitejs/plugin-react@6.1.0':
-    resolution: {integrity: sha512-qd2BzUBehkov86WFhg0JkEFEYyCLG9uPCe6qWTY/kRlss9OvJrOF2UbIWT7p+8IzZHkEu0DNGHc4HSv+JdDLsw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    peerDependencies:
-      '@rolldown/plugin-babel': ^0.1.7 || ^0.2.0
-      babel-plugin-react-compiler: ^1.0.0
-      oxc-transform-react: ^0.145.0
-      vite: ^8.0.0
-    peerDependenciesMeta:
-      '@rolldown/plugin-babel':
-        optional: true
-      babel-plugin-react-compiler:
-        optional: true
-      oxc-transform-react:
-        optional: true
 
   '@vscode/test-electron@3.1.0':
     resolution: {integrity: sha512-CRqv5u+YYoseuNVJ6Tyo4k0sF0mx4qnKMihRB0PjsUF8Dc0WKtCXo6CNL6nWWm5esfFQsQA/pejMj4ZbpJVLTw==}
@@ -4373,11 +4314,6 @@ snapshots:
       vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)
     transitivePeerDependencies:
       - supports-color
-
-  '@vitejs/plugin-react@6.1.0(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2))':
-    dependencies:
-      '@rolldown/pluginutils': 1.0.1
-      vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)
 
   '@vscode/test-electron@3.1.0':
     dependencies:

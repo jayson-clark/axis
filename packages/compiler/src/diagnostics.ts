@@ -12,7 +12,7 @@ import type { Diagnostic, DiagnosticInfo, SyntaxDiagnosticCode } from '@axis-dsl
 
 /**
  * What the checker and the compiler report about a file. An example is read
- * as though it sat in `examples/graphs/graph.axis`, so it can name an image
+ * as though it sat in `examples/graph.axis`, so it can name an image
  * or an import that is not there - or itself.
  */
 export const COMPILER_DIAGNOSTICS = {

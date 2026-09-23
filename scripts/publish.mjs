@@ -26,7 +26,7 @@ if (!version) {
     process.exit(1);
 }
 
-// The examples and the docs site are workspace packages too, but private;
+// The docs site is a workspace package too, but private;
 // only packages/ publishes, and the extension goes to the Marketplace instead.
 const packages = readdirSync(join(root, 'packages'), { withFileTypes: true })
     .filter(entry => entry.isDirectory())

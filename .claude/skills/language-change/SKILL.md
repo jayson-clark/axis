@@ -36,7 +36,7 @@ missed, and the fix is always the missing piece, never an exemption.
    not compile without one - and may have `documentation` beyond its `detail`.
    Hover shows both and the docs site's reference is generated from nothing
    else. An example is a whole file, read as though it sat in
-   `examples/graphs/`; the compiler's `manifest.test.mts` compiles it clean and
+   `examples/`; the compiler's `manifest.test.mts` compiles it clean and
    checks it uses the name it documents, and the harness' `docs.test.mts` draws
    it.
 3. **A harness test.** `metadata`, `config` and `language` in
@@ -61,7 +61,7 @@ missed, and the fix is always the missing piece, never an exemption.
    `packages/compiler/test/writeback.test.mts` notices.
 7. **The examples.** They are the widest use of the language there is, and
    `graph.test.mts` runs every one through a calculator. Run the ones you
-   touched: `node packages/harness/dist/cli.js examples/graphs/<file>`. A new
+   touched: `node packages/harness/dist/cli.js examples/<file>`. A new
    feature usually earns a line in the example that covers its topic.
 8. **The docs.** The site's guide pages under `docs/site/src/content/docs/guide`
    are written by hand; the reference is generated from the manifest and the

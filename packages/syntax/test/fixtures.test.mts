@@ -7,7 +7,7 @@ import { debugTree, parse, type Statement } from '../dist/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = resolve(here, 'fixtures');
-const examples = resolve(here, '../../../examples/graphs');
+const examples = resolve(here, '../../../examples');
 
 /** Every `.axis` file under a directory, however deep. */
 const axisFiles = (directory: string): string[] =>

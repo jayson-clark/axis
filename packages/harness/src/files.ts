@@ -76,7 +76,7 @@ export async function readAxisFile(path: string, root?: string): Promise<LoadedS
  * {@link readAxisFile} for source already in hand, read as though it were the
  * file at `path` - which need not exist - so its imports and images are found
  * beside it. How the docs' examples are loaded, each as if it sat in
- * `examples/graphs/`.
+ * `examples/`.
  */
 export async function loadAxisSource(
     source: string,

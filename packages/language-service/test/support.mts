@@ -41,7 +41,7 @@ export function textOf(source: string, range: Range): string {
     return source.slice(offset(range.start), offset(range.end));
 }
 
-const EXAMPLES = new URL('../../../examples/graphs/', import.meta.url);
+const EXAMPLES = new URL('../../../examples/', import.meta.url);
 
 /** Every example graph, and the libraries they import. */
 export const examples: { name: string; source: string }[] = [

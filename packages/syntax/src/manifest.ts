@@ -14,7 +14,7 @@
 // Every function, operator and property also carries an `example`, and any of
 // them may carry `documentation` beyond its one-line `detail`: hover shows both,
 // and the reference on the docs site is generated from nothing else. An example
-// is a whole file, read as though it sat in `examples/graphs/` - so it may
+// is a whole file, read as though it sat in `examples/` - so it may
 // import `./lib/waves` or draw `./images/wave.png` - and the tests compile every
 // one and load it on a real calculator, so the reference cannot show code that
 // does not work.

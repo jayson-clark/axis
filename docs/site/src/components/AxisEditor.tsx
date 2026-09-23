@@ -8,7 +8,7 @@
 // loads Monaco differently. This file is that wrapper for the playground, and
 // a reference for apps that want their own.
 
-import { CSSProperties, Ref, useEffect, useImperativeHandle, useRef } from 'react';
+import { type CSSProperties, type Ref, useEffect, useImperativeHandle, useRef } from 'react';
 import type * as monacoTypes from 'monaco-editor/editor';
 import {
     AXIS_DARK_THEME,

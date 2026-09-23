@@ -732,7 +732,7 @@ describe('layout', () => {
 // them through a calculator; here they have only to compile without a word.
 
 describe('the examples', () => {
-    const directory = fileURLToPath(new URL('../../../examples/graphs/', import.meta.url));
+    const directory = fileURLToPath(new URL('../../../examples/', import.meta.url));
 
     const resolveImport = (specifier: string, from: string) => {
         const target = specifier.endsWith('.axis') ? specifier : `${specifier}.axis`;

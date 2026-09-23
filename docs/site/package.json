@@ -8,7 +8,8 @@
         "generate": "node scripts/generate.mjs",
         "dev": "node scripts/generate.mjs && astro dev",
         "build": "node scripts/generate.mjs && astro build && node scripts/check-links.mjs",
-        "preview": "astro preview"
+        "preview": "astro preview",
+        "typecheck": "tsc --noEmit"
     },
     "dependencies": {
         "@astrojs/markdown-remark": "catalog:",

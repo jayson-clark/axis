@@ -50,10 +50,10 @@ export function useCalculator(options?: AxisCalculatorOptions): () => AxisCalcul
 
 /** The directory the example files live in. */
 export function exampleDirectory(): string {
-    return fileURLToPath(new URL('../../../examples/graphs/', import.meta.url));
+    return fileURLToPath(new URL('../../../examples/', import.meta.url));
 }
 
-/** Path to one of the files in `examples/graphs/`. */
+/** Path to one of the files in `examples/`. */
 export function example(name: string): string {
-    return fileURLToPath(new URL(`../../../examples/graphs/${name}`, import.meta.url));
+    return fileURLToPath(new URL(`../../../examples/${name}`, import.meta.url));
 }

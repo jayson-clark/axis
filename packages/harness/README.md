@@ -114,7 +114,7 @@ reached on every expression. It exits `1` if either found an error, so it works
 in a check without anybody parsing the output.
 
 ```sh
-$ npx axis-inspect examples/graphs/01-basics.axis
+$ npx axis-inspect examples/01-basics.axis
 01-basics.axis — 14 expressions, 0 diagnostics, 0 errors
 
   0  text       Basics
@@ -147,7 +147,7 @@ already in hand, as though it were the file at `path`; and
 ```ts
 import { createCalculator, readAxisFile } from '@axis-dsl/harness';
 
-const { source, ...options } = await readAxisFile('examples/graphs/16-imports.axis');
+const { source, ...options } = await readAxisFile('examples/16-imports.axis');
 const { diagnostics } = await calculator.load(source, options);
 ```
 

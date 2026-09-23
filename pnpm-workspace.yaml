@@ -1,8 +1,5 @@
 packages:
   - 'packages/*'
-  # examples/graphs holds .axis files, not a package; pnpm skips any directory
-  # here without a package.json.
-  - 'examples/*'
   - 'docs/site'
 
 # All third-party dependency versions are pinned here. Packages reference them

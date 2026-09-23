@@ -50,6 +50,6 @@ for (const [path, text] of Object.entries(referencePages())) {
 }
 
 // A page for each example.
-for (const [path, text] of Object.entries(examplePages(join(root, 'examples/graphs')))) {
+for (const [path, text] of Object.entries(examplePages(join(root, 'examples')))) {
     write(join(docs, 'examples', path), text);
 }
