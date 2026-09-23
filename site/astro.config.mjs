@@ -9,13 +9,15 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, passthroughImageService } from 'astro/config';
 import react from '@astrojs/react';
 import starlight from '@astrojs/starlight';
+import { playgroundLink } from './src/components/playground-link.ts';
 import grammar from '@axis-dsl/language-service/syntaxes/axis.tmLanguage.json' with { type: 'json' };
 
 const packagesDir = fileURLToPath(new URL('../packages/', import.meta.url));
+const base = '/axis';
 
 export default defineConfig({
     site: 'https://jayson-clark.github.io',
-    base: '/axis',
+    base,
     // Every image is an SVG, which there is nothing to optimise in.
     image: { service: passthroughImageService() },
     integrations: [
@@ -30,6 +32,7 @@ export default defineConfig({
             editLink: { baseUrl: 'https://github.com/jayson-clark/axis/edit/main/site/' },
             customCss: ['./src/styles/axis.css'],
             expressiveCode: {
+                plugins: [playgroundLink(base)],
                 // The grammar VSCode colours a script with, so a block on the
                 // site reads exactly as it does in the editor.
                 shiki: {
@@ -47,6 +50,7 @@ export default defineConfig({
                     items: [{ autogenerate: { directory: 'examples' } }],
                 },
                 { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
+                { label: 'Playground', link: '/playground/' },
                 { label: 'Specification', link: '/spec/' },
             ],
         }),

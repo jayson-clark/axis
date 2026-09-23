@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { type CompilationResult, compileAxis } from '@axis-dsl/compiler';
+import { type CompilationResult, type CompileOptions, compileAxis } from '@axis-dsl/compiler';
 import { CalculatorOptions, GraphState } from '@axis-dsl/desmos';
 
 export interface CompiledAxis {
@@ -30,8 +30,11 @@ const DEBOUNCE_MS = 250;
  * graph it hands back alongside is everything the rest of the script still
  * makes. So the preview keeps drawing while a line is half typed, and the
  * first error is surfaced beside it.
+ *
+ * `compileOptions` is how a host that has files to offer - imports, images - hands
+ * over its resolvers. Keep it one object across renders: a new one recompiles.
  */
-export function useCompiledAxis(source: string): CompiledAxis {
+export function useCompiledAxis(source: string, compileOptions?: CompileOptions): CompiledAxis {
     const [result, setResult] = useState<Omit<CompiledAxis, 'isStale'>>(() => ({
         state: null,
         options: {},
@@ -45,7 +48,7 @@ export function useCompiledAxis(source: string): CompiledAxis {
         setIsStale(true);
         const timer = window.setTimeout(() => {
             try {
-                const compilation = compileAxis(source);
+                const compilation = compileAxis(source, compileOptions);
                 const { state, options, diagnostics } = compilation;
                 setResult({
                     state,
@@ -65,7 +68,7 @@ export function useCompiledAxis(source: string): CompiledAxis {
         }, DEBOUNCE_MS);
 
         return () => window.clearTimeout(timer);
-    }, [source]);
+    }, [source, compileOptions]);
 
     return { ...result, isStale };
 }
