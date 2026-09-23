@@ -10,6 +10,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { referencePages } from './reference.mjs';
 
 const site = join(dirname(fileURLToPath(import.meta.url)), '..');
 const root = join(site, '..');
@@ -38,4 +39,9 @@ copyFileSync(join(root, 'assets/axis-tile.svg'), join(site, 'public/favicon.svg'
         join(docs, 'spec.md'),
         `---\ntitle: ${JSON.stringify(title)}\ndescription: The Axis language, as the compiler and every editor service read it.\neditUrl: ${REPO.replace('/blob/', '/edit/')}/docs/spec.md\n---\n${body}`,
     );
+}
+
+// The reference, out of the manifest and the diagnostic catalogues.
+for (const [path, text] of Object.entries(referencePages())) {
+    write(join(docs, 'reference', path), text);
 }
