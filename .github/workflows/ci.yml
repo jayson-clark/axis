@@ -1,0 +1,52 @@
+# Checks every pull request, and main after each merge.
+#
+# The same checks the release workflow runs before it publishes - formatting,
+# types, and every suite, harness included - so a change that would stop a
+# release is caught on its pull request rather than on the tag. The site is
+# built too, since site.yml only builds it once a change is already on main.
+#
+# The ruleset on main requires `test` and `site` to pass, by these job names.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a pull request supersedes the run still going for the last.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm --filter @axis-dsl/harness exec playwright-core install --with-deps chromium
+      - run: pnpm test
+
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --build
+      - run: pnpm site:build
