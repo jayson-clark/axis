@@ -11,6 +11,12 @@ The preview opens in a Simple Browser tab or your own browser - pin a choice to
 stop being asked, or set `axis.previewTarget`. It reloads when you save the
 script, or any file it imports or draws.
 
+Change the graph by hand - drag a point, move a slider, recolour a curve, pan -
+and the statement that drew it is rewritten in the editor, unsaved, to undo like
+any other edit. A change is not written while the script has edits the preview
+has not seen (save first), or when it belongs to an imported file; the reason
+goes to the **Axis** output channel and briefly to the status bar.
+
 While the preview server is up there is an **Axis** item in the status bar, to
 reopen a preview, serve another file, or stop the server.
 

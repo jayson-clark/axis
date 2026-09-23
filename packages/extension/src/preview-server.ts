@@ -8,7 +8,6 @@ import {
     createImportResolver,
     loadImages,
     loadImports,
-    type CompilationResult,
 } from '@axis-dsl/compiler';
 import { AXIS_FILE_EXTENSION } from '@axis-dsl/language-service';
 import {
@@ -20,6 +19,7 @@ import {
 } from '@axis-dsl/viewer/protocol';
 import { previewDebugEnabled, resolveDesmosApiKey } from './config';
 import { imageHost, importHost } from './imports';
+import { writeBack, type Compiled } from './writeback';
 
 /**
  * How long a change waits before recompiling. Not a typing debounce - the
@@ -103,13 +103,12 @@ interface Preview {
     dependencies: Map<string, vscode.Disposable>;
     timer?: ReturnType<typeof setTimeout>;
     /**
-     * The compilation the pages are showing, and the source of every file it
-     * was compiled from, keyed as the compiler named them. What a write-back
-     * needs: `writeBackGraph` maps a change to the graph onto the statement
-     * that produced it through the compilation's source map, and rewrites
-     * that statement's text.
+     * The compilation the pages are showing, and the text it was compiled
+     * from: what a change made on the graph is written back through.
      */
-    compiled?: { compilation: CompilationResult; sources: ReadonlyMap<string, string> };
+    compiled?: Compiled;
+    /** The write-back in progress, so two changes reported close together land one after the other. */
+    writing?: Promise<void>;
 }
 
 /** A previewed file, as the status bar reports it. */
@@ -143,6 +142,9 @@ export class PreviewServer implements vscode.Disposable {
     private origin: string | undefined;
     /** The listen, kept so concurrent first previews share one server. */
     private starting: Promise<string> | undefined;
+
+    /** Where write-back says what it did, and what it would not do. */
+    private readonly log = vscode.window.createOutputChannel('Axis', { log: true });
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -343,6 +345,8 @@ export class PreviewServer implements vscode.Disposable {
             data: { desmosApiKey: resolveDesmosApiKey(), canSetApiKey: true },
         });
         this.send(response, { command: 'setStatus', data: { status: basename(uri) } });
+        // Watch the graph for changes made to it by hand, to write back.
+        this.send(response, { command: 'setSync', data: { enabled: true } });
         void this.compile(uri);
     }
 
@@ -380,27 +384,30 @@ export class PreviewServer implements vscode.Disposable {
     }
 
     /**
-     * A change made to the graph by hand, to be written back into the script.
+     * A change made to the graph by hand, written back into the script.
      *
-     * Not wired yet, and so never reached: the viewer only reports changes
-     * after a host sends it `setSync`, and this one does not. Write-back is
-     * being reworked in #24 - the viewer's `graphChanged` becomes the graph's
-     * `{ state, options }` - and lands here when it does:
-     *
-     * 1. `writeBackGraph(preview.compiled.compilation, …, preview.compiled.sources)`
-     *    for the edits, each against the file it names;
-     * 2. those applied as one `vscode.WorkspaceEdit`, to the open document
-     *    where there is one, so the user sees - and can undo - the change;
-     * 3. `setSync` sent from `serveEvents` alongside `init`, once 1 and 2 are
-     *    in, to switch the reporting on.
-     *
-     * The preview compiles what is saved and the editor holds what is typed,
-     * so an edit has to be refused, or rebased, when the document is dirty.
+     * Once written, the preview is compiled again from the edited text - still
+     * unsaved - and sent to the pages. That is what moves the viewer's
+     * baseline, so the next change is measured from here rather than reported
+     * again with this one, and what keeps `compiled` the text the document
+     * holds, so the next change is not refused as stale.
      */
-    private graphChanged(
-        _preview: Preview,
-        _change: { before: GraphReading; after: GraphReading },
-    ): void {}
+    private graphChanged(preview: Preview, change: { before: GraphReading; after: GraphReading }) {
+        const previous = preview.writing ?? Promise.resolve();
+        preview.writing = previous.then(async () => {
+            const compiled = preview.compiled;
+            if (!compiled) return;
+            try {
+                const source = await writeBack(preview.uri, compiled, change, this.log);
+                if (source !== undefined) {
+                    await this.show(preview, source);
+                }
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                this.log.error(`${basename(preview.uri)}: write-back failed: ${message}`);
+            }
+        });
+    }
 
     // ── Watching ────────────────────────────────────────────────────────────
 
@@ -499,36 +506,10 @@ export class PreviewServer implements vscode.Disposable {
         try {
             // Read from disk, not from the open document. What the preview
             // shows is what is saved, so an unsaved buffer never leaks into it
-            // by way of some other file's save waking this up.
+            // by way of some other file's save waking this up. (Write-back is
+            // the one exception, and compiles the text it wrote itself.)
             const bytes = await vscode.workspace.fs.readFile(uri);
-            const source = new TextDecoder().decode(bytes);
-
-            // Imports and images are read up front so that compilation itself
-            // stays synchronous, which is what lets the compiler run unchanged
-            // in a browser that has no filesystem to read.
-            const path = uri.toString();
-            const files = await loadImports({ path, source }, importHost);
-            const pictures = await loadImages({ path, source }, files, imageHost);
-            const compilation = compileAxis(source, {
-                path,
-                resolveImport: createImportResolver(files, importHost.resolve),
-                resolveImage: createImageResolver(pictures, imageHost.resolve),
-            });
-            preview.compiled = { compilation, sources: new Map([...files, [path, source]]) };
-
-            const { imports, images } = compilation.dependencies;
-            this.watchDependencies(preview, [...imports, ...images]);
-            // Applied whatever the compiler had to say: a script with a mistake
-            // in it still draws everything else, which is what keeps a preview
-            // useful while a line is half written.
-            this.broadcast(preview, {
-                command: 'setGraph',
-                data: { state: compilation.state, options: compilation.options },
-            });
-            this.broadcast(preview, {
-                command: 'setStatus',
-                data: { status: compileStatus(basename(uri), compilation.diagnostics, source) },
-            });
+            await this.show(preview, new TextDecoder().decode(bytes));
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             // Said in both places: the page is where the user is looking, and
@@ -536,6 +517,37 @@ export class PreviewServer implements vscode.Disposable {
             this.broadcast(preview, { command: 'setStatus', data: { status: message } });
             void vscode.window.showErrorMessage(`Error compiling axis file: ${message}`);
         }
+    }
+
+    /** Compile `source` as the script `preview` shows, and send the graph to every page on it. */
+    private async show(preview: Preview, source: string) {
+        const { uri } = preview;
+        // Imports and images are read up front so that compilation itself
+        // stays synchronous, which is what lets the compiler run unchanged
+        // in a browser that has no filesystem to read.
+        const path = uri.toString();
+        const files = await loadImports({ path, source }, importHost);
+        const pictures = await loadImages({ path, source }, files, imageHost);
+        const compilation = compileAxis(source, {
+            path,
+            resolveImport: createImportResolver(files, importHost.resolve),
+            resolveImage: createImageResolver(pictures, imageHost.resolve),
+        });
+        preview.compiled = { compilation, source };
+
+        const { imports, images } = compilation.dependencies;
+        this.watchDependencies(preview, [...imports, ...images]);
+        // Applied whatever the compiler had to say: a script with a mistake
+        // in it still draws everything else, which is what keeps a preview
+        // useful while a line is half written.
+        this.broadcast(preview, {
+            command: 'setGraph',
+            data: { state: compilation.state, options: compilation.options },
+        });
+        this.broadcast(preview, {
+            command: 'setStatus',
+            data: { status: compileStatus(basename(uri), compilation.diagnostics, source) },
+        });
     }
 
     /** Typed by the protocol, so the two ends cannot drift. */
@@ -570,6 +582,7 @@ export class PreviewServer implements vscode.Disposable {
     public dispose() {
         this.stop();
         this.changeEmitter.dispose();
+        this.log.dispose();
     }
 }
 
