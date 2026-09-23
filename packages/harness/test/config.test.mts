@@ -11,14 +11,18 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    AXIS_CONFIG_PROPERTY_NAMES,
     AXIS_DEFAULT_CONFIG,
-    AXIS_MANIFEST,
+    AXIS_PALETTE,
     AXIS_STATE_PROPERTY_NAMES,
-} from '@axis-dsl/language';
+    propertiesFor,
+} from '@axis-dsl/syntax';
 import type { CalculatorOptions } from '@axis-dsl/desmos';
 import { compileAxis } from '@axis-dsl/compiler';
 import { skip, useCalculator } from './support.mts';
+
+/** Every entry a `config` block takes, from the v2 manifest's placements. */
+const CONFIG_PROPERTIES = propertiesFor('config');
+const AXIS_CONFIG_PROPERTY_NAMES = CONFIG_PROPERTIES.map(property => property.name);
 
 /** A value each property is set to: never its default, so a no-op shows up. */
 const VALUES: Record<string, string | number | boolean> = {
@@ -90,14 +94,21 @@ function valueFor(name: string): string | number | boolean {
     if (documented !== undefined) {
         return documented;
     }
-    const property = AXIS_MANIFEST.configProperties.find(entry => entry.name === name);
+    const property = CONFIG_PROPERTIES.find(entry => entry.name === name);
     assert.equal(property?.valueType, 'boolean', `${name} needs a test value`);
     return !/default: true/.test(property?.detail ?? '');
 }
 
+/** A value as the source writes it: a string in quotes, anything else bare. */
+function written(name: string): string {
+    const value = valueFor(name);
+    const property = CONFIG_PROPERTIES.find(entry => entry.name === name);
+    return property?.valueType === 'string' ? JSON.stringify(value) : String(value);
+}
+
 /** A config block setting one property, as a graph would write it. */
 function configBlock(name: string): string {
-    return `config {\n    ${name}: ${valueFor(name)}\n}\ny = x`;
+    return `config {\n    ${name}: ${written(name)}\n}\ny = x`;
 }
 
 describe('the config block', { skip }, () => {
@@ -128,7 +139,8 @@ describe('the config block', { skip }, () => {
     // options gate others, and a batch would only prove they interact.
     for (const name of reflected) {
         test(`${name} reaches the calculator`, async () => {
-            await calculator().load(configBlock(name));
+            const { diagnostics } = await calculator().load(configBlock(name));
+            assert.deepEqual(diagnostics, []);
             const applied = await calculator().getSettings();
 
             assert.equal(applied[name as keyof CalculatorOptions], valueFor(name));
@@ -137,9 +149,9 @@ describe('the config block', { skip }, () => {
 
     for (const name of NOT_REFLECTED) {
         test(`${name} compiles, though Desmos does not report it back`, () => {
-            const source = `config {\n    ${name}: ${valueFor(name)}\n}\ny = x`;
-            const settings = compileAxis(source).options;
+            const { options: settings, diagnostics } = compileAxis(configBlock(name));
 
+            assert.deepEqual(diagnostics, []);
             assert.equal(settings[name as keyof CalculatorOptions], valueFor(name));
         });
     }
@@ -152,9 +164,7 @@ describe('the config block', { skip }, () => {
         // logScales is what makes a logarithmic axis available, so a config
         // that turns it off and asks for one anyway gets a linear axis. Worth
         // pinning: it is the reason these are checked one at a time.
-        await calculator().load(
-            'config {\n    logScales: false,\n    xAxisScale: logarithmic\n}\ny = x',
-        );
+        await calculator().load('config { logScales: false; xAxisScale: logarithmic }\ny = x');
         const applied = await calculator().getSettings();
 
         assert.equal(applied.logScales, false);
@@ -173,7 +183,7 @@ describe('randomization', { skip }, () => {
      */
     const SOURCE = (flag: string) =>
         'config {\n' +
-        '    randomSeed: "axis-random-seed",\n' +
+        '    randomSeed: "axis-random-seed"\n' +
         `    includeFunctionParametersInRandomSeed: ${flag}\n` +
         '}\n' +
         'h(k) = [1...10].shuffle\n' +
@@ -260,10 +270,10 @@ describe('the viewport', { skip }, () => {
         // that is not already square comes back stretched on one axis.
         await calculator().load(
             'config {\n' +
-                '    xmin: 0,\n' +
-                '    xmax: 1,\n' +
-                '    ymin: 0,\n' +
-                '    ymax: 1,\n' +
+                '    xmin: 0\n' +
+                '    xmax: 1\n' +
+                '    ymin: 0\n' +
+                '    ymax: 1\n' +
                 '    squareAxes: false\n' +
                 '}\n' +
                 'y = x',
@@ -277,7 +287,7 @@ describe('the viewport', { skip }, () => {
     test('they are not calculator options', async () => {
         // The reason they are separated from `settings` at all: handing these
         // to updateSettings is not an error, it is silence.
-        const compiled = compileAxis('config {\n    xmin: 0,\n    squareAxes: false\n}\ny = x');
+        const compiled = compileAxis('config { xmin: 0; squareAxes: false }\ny = x');
 
         assert.deepEqual(compiled.options, AXIS_DEFAULT_CONFIG);
         assert.equal(compiled.state.graph?.squareAxes, false);
@@ -319,7 +329,7 @@ describe('config options Desmos acts on', { skip }, () => {
     });
 
     test('randomSeed is the seed the calculator actually holds', async () => {
-        await calculator().load('config {\n    randomSeed: axis-fixed-seed\n}\ny = x');
+        await calculator().load('config {\n    randomSeed: "axis-fixed-seed"\n}\ny = x');
 
         assert.equal((await calculator().getSettings()).randomSeed, 'axis-fixed-seed');
         assert.equal((await calculator().getState()).randomSeed, 'axis-fixed-seed');
@@ -327,7 +337,7 @@ describe('config options Desmos acts on', { skip }, () => {
 
     test('several options in one block all take', async () => {
         await calculator().load(
-            'config {\n    degreeMode: true,\n    xAxisStep: 2,\n    xAxisLabel: time\n}\ny = x',
+            'config {\n    degreeMode: true\n    xAxisStep: 2\n    xAxisLabel: "time"\n}\ny = x',
         );
         const settings = await calculator().getSettings();
 
@@ -359,11 +369,82 @@ describe('config options Desmos acts on', { skip }, () => {
             path: '/graph.axis',
             resolveImport: () => ({
                 path: '/lib.axis',
-                source: 'config {\n    showGrid: false,\n    degreeMode: true\n}',
+                source: 'config {\n    showGrid: false\n    degreeMode: true\n}',
             }),
         });
 
         assert.equal(settings?.showGrid, true, 'the entry script has to win');
         assert.equal(settings?.degreeMode, true, 'and the import still contributes');
+    });
+
+    test('entries on one line are separated by `;`', async () => {
+        const { diagnostics } = await calculator().load(
+            'config { degreeMode: true; showGrid: false; xAxisLabel: "t" }\ny = x',
+        );
+        const settings = await calculator().getSettings();
+
+        assert.deepEqual(diagnostics, []);
+        assert.equal(settings.degreeMode, true);
+        assert.equal(settings.showGrid, false);
+        assert.equal(settings.xAxisLabel, 't');
+    });
+
+    test('a comma between entries is reported, and both still take', async () => {
+        // A comma can never be part of a config value, so it is read as the
+        // separator it was meant as (spec §4.1) - and said so.
+        const { diagnostics } = await calculator().load(
+            'config { degreeMode: true, showGrid: false }\ny = x',
+        );
+        const settings = await calculator().getSettings();
+
+        assert.deepEqual(
+            diagnostics.map(diagnostic => diagnostic.code),
+            ['comma-between-properties'],
+        );
+        assert.equal(settings.degreeMode, true);
+        assert.equal(settings.showGrid, false);
+    });
+
+    test('a boolean written bare is true', async () => {
+        await calculator().load('config { degreeMode; lockViewport }\na = sin(90)');
+        const settings = await calculator().getSettings();
+
+        assert.equal(settings.lockViewport, true);
+        assert.equal((await calculator().evaluate('a')).numericValue, 1);
+    });
+
+    test('an enum is read in any case and reaches Desmos spelt its way', async () => {
+        const { diagnostics } = await calculator().load(
+            'config { xAxisArrowMode: both; brailleMode: NEMETH }\ny = x',
+        );
+        const settings = await calculator().getSettings();
+
+        assert.deepEqual(diagnostics, []);
+        assert.equal(settings.xAxisArrowMode, 'BOTH');
+        assert.equal(settings.brailleMode, 'nemeth');
+    });
+
+    for (const { name, hex } of AXIS_PALETTE) {
+        test(`a config colour takes the palette name ${name}`, async () => {
+            await calculator().load(`config { backgroundColor: ${name} }\ny = x`);
+
+            assert.equal((await calculator().getSettings()).backgroundColor, hex);
+        });
+    }
+
+    test('a config colour takes a short hex, written out in full', async () => {
+        await calculator().load('config { textColor: #0A0 }\ny = x');
+
+        assert.equal((await calculator().getSettings()).textColor, '#00aa00');
+    });
+
+    test('but not an expression, which Desmos could not read there', async () => {
+        const { options, diagnostics } = compileAxis('config { accentColor: rgb(0, 0, 0) }');
+
+        assert.deepEqual(
+            diagnostics.map(diagnostic => diagnostic.code),
+            ['invalid-color'],
+        );
+        assert.equal(options.accentColor, undefined);
     });
 });

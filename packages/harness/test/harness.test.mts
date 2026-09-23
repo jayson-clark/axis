@@ -1,7 +1,25 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
+import { compileAxis } from '@axis-dsl/compiler';
 import { readAxisFile } from '../dist/index.js';
 import { example, skip, useCalculator } from './support.mts';
+
+/** The built `axis-inspect`, run as an agent would run it. */
+const CLI = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+
+/** Run the CLI, resolving with its output and exit code rather than throwing on 1. */
+async function inspect(...args: string[]): Promise<{ stdout: string; code: number }> {
+    try {
+        const { stdout } = await promisify(execFile)(process.execPath, [CLI, ...args]);
+        return { stdout, code: 0 };
+    } catch (error) {
+        const failed = error as { stdout: string; code: number };
+        return { stdout: failed.stdout, code: failed.code };
+    }
+}
 
 describe('a real Desmos calculator', { skip }, () => {
     const calculator = useCalculator();
@@ -17,7 +35,11 @@ describe('a real Desmos calculator', { skip }, () => {
         });
 
         test('reports the error Desmos gives for a broken expression', async () => {
-            await calculator().load('y = x^{2');
+            // Raw latex, since no Axis compiles to latex this broken: the
+            // question is whether the harness passes Desmos' verdict on.
+            await calculator().setExpressions([
+                { type: 'expression', id: 'broken', latex: 'y=x^{2' },
+            ]);
             const [error] = await calculator().getErrors();
 
             assert.ok(error, 'expected Desmos to reject the expression');
@@ -50,10 +72,45 @@ describe('a real Desmos calculator', { skip }, () => {
         });
 
         test('catches a reference to something the script never defines', async () => {
-            await calculator().load('y = undefinedFunction(x)');
+            // The checker reports it too (`unknown-function`); the graph is
+            // still applied, and Desmos rejects the expression on its own.
+            const { diagnostics } = await calculator().load('y = undefinedFunction(x)');
             const errors = await calculator().getErrors();
 
+            assert.deepEqual(
+                diagnostics.map(diagnostic => diagnostic.code),
+                ['unknown-function'],
+            );
             assert.equal(errors.length, 1);
+        });
+    });
+
+    describe('load', () => {
+        test('applies the compiled state and options, and hands the compilation back', async () => {
+            const source = 'config { degreeMode: true }\na = sin(90)';
+            const compiled = await calculator().load(source);
+
+            assert.deepEqual(compiled.state, compileAxis(source).state);
+            assert.equal((await calculator().getSettings()).degreeMode, true);
+            assert.equal((await calculator().evaluate('a')).numericValue, 1);
+        });
+
+        test('applies a script with diagnostics, as every host does', async () => {
+            const { diagnostics } = await calculator().load('y = x @ color: red\nk = 5');
+
+            assert.deepEqual(
+                diagnostics.map(diagnostic => diagnostic.code),
+                ['invalid-color'],
+            );
+            assert.equal((await calculator().evaluate('k')).numericValue, 5);
+        });
+
+        test('lays settings given to it over the script’s own', async () => {
+            await calculator().load('config { showGrid: false }\ny = x', {
+                settings: { showGrid: true },
+            });
+
+            assert.equal((await calculator().getSettings()).showGrid, true);
         });
     });
 
@@ -150,6 +207,53 @@ describe('a real Desmos calculator', { skip }, () => {
 
             assert.match(dataUri, /^data:image\/png;base64,/);
             assert.ok(dataUri.length > 1000);
+        });
+    });
+
+    describe('axis-inspect', () => {
+        test('reports a clean script and exits 0', async () => {
+            const { stdout, code } = await inspect('-e', 'y = x ^ 2');
+
+            assert.equal(code, 0);
+            assert.match(stdout, /1 expressions, 0 diagnostics, 0 errors/);
+            assert.match(stdout, /graphable\s+y=x\^\{2\}/);
+        });
+
+        test('reports compile diagnostics next to Desmos errors, and exits 1', async () => {
+            const { stdout, code } = await inspect('-e', 'mean = 3\ny = x @ color: red');
+
+            assert.equal(code, 1);
+            assert.match(stdout, /2 diagnostics, 1 errors/);
+            assert.match(stdout, /<inline>:1:1\s+error assign-to-builtin/);
+            assert.match(stdout, /<inline>:2:16\s+error invalid-color/);
+            assert.match(stdout, /error\s+\\operatorname\{mean\}=3/);
+        });
+
+        test('carries the diagnostics in its JSON', async () => {
+            const { stdout } = await inspect('--json', '-e', 'y = x @ color: red');
+            const inspection = JSON.parse(stdout) as {
+                diagnostics: { code: string }[];
+                errors: unknown[];
+            };
+
+            assert.deepEqual(
+                inspection.diagnostics.map(diagnostic => diagnostic.code),
+                ['invalid-color'],
+            );
+            assert.deepEqual(inspection.errors, []);
+        });
+
+        test('evaluates Axis against the graph it loaded', async () => {
+            const { stdout } = await inspect('-e', 'f(x) = 2x + 1', '--eval', 'f(20)');
+
+            assert.match(stdout, /41/);
+        });
+
+        test('reads a file, imports and all', async () => {
+            const { stdout, code } = await inspect(example('16-imports.axis'));
+
+            assert.equal(code, 0);
+            assert.match(stdout, /0 diagnostics, 0 errors/);
         });
     });
 });
