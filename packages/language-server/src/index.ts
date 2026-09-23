@@ -12,6 +12,7 @@ import { createConnection, ProposedFeatures, type Connection } from 'vscode-lang
 import { listen } from './server';
 
 export { diagnose, listen, type AxisInitializationOptions } from './server';
+export type { Snapshot } from './programs';
 
 /**
  * Start the server. Without a connection, one is made from the process's

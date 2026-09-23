@@ -199,6 +199,9 @@ function formatDiagnostic(diagnostic: Diagnostic, name: string, source: string):
     return `  ${where}  ${diagnostic.severity} ${diagnostic.code}\n        ↳ ${diagnostic.message}`;
 }
 
+/** `1 expression`, `2 expressions`. */
+const count = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
 function report(
     name: string,
     inspection: Inspection,
@@ -207,7 +210,7 @@ function report(
 ): void {
     const { expressions, errors, consoleErrors } = inspection;
     console.log(
-        `${name} — ${expressions.length} expressions, ${diagnostics.length} diagnostics, ${errors.length} errors\n`,
+        `${name} — ${count(expressions.length, 'expression')}, ${count(diagnostics.length, 'diagnostic')}, ${count(errors.length, 'error')}\n`,
     );
 
     if (diagnostics.length > 0) {

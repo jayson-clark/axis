@@ -15,6 +15,14 @@
         "@types/node": "catalog:",
         "monaco-editor": "catalog:"
     },
+    "peerDependencies": {
+        "monaco-editor": ">=0.56.0"
+    },
+    "peerDependenciesMeta": {
+        "monaco-editor": {
+            "optional": true
+        }
+    },
     "license": "MIT",
     "author": "Jayson Clark",
     "homepage": "https://github.com/jayson-clark/axis#readme",

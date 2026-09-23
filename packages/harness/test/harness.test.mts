@@ -215,7 +215,7 @@ describe('a real Desmos calculator', { skip }, () => {
             const { stdout, code } = await inspect('-e', 'y = x ^ 2');
 
             assert.equal(code, 0);
-            assert.match(stdout, /1 expressions, 0 diagnostics, 0 errors/);
+            assert.match(stdout, /1 expression, 0 diagnostics, 0 errors/);
             assert.match(stdout, /graphable\s+y=x\^\{2\}/);
         });
 
@@ -223,7 +223,7 @@ describe('a real Desmos calculator', { skip }, () => {
             const { stdout, code } = await inspect('-e', 'mean = 3\ny = x @ color: red');
 
             assert.equal(code, 1);
-            assert.match(stdout, /2 diagnostics, 1 errors/);
+            assert.match(stdout, /2 diagnostics, 1 error/);
             assert.match(stdout, /<inline>:1:1\s+error assign-to-builtin/);
             assert.match(stdout, /<inline>:2:16\s+error invalid-color/);
             assert.match(stdout, /error\s+\\operatorname\{mean\}=3/);
