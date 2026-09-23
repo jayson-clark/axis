@@ -24,8 +24,10 @@ function write(path, text) {
     writeFileSync(path, text);
 }
 
-// The logo and the favicon, from the one set of generated assets.
+// The logo and the favicon, from the one set of generated assets. Neither
+// directory is in git - all they hold is what is written here.
 mkdirSync(join(site, 'src/assets'), { recursive: true });
+mkdirSync(join(site, 'public'), { recursive: true });
 copyFileSync(join(root, 'assets/axis-mark.svg'), join(site, 'src/assets/axis-mark.svg'));
 copyFileSync(join(root, 'assets/axis-tile.svg'), join(site, 'public/favicon.svg'));
 
