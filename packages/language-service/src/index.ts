@@ -43,12 +43,18 @@ export {
     type CompletionKind,
     type CompletionOptions,
 } from './completions';
+// What a path names is the language's, so it lives in `@axis-dsl/syntax`; it is
+// passed on here for a host that reaches for everything through this package.
+export {
+    AXIS_IMAGE_EXTENSIONS,
+    imageMediaType,
+    importTitle,
+    isImageUrl,
+    withAxisExtension,
+} from '@axis-dsl/syntax';
 export {
     getPathCompletions,
     getPathContext,
-    imageMediaType,
-    isImageUrl,
-    AXIS_IMAGE_EXTENSIONS,
     type DirectoryEntry,
     type PathContext,
     type PathKind,

@@ -39,7 +39,6 @@ import type {
     TableColumn as DesmosTableColumn,
     TickerState,
 } from '@axis-dsl/desmos';
-import { imageMediaType, importTitle, isImageUrl } from '@axis-dsl/language';
 import {
     AXIS_DEFAULT_CONFIG,
     AXIS_DEFAULT_STATE,
@@ -53,8 +52,11 @@ import {
     type Expression,
     findProperty,
     type FolderStatement,
+    imageMediaType,
     type ImageStatement,
+    importTitle,
     type ImportStatement,
+    isImageUrl,
     type Metadata,
     type Property,
     type PropertyPlacement,

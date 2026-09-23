@@ -65,8 +65,34 @@ Each has a stable `code` to match on, and a `span` of UTF-16 offsets into the
 file it is about - the script, unless the diagnostic carries a `path`, in which
 case it is the imported file of that name. `docs/spec.md` §8 lists the codes.
 
-The passes are exported one by one too - `loadProgram`, `collectSymbols`,
-`checkProgram` - for a tool that wants to check a script without lowering it.
+## The passes
+
+`compileAxis` is a pipeline over a syntax tree, and each stage is exported on
+its own for a tool that wants one of them - an editor checking a script
+without lowering it, say, which is what `@axis-dsl/language-service` does:
+
+```ts
+import { checkProgram, collectSymbols, loadProgram } from '@axis-dsl/compiler';
+
+const program = loadProgram(source, { path, resolveImport });
+const { symbols, diagnostics: defined } = collectSymbols(program);
+const { diagnostics: checked } = checkProgram(program, symbols);
+
+const diagnostics = [...program.diagnostics, ...defined, ...checked];
+```
+
+`loadProgram` parses the script and everything it imports, in the order the
+imports land. `collectSymbols` gathers every macro, style, function and
+variable the whole program defines - macros and styles are global across a
+compilation, which is why this is a pass over every file before any is checked.
+`checkProgram` is everything the parser cannot know: an unknown function, a
+property in the wrong place or of the wrong type, a macro used with the wrong
+number of arguments.
+
+After that, lowering walks each statement: `expandMacros` substitutes macro
+uses as trees - so `double(1 + 2) ^ 2` never needs brackets to mean what it
+says - `resolveProperties` applies a clause's `use:` styles under its own
+properties, and `emitLatex` writes each expression as the latex Desmos reads.
 
 ## Imports
 
@@ -77,7 +103,7 @@ where you are - `node:fs`, a VSCode workspace, a `Map` in a test:
 
 ```ts
 import { compileAxis, createImportResolver, loadImports } from '@axis-dsl/compiler';
-import { withAxisExtension } from '@axis-dsl/language';
+import { withAxisExtension } from '@axis-dsl/syntax';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
 
@@ -142,65 +168,94 @@ half of the set to watch if the graph is live.
 An `image` that names something Desmos can already load - `https:`, `data:` -
 reaches the graph exactly as it was written, and needs no resolver at all.
 
-## Decompiling
+## Latex
 
-> The decompiler and the write-back below still speak Axis 1, and read the
-> graphs its compiler made. They move onto the v2 language in #23 and #24.
+Desmos stores every expression as latex, and the compiler writes it from the
+expression tree rather than by rewriting source text. That is what makes
+precedence something already settled by the time latex is written: `1/2x` is
+`\frac{1}{2}x`, `a/b^2` is `\frac{a}{b^{2}}`, and `3cos(t)` is a coefficient on
+a function rather than three variables multiplied.
+
+```ts
+import { emitLatex, identifierLatex, parseLatex } from '@axis-dsl/compiler';
+import { parseExpression, printExpression } from '@axis-dsl/syntax';
+
+emitLatex(parseExpression('1/2x + 3cos(t)').expression);
+// \frac{1}{2}x+3\cos\left(t\right)
+
+printExpression(parseLatex('\\frac{1}{2}x+3\\cos\\left(t\\right)'));
+// 1 / 2 x + 3cos(t)
+
+identifierLatex('amp'); // a_{mp}
+```
+
+`parseLatex` is the way back, for the decompiler, and reads latex the way
+Desmos does: where the two readings of a piece of latex could differ, Desmos'
+is the one followed, since that is the graph somebody is looking at. Latex it
+has no node for - `\sum`, `\int` - is a `LatexParseError` rather than a guess.
+
+## Decompiling
 
 The other direction: a graph back into the script that builds it.
 
 ```ts
 import { decompileAxis } from '@axis-dsl/compiler';
 
-const state = calculator.getState();
-
-const source = decompileAxis({
-  expressions: state.expressions.list,
-  settings: calculator.settings,
-  graph: state.graph,
+const { source, diagnostics } = decompileAxis({
+  state: calculator.getState(),
+  options: calculator.settings,
 });
 ```
 
-Expressions become statements, their Desmos properties become the `# key: value`
-metadata that sets them, folders become `folder "…" { … }` blocks and the
-settings become the `config { … }` block at the top. What comes back is source
-somebody could have written — indented, spaced and quoted the way the formatter
-would write it — and, more to the point, source that compiles to the graph it
-was read from:
+The input is what `compileAxis` hands a host, or what a calculator hands back;
+`options` may be left off, since a graph saved at desmos.com is a state and
+nothing else. Expressions become statements, their Desmos properties become the
+`@` metadata that sets them - a palette hex as its name, a slider as a range, a
+stashed point style as the `pointStyle` it is - folders become
+`folder "…" { … }` blocks, and the settings become the `config { … }` block at
+the top. The statements are built as tree nodes and printed with the
+formatter's printer, so what comes back is source somebody could have written,
+and, more to the point, source that compiles to the graph it was read from:
 
 ```
-compileAxis(decompileAxis(compileAxis(source))) ≡ compileAxis(source)
+compileAxis(decompileAxis(compileAxis(source)).source) ≡ compileAxis(source)
 ```
 
 That holds for every example script, and for the graph state a real calculator
 hands back, which is not the same object: Desmos leaves a slider bound off when
 it matches its own default, writes a switched-off clickable by omitting
-`enabled` rather than storing `false`, and normalises the latex.
+`enabled` rather than storing `false`, and normalises the latex. What lowering
+filled in - a viewport edge of ±10, a setting equal to Axis' default - is left
+out again, so a decompiled script is no longer than it has to be.
 
-Three things a graph cannot tell you, and one it cannot hold:
+What a graph cannot tell you:
 
 - **Imports are gone.** They were flattened into folders when the script was
-  compiled, so they come back as the folders the reader sees. **Macros are gone**
-  for the same reason and more finally: they were substituted away before the
-  first statement was read, so what comes back is what they expanded to.
+  compiled, so they come back as the folders the reader sees. **Macros and
+  styles are gone** too: the graph holds what they expanded to, and that is
+  what comes back.
 - **Comments are gone**, along with blank lines and anything else the source
   said that the graph does not carry.
-- **A note is one line in double quotes**, and Axis has no escape for either, so
-  a newline in the text becomes a space and a `"` becomes a `'`.
-- **LaTeX Axis has no spelling for** — an `\operatorname` it does not know, a
-  command it has never heard of — is passed through as written, which leaves one
-  recognisable thing to fix by hand rather than a mangled expression.
+- **A picture inlined from a file** comes back as its `data:` URI, since the
+  graph never knew the path.
 
-What survives is what the graph _means_, not always the characters it was
-written with. Desmos keeps whatever spacing an author typed — `\ ` between two
-arguments — and Axis has no way to say that, so a decompiled graph closes those
-up. A bare run of points comes back as the list it is, and a fraction written
-beside a name comes back with the name in its numerator, which is the same
-number. The check that matters is that a real calculator reads the two graphs
+**What Axis cannot write is reported, never thrown.** Latex `parseLatex` has no
+reading for leaves its expression out, and a comment stands where it would have
+been:
+
+```
+// unsupported: y=\sum_{n=0}^{3}x^{n}
+a = 2 @ slider: 0..5 step 0.5
+```
+
+Each is a warning in `diagnostics` - `unsupported-latex`, `unsupported-item` or
+`unsupported-value` - whose span is that comment in `source`. The check that
+matters beyond the round trip is that a real calculator reads the two graphs
 the same way, which is what `packages/harness/test/decompile.test.mts` asks it.
 
-`convertFromLatex` is the expression-level half of it, and the inverse of
-`convertToLatex`.
+`decompileExpression`, `decompileSettings` and `decompileTicker` hand back one
+item's statement node on its own - a folder as its header, with an empty body -
+which is the unit write-back works in.
 
 ## Writing a changed graph back
 
@@ -268,8 +323,8 @@ comes back in `skipped` with a reason:
 Statements sharing a line through `;` are each written on their own: an edit
 replaces exactly the span of the statement that changed.
 
-Two things it is careful about, both of which cost a script something real if
-they are got wrong:
+What it is careful about, each of which would cost a script something real if
+it were got wrong:
 
 - **A property Desmos did not hand back is not a property that was removed.** A
   slider written `slider: 0..10` comes back carrying only the min, because 10
@@ -297,40 +352,45 @@ folder it was made in, or of the script; one deleted there is deleted here.
 
 ## API
 
-| Export                                                          |                                                                                        |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `compileAxis(script, options?)`                                 | The compiler. Returns a `CompilationResult`                                            |
-| `loadImports(entry, host)`                                      | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path    |
-| `createImportResolver(files, resolve)`                          | Turns that `Map` into the synchronous `resolveImport` the compiler wants               |
-| `findImports(source)`                                           | Just the specifiers one file imports, in order                                         |
-| `loadImages(entry, files, host)`                                | Reads every image file the script and its imports draw; returns a `Map` of data URIs   |
-| `createImageResolver(images, resolve)`                          | Turns that `Map` into the synchronous `resolveImage` the compiler wants                |
-| `findImageFiles(source)`                                        | Just the image paths one file draws, in order                                          |
-| `loadProgram(source, options?)`                                 | The first pass: the script and everything it imports, parsed                           |
-| `collectSymbols(program)`                                       | The second: every macro, style, function and variable the program defines              |
-| `checkProgram(program, symbols)`                                | The third: every semantic diagnostic                                                   |
-| `expandMacros(expression, macros)`                              | One expression with its macros substituted, as trees                                   |
-| `resolveProperties(entries, styles)`                            | One metadata clause with its styles applied                                            |
-| `definitionOf(expression)`                                      | What a statement defines - a function, a variable - or nothing                         |
-| `emitLatex(expression)` / `parseLatex(latex)`                   | One expression tree to Desmos latex, and back                                          |
-| `convertToLatex(expr)`                                          | Axis 1's text-to-latex converter, kept for the v1 decompiler                           |
-| `decompileAxis(graph, options?)`                                | The decompiler. A graph's `{ expressions, settings? }` back into `.axis` source        |
-| `decompileExpression(expression, options?)`                     | One expression as the statement that builds it - the decompiler's unit of work         |
-| `decompileSettings(graph, options?)`                            | Just the `config { … }` block a graph's settings decompile to                          |
-| `graphActionNames(expressions)`                                 | The names a graph defines as actions, which `decompileExpression` wants                |
-| `writeBackGraph(source, { before, after }, compiled, options?)` | What changed on a live graph, as edits to the statements that produced it              |
-| `diffGraphs(before, after)`                                     | Just the changes between two readings of the same graph, by expression id              |
-| `applySourceEdits(source, edits)`                               | Applies one file's edits to its text                                                   |
-| `convertFromLatex(latex)`                                       | One piece of Desmos LaTeX back into the Axis 1 expression it compiles from             |
-| `DecompileInput` / `DecompileOptions`                           | `{ expressions, settings? }` and `{ indent? }`                                         |
-| `CompileOptions`                                                | `{ path?, resolveImport?, resolveImage? }`                                             |
-| `CompilationResult`                                             | `{ state, options, diagnostics, sourceMap, configOrigin?, dependencies }`              |
-| `StatementOrigin`                                               | `{ path, line, endLine, span, writable, reason? }` - where one item was written        |
-| `GraphSnapshot` / `GraphChange` / `SourceEdit`                  | A graph's `{ state, options }`, one change to it, and one replacement of a span        |
-| `WriteBackOptions` / `WriteBackResult`                          | `{ include?, indent?, path? }` and `{ edits, skipped }`                                |
-| `propertyWrites` / `applyPropertyWrites`                        | Which properties two decompiled readings of one item disagree on, merged onto a clause |
-| `mergeExpression(source, before, after)`                        | A changed expression with every unchanged part kept as the author wrote it             |
-| `ImportHost` / `ResolveImport` / `ResolvedImport`               | The import resolver types                                                              |
-| `ImageHost` / `ResolveImage` / `ResolvedImage`                  | The image resolver types                                                               |
+| Export                                                           |                                                                                                 |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `compileAxis(source, options?)`                                  | The compiler. Returns a `CompilationResult`                                                     |
+| `loadImports(entry, host)`                                       | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path             |
+| `createImportResolver(files, resolve)`                           | Turns that `Map` into the synchronous `resolveImport` the compiler wants                        |
+| `findImports(source)`                                            | Just the specifiers one file imports, in order                                                  |
+| `loadImages(entry, files, host)`                                 | Reads every image file the script and its imports draw; returns a `Map` of data URIs            |
+| `createImageResolver(images, resolve)`                           | Turns that `Map` into the synchronous `resolveImage` the compiler wants                         |
+| `findImageFiles(source)`                                         | Just the image paths one file draws, in order                                                   |
+| `loadProgram(source, options?)`                                  | The first pass: the script and everything it imports, parsed                                    |
+| `collectSymbols(program)`                                        | The second: every macro, style, function and variable the program defines                       |
+| `checkProgram(program, symbols)`                                 | The third: every semantic diagnostic, and which calls are really products                       |
+| `expandMacros(expression, macros)`                               | One expression with its macros substituted, as trees                                            |
+| `resolveProperties(entries, styles)`                             | One metadata clause with its styles applied                                                     |
+| `definitionOf(expression)`                                       | What a statement defines - a function, a variable - or nothing                                  |
+| `emitLatex(expression)`                                          | One expression tree as Desmos latex                                                             |
+| `parseLatex(latex)`                                              | Desmos latex back into an expression tree; throws `LatexParseError` on what it cannot read      |
+| `identifierLatex(name)`                                          | A name as Desmos spells it: `amp` is `a_{mp}`, `theta2` is `\theta_{2}`                         |
+| `decompileAxis(input, options?)`                                 | The decompiler. A graph's `{ state, options? }` back into `{ source, statements, diagnostics }` |
+| `decompileExpression(item, options?)`                            | One list item as the statement that builds it - the decompiler's unit of work                   |
+| `decompileSettings(input)`                                       | Just the `config { … }` block a graph's settings decompile to, or null                          |
+| `decompileTicker(ticker)`                                        | The graph's ticker, as the `ticker` statement that runs it                                      |
+| `writeBackGraph(source, { before, after }, compiled, options?)`  | What changed on a live graph, as edits to the statements that produced it                       |
+| `diffGraphs(before, after)`                                      | Just the changes between two readings of the same graph, by expression id                       |
+| `applySourceEdits(source, edits)`                                | Applies one file's edits to its text                                                            |
+| `propertyWrites` / `applyPropertyWrites`                         | Which properties two decompiled readings of one item disagree on, merged onto a clause          |
+| `mergeExpression(source, before, after)`                         | A changed expression with every unchanged part kept as the author wrote it                      |
+| `CompileOptions`                                                 | `{ path?, resolveImport?, resolveImage? }`                                                      |
+| `CompilationResult`                                              | `{ state, options, diagnostics, sourceMap, configOrigin?, dependencies }`                       |
+| `StatementOrigin`                                                | `{ path, line, endLine, span, writable, reason? }` - where one item was written                 |
+| `Program` / `SourceFile` / `ImportResolution`                    | What `loadProgram` hands back: every file, parsed, and what each import meant                   |
+| `Symbols` / `Definition` / `MacroDefinition` / `StyleDefinition` | What `collectSymbols` and `definitionOf` find                                                   |
+| `CheckResult` / `Expansion`                                      | What `checkProgram` and `expandMacros` return                                                   |
+| `DecompileInput` / `DecompileResult`                             | `{ state, options? }` and `{ source, statements, diagnostics }`                                 |
+| `DecompiledStatement` / `DecompileExpressionOptions`             | `{ statement, diagnostics }` and `{ definedNames? }`                                            |
+| `GraphSnapshot` / `GraphChange` / `ChangeKind` / `SourceEdit`    | A graph's `{ state, options? }`, one change to it, and one replacement of a span                |
+| `WriteBackOptions` / `WriteBackResult` / `SkippedChange`         | `{ include?, indent?, path? }`, `{ edits, skipped }`, and one refusal with its reason           |
+| `PropertyWrite`                                                  | One property to set or remove on a clause                                                       |
+| `ImportHost` / `ResolveImport` / `ResolvedImport`                | The import resolver types                                                                       |
+| `ImageHost` / `ResolveImage` / `ResolvedImage`                   | The image resolver types                                                                        |
 
 MIT

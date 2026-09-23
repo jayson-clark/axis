@@ -22,8 +22,7 @@ import type {
     Note,
     Table,
 } from '@axis-dsl/desmos';
-import { AXIS_DEFAULT_CONFIG, AXIS_DEFAULT_STATE } from '@axis-dsl/syntax';
-import { imageMediaType } from '@axis-dsl/language';
+import { AXIS_DEFAULT_CONFIG, AXIS_DEFAULT_STATE, imageMediaType } from '@axis-dsl/syntax';
 import { codes, compileAxis, compileWith, listOf, only } from './support/compile.mts';
 
 /**

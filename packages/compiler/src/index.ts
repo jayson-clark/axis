@@ -17,8 +17,6 @@ export { expandMacros } from './macros';
 export type { Expansion } from './macros';
 export { resolveProperties } from './styles';
 
-export { convertToLatex } from './latex';
-export { convertFromLatex } from './unlatex';
 export { emitLatex, identifierLatex, LatexParseError, parseLatex } from './latex/index';
 export {
     decompileAxis,

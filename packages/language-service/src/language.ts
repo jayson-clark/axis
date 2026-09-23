@@ -6,7 +6,7 @@
 // extension it registers the language under, and how brackets, comments and
 // words behave. Plain data, so every host reads the one copy.
 
-export { AXIS_FILE_EXTENSION } from './paths';
+export { AXIS_FILE_EXTENSION } from '@axis-dsl/syntax';
 
 /** The language id every editor registers Axis under. */
 export const AXIS_LANGUAGE_ID = 'axis';

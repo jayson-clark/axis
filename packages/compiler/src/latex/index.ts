@@ -2,8 +2,8 @@
 // Latex, from the tree and back
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// v2's replacement for `latex.ts` and `unlatex.ts`, which stay until the
-// compiler is moved over to the tree.
+// The emitter writes an expression tree as the latex Desmos reads, and the
+// parser reads Desmos' latex back into a tree for the decompiler.
 
 export { emitLatex } from './emit';
 export { identifierLatex } from './names';

@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/syntax",
-    "version": "2.0.0-dev",
+    "version": "2.0.0",
     "description": "The Axis language: lexer, parser, syntax tree and manifest",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

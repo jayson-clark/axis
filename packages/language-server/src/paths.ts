@@ -12,15 +12,8 @@
 // Windows drive letter comes out as `file:///c%3A/…` from both, where Node's
 // `pathToFileURL` would write `file:///C:/…` and miss the open document.
 
-import { AXIS_FILE_EXTENSION } from '@axis-dsl/language-service';
+import { withAxisExtension } from '@axis-dsl/syntax';
 import { URI, Utils } from 'vscode-uri';
-
-/** `./curves` names `./curves.axis`: the extension may be left off an import (spec §7). */
-export function withAxisExtension(specifier: string): string {
-    return specifier.endsWith(AXIS_FILE_EXTENSION)
-        ? specifier
-        : `${specifier}${AXIS_FILE_EXTENSION}`;
-}
 
 /** A URI string written the way `vscode-uri` writes it, so two spellings of one file compare equal. */
 export function normalizeUri(uri: string): string {

@@ -123,9 +123,6 @@ importers:
       '@axis-dsl/desmos':
         specifier: workspace:*
         version: link:../desmos
-      '@axis-dsl/language':
-        specifier: workspace:*
-        version: link:../language
       '@axis-dsl/syntax':
         specifier: workspace:*
         version: link:../syntax
@@ -180,9 +177,6 @@ importers:
       '@axis-dsl/desmos':
         specifier: workspace:*
         version: link:../desmos
-      '@axis-dsl/language':
-        specifier: workspace:*
-        version: link:../language
       '@axis-dsl/syntax':
         specifier: workspace:*
         version: link:../syntax
@@ -193,18 +187,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.4.0
-
-  packages/language:
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.4.0
-      '@types/vscode':
-        specifier: 'catalog:'
-        version: 1.134.0
-      monaco-editor:
-        specifier: 'catalog:'
-        version: 0.56.0
 
   packages/language-server:
     dependencies:

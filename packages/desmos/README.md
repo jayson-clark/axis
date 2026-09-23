@@ -10,9 +10,9 @@ npm install @axis-dsl/desmos
 ```
 
 Desmos ships no types, so these are hand-written against the
-[v1.12 docs](https://www.desmos.com/api/v1.12/docs/index.html). Nothing is
-bundled or vendored — the calculator itself is loaded at runtime from
-`desmos.com` with your API key.
+[API docs](https://www.desmos.com/api/v1.13/docs/index.html) for the version
+every host loads, `DESMOS_API_VERSION`. Nothing is bundled or vendored — the
+calculator itself is loaded at runtime from `desmos.com` with your API key.
 
 ## Usage
 
@@ -40,8 +40,9 @@ script.onload = () => {
 
 Note which setter you are calling. Desmos has two shapes for an expression:
 `setExpression` takes the API's, and `setState` takes the serialized graph
-state's — and only the latter carries a folder. `Expression` types both, so the
-ones that belong to just one are marked: `sliderBounds` and `playing` are the
+state's — and only the latter carries a folder. Axis applies everything with
+`setState` for that reason. `Expression` types both, so the properties that
+belong to just one are marked: `sliderBounds` and `playing` are the
 API's, `slider`, `folderId` and `clickableInfo` are the state's. A property
 given to the wrong setter is dropped rather than reported.
 
@@ -70,7 +71,8 @@ name in its Content-Security-Policy.
 | `DesmosNamespace`                                                          | The `window.Desmos` global installed by `calculator.js`             |
 | `Calculator` / `BasicCalculator`                                           | A calculator instance and its methods                               |
 | `CalculatorOptions` and the other option interfaces                        | What the constructors take                                          |
-| `DesmosExpression` (`Expression`, `Table`, `Note`, `Folder`)               | The four things a graph state is made of                            |
+| `ExpressionState` (`Expression`, `Table`, `Note`, `Folder`, `GraphImage`)  | The five things a graph's expression list is made of                |
+| `TickerState`, `SliderState`, `ClickableInfo`, `TableColumn`, …            | The pieces of a graph state they carry                              |
 | `LineStyle`, `PointStyle`, `DragMode`, `LabelOrientation`, `AxisArrowMode` | The style enums, as runtime values                                  |
 | `GraphState`, `MathBounds`, `ScreenshotOptions`, `HelperExpression`, …     | The rest of the runtime surface                                     |
 | `desmosScriptUrl(apiKey)`                                                  | The `calculator.js` URL for a key                                   |
