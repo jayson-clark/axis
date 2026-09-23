@@ -145,7 +145,7 @@ result goes in `packages/harness/test`:
 | `macros.test.mts`      | what a `macro` expands to, evaluated rather than just compiled                 |
 | `decompile.test.mts`   | decompiling the graph state a real calculator hands back                       |
 | `writeback.test.mts`   | changes made to a live graph, written back into the script                     |
-| `docs.test.mts`        | every example in the manifest, drawn with no expression in error               |
+| `docs.test.mts`        | every manifest example and every `axis` block in the docs, drawn cleanly       |
 | `harness.test.mts`     | the harness itself                                                             |
 
 **Adding a name to the manifest means adding a test.** The first three suites
@@ -164,6 +164,13 @@ reference is generated from them and nothing else. An example is a whole
 script, read as though it sat in `examples/scripts/`; the compiler's
 `manifest.test.mts` compiles each one clean and checks it uses the name it
 documents, and the harness' `docs.test.mts` draws it on a calculator.
+
+**A code block in the docs is a claim about the language.** Every ` ```axis `
+block written by hand - on the site, in the spec, in `KEYWORD_INFO` - is
+gathered by `site/scripts/blocks.mts`, compiled clean by the compiler's
+`docs.test.mts` and drawn by the harness'. A block that shows a mistake says
+so, ` ```axis error="unknown-function" `, and must raise exactly that. A
+fragment that is not a whole script gets a plain fence.
 
 **A new diagnostic code means a catalogue entry.** `SYNTAX_DIAGNOSTICS` in
 syntax and `COMPILER_DIAGNOSTICS`/`DECOMPILER_DIAGNOSTICS` in the compiler

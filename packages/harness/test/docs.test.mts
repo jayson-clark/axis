@@ -2,17 +2,18 @@
 // The documentation's examples, on the calculator they are promises about
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// Every example the manifest carries is shown by hover and printed in the docs
-// site's reference. The compiler's own suite has already said each one
-// compiles cleanly; this says Desmos draws it - no expression in error, and no
-// console error from the page. An example is read as though it sat in
-// `examples/scripts/`, so an import of `./lib/waves` or a picture of
-// `./images/wave.png` is the real file.
+// Every example the manifest carries, and every `axis` block written by hand
+// on the docs site, in the spec or in the keywords' hover. The compiler's own
+// suites have already said each one compiles cleanly; this says Desmos draws
+// it - no expression in error, and no console error from the page. An example
+// is read as though it sat in `examples/scripts/`, so an import of
+// `./lib/waves` or a picture of `./images/wave.png` is the real file.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { AXIS_MANIFEST } from '@axis-dsl/syntax';
+import { documentationBlocks } from '../../../site/scripts/blocks.mts';
 import { loadAxisSource, type AxisCalculator } from '../dist/index.js';
 import { exampleDirectory, skip, useCalculator } from './support.mts';
 
@@ -51,5 +52,17 @@ describe('every example in the manifest is a graph Desmos draws', { skip }, () =
                 assert.deepEqual(await problemsWith(calculator(), example), []);
             });
         }
+    }
+});
+
+describe('every axis block in the docs is a graph Desmos draws', { skip }, () => {
+    const calculator = useCalculator();
+
+    // A block showing a mistake has had its diagnostic checked by the
+    // compiler's suite, and has nothing to draw.
+    for (const block of documentationBlocks().filter(block => !block.error)) {
+        test(block.where, async () => {
+            assert.deepEqual(await problemsWith(calculator(), block.source), []);
+        });
     }
 });

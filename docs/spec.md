@@ -12,7 +12,7 @@ refers to its node kinds by name.
 
 ## 1. A taste
 
-```
+```axis
 // A comment runs to the end of the line.
 config { showGrid: true; xmin: -7; xmax: 7 }
 
@@ -114,7 +114,7 @@ may be spread over lines freely. Inside a block they separate entries.
 A statement ends at a newline or at `;`. That holds at the top level and inside
 every block. Blank statements (two separators in a row) are ignored.
 
-```
+```axis
 a = 1; b = 2          // two statements
 table { x = [1, 2]; y = [3, 4] }
 ```
@@ -284,7 +284,7 @@ Ranges are the value of `slider`, `domain`, `parametricDomain` and
 one are an error (`invalid-value`). An end left off a domain is lowered as the
 empty string Desmos stores for it.
 
-```
+```axis
 a = 1 @ slider: -5..5 step 0.5
 b = 0 @ slider: 0.. soft
 t = 0 @ slider: 0..2pi soft max, playing
@@ -293,7 +293,7 @@ t = 0 @ slider: 0..2pi soft max, playing
 
 ### 4.5 Styles
 
-```
+```axis
 style swatch { pointSize: 14; showLabel }
 style loud { use: swatch; color: RED }
 
@@ -475,7 +475,7 @@ implicit product and reads as a domain restriction: `y = x^2 {x > 0}`.
 
 ## 6. Macros
 
-```
+```axis
 macro TAU2 = 2tau
 macro wave(k, phase) = sin(k * x + phase)
 ```

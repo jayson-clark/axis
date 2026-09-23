@@ -105,5 +105,4 @@ export {
     type ImportedSymbol,
     type ProgramOptions,
 } from './program';
-export { KEYWORD_INFO, STATEMENT_KEYWORDS, type KeywordInfo } from './keywords';
 export { snippetSignature } from './describe';
