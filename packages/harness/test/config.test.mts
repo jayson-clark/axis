@@ -88,6 +88,13 @@ const TOP_LEVEL_STATE = new Set<string>(AXIS_STATE_PROPERTY_NAMES);
  */
 const CONSTRUCTION_ONLY = new Set(['keypadActivated']);
 
+/**
+ * The key that picks which calculator draws the graph at all. It is not a
+ * setting of any calculator, so it is tested in `the calculator` below, by
+ * what kind of graph comes back.
+ */
+const CALCULATOR = new Set(['calculator']);
+
 /** Each property's value, defaulting a boolean to the opposite of its default. */
 function valueFor(name: string): string | number | boolean {
     const documented = VALUES[name];
@@ -119,7 +126,8 @@ describe('the config block', { skip }, () => {
             !NOT_REFLECTED.has(name) &&
             !CONSTRUCTION_ONLY.has(name) &&
             !GRAPH_STATE.has(name) &&
-            !TOP_LEVEL_STATE.has(name),
+            !TOP_LEVEL_STATE.has(name) &&
+            !CALCULATOR.has(name),
     );
 
     test('every property in the manifest is accounted for', () => {
@@ -129,6 +137,7 @@ describe('the config block', { skip }, () => {
             ...CONSTRUCTION_ONLY,
             ...GRAPH_STATE,
             ...TOP_LEVEL_STATE,
+            ...CALCULATOR,
         ]);
         const missing = AXIS_CONFIG_PROPERTY_NAMES.filter(name => !known.has(name));
 
@@ -254,6 +263,61 @@ describe('randomization', { skip }, () => {
         const b = await calculator().evaluate('B');
 
         assert.notDeepEqual(a.listValue, b.listValue);
+    });
+
+    test('nothing logged to the console', () => {
+        assert.deepEqual(calculator().consoleErrors(), []);
+    });
+});
+
+describe('the calculator', { skip }, () => {
+    const calculator = useCalculator();
+
+    const graph = (value: string) =>
+        `config {\n    calculator: ${value}\n}\na = 2\nP = (a, 1)\ny = a x`;
+
+    for (const [value, product] of [
+        ['GEOMETRY', 'geometry-calculator'],
+        ['GRAPHING_3D', 'graphing-3d'],
+        ['GRAPHING', undefined],
+    ] as const) {
+        test(`${value} draws every expression on that calculator`, async () => {
+            // The geometry and 3D calculators drop a state that does not name
+            // them, leaving an empty graph, so arriving at all is the test.
+            const { diagnostics } = await calculator().load(graph(value));
+            assert.deepEqual(diagnostics, []);
+            const state = await calculator().getState();
+            const latex = (await calculator().getExpressions()).map(
+                item => (item as { latex?: string }).latex,
+            );
+
+            assert.equal(state.graph?.product, product);
+            for (const expected of ['a=2', 'P=\\left(a,1\\right)', 'y=ax']) {
+                assert.ok(latex.includes(expected), `${expected} in ${latex.join(', ')}`);
+            }
+        });
+    }
+
+    test('a graph for another calculator after it gets one', async () => {
+        await calculator().load(graph('GEOMETRY'));
+        await calculator().load('y = x');
+
+        assert.equal((await calculator().getState()).graph?.product, undefined);
+        assert.deepEqual(
+            (await calculator().getExpressions()).map(item => (item as { latex?: string }).latex),
+            ['y=x'],
+        );
+    });
+
+    test('it is the state that says so, not a calculator option', () => {
+        const compiled = compileAxis(graph('GEOMETRY'));
+
+        assert.deepEqual(compiled.options, AXIS_DEFAULT_CONFIG);
+        assert.equal(compiled.state.graph?.product, 'geometry-calculator');
+    });
+
+    test('a file that says nothing names no product', () => {
+        assert.equal(compileAxis('y = x').state.graph?.product, undefined);
     });
 
     test('nothing logged to the console', () => {

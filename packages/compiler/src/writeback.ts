@@ -272,6 +272,7 @@ function configValue(snapshot: GraphSnapshot, name: string): unknown {
         return (graph?.viewport as Record<string, unknown> | undefined)?.[name];
     }
     if (GRAPH.has(name)) return graph?.[name];
+    if (name === 'calculator') return graph?.product;
     if (STATE_FLAGS.has(name)) return snapshot.state[name];
     return (snapshot.options as Record<string, unknown> | undefined)?.[name];
 }

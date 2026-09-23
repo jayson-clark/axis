@@ -40,6 +40,7 @@ import type {
     TickerState,
 } from '@axis-dsl/desmos';
 import {
+    AXIS_CALCULATOR_PRODUCTS,
     AXIS_DEFAULT_CONFIG,
     AXIS_DEFAULT_STATE,
     AXIS_GRAPH_PROPERTY_NAMES,
@@ -981,6 +982,11 @@ function splitConfig(
             viewport[key] = value as number;
         } else if ((AXIS_GRAPH_PROPERTY_NAMES as readonly string[]).includes(key)) {
             graph[key] = value;
+        } else if (key === 'calculator') {
+            // Which calculator the graph is for travels in the state, so every
+            // host learns it from the one thing it is handed anyway.
+            const product = AXIS_CALCULATOR_PRODUCTS[value as string];
+            if (product) graph.product = product;
         } else {
             options[key] = value;
         }

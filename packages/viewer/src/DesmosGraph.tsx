@@ -3,14 +3,19 @@ import {
     AsyncScreenshotOptions,
     Calculator,
     CalculatorOptions,
+    DESMOS_PRODUCT_CONSTRUCTORS,
     DesmosExpression,
     GraphState,
+    stateProduct,
 } from '@axis-dsl/desmos';
 import type { GraphReading } from './protocol/index.js';
 import { useDesmos } from './useDesmos.js';
 
 export interface DesmosGraphHandle {
-    /** The live Desmos GraphingCalculator, or null before it is constructed. */
+    /**
+     * The live Desmos calculator - a graphing, geometry or 3D one, as the state
+     * asks - or null before it is constructed.
+     */
     getCalculator(): Calculator | null;
     getExpressions(): DesmosExpression[] | null;
     getState(): GraphState | null;
@@ -105,7 +110,7 @@ function capture(
 }
 
 /**
- * Renders a Desmos graphing calculator and keeps it in sync with `state` and
+ * Renders a Desmos calculator and keeps it in sync with `state` and
  * `options`. Knows nothing about where those come from.
  */
 export function DesmosGraph({
@@ -133,6 +138,9 @@ export function DesmosGraph({
     const onChanged = useRef(onGraphChanged);
     onChanged.current = onGraphChanged;
     const { status, error } = useDesmos(apiKey);
+    // A calculator is built for one product and cannot become another, so a
+    // state that asks for a different one gets a new calculator.
+    const product = stateProduct(state);
 
     useImperativeHandle(
         ref,
@@ -150,7 +158,9 @@ export function DesmosGraph({
             return;
         }
 
-        const calculator = window.Desmos.GraphingCalculator(containerRef.current);
+        const calculator = window.Desmos[DESMOS_PRODUCT_CONSTRUCTORS[product]](
+            containerRef.current,
+        );
         calculatorRef.current = calculator;
 
         return () => {
@@ -158,7 +168,7 @@ export function DesmosGraph({
             calculatorRef.current = null;
             lastAppliedRef.current = null;
         };
-    }, [status]);
+    }, [status, product]);
 
     // Runs after the effect above on the render that flips status to 'ready',
     // so the first graph never needs to be queued.
@@ -260,11 +270,11 @@ export function DesmosGraph({
             window.clearTimeout(timer);
             calculator.unobserveEvent('change.axisGraphSync');
         };
-        // `status` is what says the calculator above exists; `onGraphChanged`
+        // `status` and `product` are what say which calculator above exists; `onGraphChanged`
         // is read for whether to watch at all, never to call - `onChanged`
         // holds the current one, so a host passing a fresh closure every render
         // does not re-subscribe on every render.
-    }, [status, Boolean(onGraphChanged), changeDelay]);
+    }, [status, product, Boolean(onGraphChanged), changeDelay]);
 
     if (status === 'error' && error) {
         return <>{renderError ? renderError(error) : <div style={{ padding: 20 }}>{error}</div>}</>;

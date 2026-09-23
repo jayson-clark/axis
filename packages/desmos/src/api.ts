@@ -88,6 +88,36 @@ export interface GraphSettings {
      * calculator option the embedder chooses, and it is not part of the state.
      */
     userLockedViewport?: boolean;
+    /**
+     * Which Desmos calculator the graph belongs to. The geometry and 3D
+     * calculators drop a state that does not name them here - in silence,
+     * leaving the graph blank - while the graphing calculator writes nothing
+     * and ignores whatever it is handed.
+     */
+    product?: DesmosProduct;
+}
+
+/** The calculators a graph state can belong to, as its `graph.product` names them. */
+export type DesmosProduct = 'graphing' | 'geometry-calculator' | 'graphing-3d';
+
+/** The {@link DesmosNamespace} constructor that builds each kind of calculator. */
+export const DESMOS_PRODUCT_CONSTRUCTORS = {
+    graphing: 'GraphingCalculator',
+    'geometry-calculator': 'Geometry',
+    'graphing-3d': 'Calculator3D',
+} as const satisfies Record<DesmosProduct, keyof DesmosNamespace>;
+
+/**
+ * The calculator a state asks for. A state that says nothing is a graphing
+ * calculator's, which is the only one that writes nothing.
+ */
+export function stateProduct(
+    state: { graph?: { product?: unknown } } | null | undefined,
+): DesmosProduct {
+    const product = state?.graph?.product;
+    return typeof product === 'string' && product in DESMOS_PRODUCT_CONSTRUCTORS
+        ? (product as DesmosProduct)
+        : 'graphing';
 }
 
 /**
@@ -240,13 +270,23 @@ export interface DesmosEnabledFeatures {
     FourFunctionCalculator: boolean;
     ScientificCalculator: boolean;
     Calculator3D?: boolean;
-    Geometry?: boolean;
+    GeometryCalculator?: boolean;
     [feature: string]: boolean | undefined;
 }
 
 /** The `window.Desmos` global installed by `calculator.js`. */
 export interface DesmosNamespace {
     GraphingCalculator(element: HTMLElement, options?: CalculatorOptions): Calculator;
+    /**
+     * The geometry calculator, which shares the graphing calculator's API.
+     * @see https://www.desmos.com/api/v1.13/docs/geometry.html
+     */
+    Geometry(element: HTMLElement, options?: CalculatorOptions): Calculator;
+    /**
+     * The 3D calculator, which shares the graphing calculator's API.
+     * @see https://www.desmos.com/api/v1.13/docs/3d.html
+     */
+    Calculator3D(element: HTMLElement, options?: CalculatorOptions): Calculator;
     FourFunctionCalculator(
         element: HTMLElement,
         options?: FourFunctionCalculatorOptions,
