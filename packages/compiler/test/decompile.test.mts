@@ -26,11 +26,11 @@ import type {
     Table,
     TickerState,
 } from '@axis-dsl/desmos';
-import { imageMediaType } from '@axis-dsl/language';
 import {
     AXIS_DEFAULT_CONFIG,
     AXIS_MANIFEST,
     format,
+    imageMediaType,
     parse,
     type PropertyDefinition,
 } from '@axis-dsl/syntax';

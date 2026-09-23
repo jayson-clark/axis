@@ -13,7 +13,7 @@
 // time, over whatever notion of "a file" the host has - and over every file the
 // entry script imports as well, since an imported script draws its own images.
 
-import { imageMediaType, isImageUrl } from '@axis-dsl/language';
+import { imageMediaType, isImageUrl } from '@axis-dsl/syntax';
 import { findStatements, type ResolvedImport } from './imports';
 
 /** An image file that was found: where it lives, and the URI it inlines as. */

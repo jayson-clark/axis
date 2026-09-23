@@ -21,11 +21,11 @@
 // only consults a span to find a comment or a bracket the author spread over
 // lines - an empty one finds neither.
 
-import { importTitle } from '@axis-dsl/language';
 import {
     type Expression,
     findProperty,
     type Identifier,
+    importTitle,
     type Metadata,
     type Property,
     type PropertyPlacement,

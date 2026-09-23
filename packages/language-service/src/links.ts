@@ -9,7 +9,7 @@
 
 import type * as ast from '@axis-dsl/syntax';
 import { spanToRange, toTree, type DocumentInput, type Range } from './document';
-import { isImageUrl } from './paths';
+import { isImageUrl } from '@axis-dsl/syntax';
 import { allStatements } from './symbols';
 
 /**

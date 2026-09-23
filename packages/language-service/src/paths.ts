@@ -9,7 +9,7 @@
 // listing in between, synchronously through `getCompletions`' `listDirectory`
 // or, where listing is asynchronous, by calling these two itself.
 
-import type { SyntaxTree } from '@axis-dsl/syntax';
+import { AXIS_FILE_EXTENSION, imageMediaType, type SyntaxTree } from '@axis-dsl/syntax';
 import { cursorContext } from './context';
 import {
     offsetAt,
@@ -20,9 +20,6 @@ import {
     type Range,
 } from './document';
 import type { CompletionItem } from './completions';
-
-/** The extension an Axis script is saved with. */
-export const AXIS_FILE_EXTENSION = '.axis';
 
 /** The statement whose path is being typed. */
 export type PathKind = 'import' | 'image';
@@ -118,41 +115,6 @@ export function getPathCompletions(
         });
 
     return [...directories, ...files];
-}
-
-/**
- * True when `url` is something Desmos can already load: an address it fetches,
- * or a `data:` URI it reads. Anything else is a path, and names a file next to
- * the script the way an import does.
- */
-export function isImageUrl(url: string): boolean {
-    return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url);
-}
-
-/** The media type a picture file holds, by its extension. */
-const MEDIA_TYPES: Record<string, string> = {
-    apng: 'image/apng',
-    avif: 'image/avif',
-    bmp: 'image/bmp',
-    gif: 'image/gif',
-    ico: 'image/x-icon',
-    jpeg: 'image/jpeg',
-    jpg: 'image/jpeg',
-    png: 'image/png',
-    svg: 'image/svg+xml',
-    webp: 'image/webp',
-};
-
-/** The image file extensions Axis knows how to read, without their dots. */
-export const AXIS_IMAGE_EXTENSIONS = Object.keys(MEDIA_TYPES);
-
-/**
- * What an image file at `path` holds, by its extension, or undefined for an
- * extension that is not a picture's.
- */
-export function imageMediaType(path: string): string | undefined {
-    const dot = path.lastIndexOf('.');
-    return dot === -1 ? undefined : MEDIA_TYPES[path.slice(dot + 1).toLowerCase()];
 }
 
 /** For `getCompletions`: the path completions at an offset, if the host can list. */

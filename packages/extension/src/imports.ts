@@ -15,7 +15,7 @@
 
 import * as vscode from 'vscode';
 import type { ImageHost, ImportHost } from '@axis-dsl/compiler';
-import { AXIS_FILE_EXTENSION } from '@axis-dsl/language-service';
+import { withAxisExtension } from '@axis-dsl/language-service';
 
 /** The file `target`, written in the file at `from`, names. */
 function resolveFileUri(from: vscode.Uri, target: string): vscode.Uri {
@@ -30,9 +30,6 @@ function resolveFileUri(from: vscode.Uri, target: string): vscode.Uri {
     const workspace = vscode.workspace.getWorkspaceFolder(from);
     return vscode.Uri.joinPath(workspace?.uri ?? directory, target.slice(1));
 }
-
-const withAxisExtension = (specifier: string) =>
-    specifier.endsWith(AXIS_FILE_EXTENSION) ? specifier : `${specifier}${AXIS_FILE_EXTENSION}`;
 
 /**
  * Files are keyed by URI string throughout, so the compiler's cycle detection

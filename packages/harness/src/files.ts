@@ -18,7 +18,7 @@ import {
     loadImages,
     loadImports,
 } from '@axis-dsl/compiler';
-import { withAxisExtension } from '@axis-dsl/language';
+import { withAxisExtension } from '@axis-dsl/syntax';
 
 /**
  * Reads imports relative to the importing file. A leading `/` is relative to

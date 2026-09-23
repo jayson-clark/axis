@@ -14,6 +14,14 @@ export { lineIndex, type LineIndex, type Position } from './lines';
 export { debugTree } from './debug';
 export * from './manifest';
 export {
+    AXIS_FILE_EXTENSION,
+    AXIS_IMAGE_EXTENSIONS,
+    imageMediaType,
+    importTitle,
+    isImageUrl,
+    withAxisExtension,
+} from './files';
+export {
     format,
     printExpression,
     printStatement,

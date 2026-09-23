@@ -60,9 +60,8 @@ describe('the extension bundle', () => {
         assert.ok(new RegExp(configuration.wordPattern).test('x_1'));
     });
 
-    test('depends on the v2 language packages, not v1', () => {
+    test('depends on the language server it bundles', () => {
         const dependencies = { ...manifest.dependencies, ...manifest.devDependencies };
-        assert.equal(dependencies['@axis-dsl/language'], undefined);
         assert.ok(dependencies['@axis-dsl/language-server']);
     });
 
