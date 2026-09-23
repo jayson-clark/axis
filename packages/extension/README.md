@@ -31,6 +31,14 @@ From the Axis language server, the same one other editors use:
 - semantic highlighting, the outline, folding, and links on `import` and `image`
   paths
 
+## Commands
+
+| Command                       | What it does                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| **Axis: Preview Graph**       | Serve the active `.axis` file and open its preview. Also the title-bar icon. |
+| **Axis: Preview Server…**     | What the status-bar item opens: reopen a preview, serve another file, stop.  |
+| **Axis: Stop Preview Server** | Stop serving previews; a page left open says it has lost the server.         |
+
 ## Settings
 
 | Setting                     | Meaning                                                     |

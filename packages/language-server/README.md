@@ -11,18 +11,18 @@ starts the `axis-language-server` bin over stdio.
 
 ## What it does
 
-| Feature                          | Notes                                                                                                                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Diagnostics                      | Pushed (`textDocument/publishDiagnostics`), debounced 250 ms after an edit. Everything a compile would report, with imports resolved; an import or image whose file is not there is reported as `Cannot find "…"`. |
-| Re-checking                      | A document is checked again when a file it imports or draws is created, changed, deleted or saved, or edited unsaved in another open buffer. The server registers the file watcher itself.                         |
-| Completion                       | Keywords, properties in metadata, names (including those an import defines), and paths inside `import "…"` / `image "…"`, read off disk.                                                                           |
-| Hover                            | Keywords, builtins, and the names a script or its imports define.                                                                                                                                                  |
-| Formatting                       | Whole document and range. The line length is `axis.format.maxLineLength` from the client's settings (100 when unset).                                                                                              |
-| Semantic tokens                  | Full and range, over the service's `SEMANTIC_TOKEN_LEGEND`.                                                                                                                                                        |
-| Links                            | The path in an `import` or `image`, resolved to the file it names.                                                                                                                                                 |
-| Definition                       | Within the file, and into the imported file that defines a name.                                                                                                                                                   |
-| References, highlights           | Within the file.                                                                                                                                                                                                   |
-| Document symbols, folding ranges |                                                                                                                                                                                                                    |
+| Feature                          | Notes                                                                                                                                                                                                                                                     |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Diagnostics                      | Pushed (`textDocument/publishDiagnostics`), debounced 250 ms after an edit. Everything a compile would report, with imports resolved; an import or image whose file is not there is reported as `Cannot find "…"` or `Cannot find image "…"` on its path. |
+| Re-checking                      | A document is checked again when a file it imports or draws is created, changed, deleted or saved, or edited unsaved in another open buffer. The server registers the file watcher itself.                                                                |
+| Completion                       | Keywords, properties in metadata, names (including those an import defines), and paths inside `import "…"` / `image "…"`, read off disk.                                                                                                                  |
+| Hover                            | Keywords, builtins, and the names a script or its imports define.                                                                                                                                                                                         |
+| Formatting                       | Whole document and range. The line length is `axis.format.maxLineLength` from the client's settings (100 when unset).                                                                                                                                     |
+| Semantic tokens                  | Full and range, over the service's `SEMANTIC_TOKEN_LEGEND`.                                                                                                                                                                                               |
+| Links                            | The path in an `import` or `image`, resolved to the file it names.                                                                                                                                                                                        |
+| Definition                       | Within the file, and into the imported file that defines a name.                                                                                                                                                                                          |
+| References, highlights           | Within the file.                                                                                                                                                                                                                                          |
+| Document symbols, folding ranges |                                                                                                                                                                                                                                                           |
 
 Open documents take precedence over disk: a script that imports a file you are
 editing sees your unsaved changes.
@@ -176,4 +176,6 @@ startServer(); // a connection from process.argv: --stdio, --node-ipc or --socke
 ```
 
 `startServer(connection)` takes a `vscode-languageserver` connection of your
-own - over a stream pair, say, in a test.
+own - over a stream pair, say, in a test - and `listen(connection)` is the same
+without the default. `AxisInitializationOptions` types what a client may send
+at `initialize`.

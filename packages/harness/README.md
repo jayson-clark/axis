@@ -61,21 +61,29 @@ closes it again.
 
 ## What you can ask it
 
-|                                                     |                                                              |
-| --------------------------------------------------- | ------------------------------------------------------------ |
-| `load(source, options?)`                            | compile Axis source and apply it, imports and images and all |
-| `setGraph({ state, options })`                      | apply a whole graph, as the compiler returns it              |
-| `getGraph()`                                        | read it back the same way, as `writeBackGraph` compares it   |
-| `setExpressions(list, settings?, graph?)`           | apply expressions the compiler already produced              |
-| `inspectExpressions()`                              | the expression list with each one's Desmos analysis attached |
-| `getErrors()`                                       | just the expressions Desmos rejected, with its message       |
-| `getAnalysis()`                                     | raw `calculator.expressionAnalysis`, keyed by id             |
-| `getState()` / `getExpressions()` / `getSettings()` | the calculator's own accessors                               |
-| `evaluate(latex)`                                   | evaluate an expression against the loaded graph              |
-| `inspect()`                                         | all of the above in one object, which is what the CLI prints |
-| `screenshot(options?)`                              | a PNG or SVG data URI of the graphpaper                      |
-| `consoleErrors()`                                   | anything the page logged as an error                         |
-| `page`                                              | the Playwright `Page`, for whatever this does not cover      |
+|                                                            |                                                                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `load(source, options?)`                                   | compile Axis source and apply it; returns the `CompilationResult`, diagnostics and all           |
+| `setGraph({ state, options })`                             | apply a whole graph, as the compiler returns it                                                  |
+| `getGraph()`                                               | read it back the same way, as `writeBackGraph` compares it                                       |
+| `setExpressions(list, settings?, graph?, state?, ticker?)` | apply expressions the compiler already produced, assembled into a state the way it assembles one |
+| `inspectExpressions()`                                     | the expression list with each one's Desmos analysis attached                                     |
+| `getErrors()`                                              | just the expressions Desmos rejected, with its message                                           |
+| `getAnalysis()`                                            | raw `calculator.expressionAnalysis`, keyed by id                                                 |
+| `getState()` / `getExpressions()` / `getSettings()`        | the calculator's own accessors                                                                   |
+| `evaluate(expression)`                                     | evaluate an Axis expression against the loaded graph                                             |
+| `evaluateLatex(latex)`                                     | the same, given latex that is already latex                                                      |
+| `click({ x, y })`                                          | click the graph at a point in math coordinates                                                   |
+| `updateSettings(options)` / `setMathBounds(bounds)`        | change the settings or the viewport of the loaded graph                                          |
+| `reset()`                                                  | clear the graph back to empty                                                                    |
+| `inspect()`                                                | all of the above in one object, which is what the CLI prints                                     |
+| `screenshot(options?)`                                     | a PNG or SVG data URI of the graphpaper                                                          |
+| `consoleErrors()`                                          | anything the page logged as an error                                                             |
+| `page`                                                     | the Playwright `Page`, for whatever this does not cover                                          |
+
+`load` applies a script the compiler had something to say about all the same,
+as every host does, and hands the diagnostics back rather than throwing: a test
+that cares asserts on them itself.
 
 `evaluate` takes **Axis**, not latex: `evaluate('amp')` asks about the variable
 the script calls `amp`, where the raw latex `amp` would be three variables
@@ -122,10 +130,24 @@ axis-inspect -e 'y = x^2'             # source inline
 axis-inspect - < graph.axis           # source on stdin
   --json                              # the whole inspection, machine-readable
   --errors-only                       # only what Desmos rejected
-  --eval '<expr>'                     # also evaluate this against the graph
+  --eval '<expr>'                     # also evaluate an Axis expression (repeatable)
   --screenshot out.png                # write a PNG of the graphpaper
   --api-key <key>                     # default: the public demo key
   --offline                           # fail rather than fetch from desmos.com
+```
+
+A file is read with its imports and images resolved from disk, relative to the
+script, with a leading `/` relative to the script's own directory. The same
+reading is exported for a test or a tool of your own: `readAxisFile(path)`
+hands back `{ path, source, resolveImport, resolveImage }`, ready to spread into
+`load` or `compileAxis`, and `nodeImportHost`/`nodeImageHost` are the hosts it
+is built from.
+
+```ts
+import { createCalculator, readAxisFile } from '@axis-dsl/harness';
+
+const { source, ...options } = await readAxisFile('examples/scripts/16-imports.axis');
+const { diagnostics } = await calculator.load(source, options);
 ```
 
 ## What the suites here check
@@ -164,7 +186,7 @@ is written to disk the first time and served from there afterwards, so a warm
 run needs no network at all and `--offline` enforces it. The cache lives under
 `$XDG_CACHE_HOME/axis-harness/<api-version>` (or `~/.cache/…`), keyed by API
 version; `AXIS_HARNESS_CACHE` moves it, which is the directory to hand to CI's
-cache step. It is about 4MB.
+cache step, and `cacheDirectory()` says where it is. It is about 4MB.
 
 The page is served _from_ `https://www.desmos.com/axis-harness/` rather than a
 loopback server. Nothing is actually fetched from there — every request is
