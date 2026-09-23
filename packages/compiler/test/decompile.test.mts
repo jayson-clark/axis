@@ -15,8 +15,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import type {
     DesmosExpression,
     Expression,
@@ -30,7 +29,6 @@ import {
     AXIS_DEFAULT_CONFIG,
     AXIS_MANIFEST,
     format,
-    imageMediaType,
     parse,
     type PropertyDefinition,
 } from '@axis-dsl/syntax';
@@ -41,6 +39,7 @@ import {
     decompileTicker,
 } from '../dist/index.js';
 import { compileAxis, type CompileOptions } from './support/compile.mts';
+import { EXAMPLES_DIRECTORY, exampleOptions } from './support/examples.mts';
 
 /**
  * Decompile a script, having checked that what comes back compiles to the graph
@@ -102,28 +101,10 @@ const listOf = (source: string) => compileAxis(source).state.expressions?.list ?
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('the example scripts', () => {
-    const directory = fileURLToPath(new URL('../../../examples/scripts/', import.meta.url));
-
-    const resolveImport = (specifier: string, from: string) => {
-        const target = specifier.endsWith('.axis') ? specifier : `${specifier}.axis`;
-        const path = target.startsWith('/')
-            ? resolve(directory, target.slice(1))
-            : resolve(dirname(from), target);
-        return { path, source: readFileSync(path, 'utf8') };
-    };
-
-    const resolveImage = (url: string, from: string) => {
-        const path = url.startsWith('/')
-            ? resolve(directory, url.slice(1))
-            : resolve(dirname(from), url);
-        const data = readFileSync(path).toString('base64');
-        return { path, dataUri: `data:${imageMediaType(path)};base64,${data}` };
-    };
-
-    for (const name of readdirSync(directory).filter(file => file.endsWith('.axis'))) {
+    for (const name of readdirSync(EXAMPLES_DIRECTORY).filter(file => file.endsWith('.axis'))) {
         test(`${name} decompiles to a script that builds the same graph`, () => {
-            const path = resolve(directory, name);
-            roundTrip(readFileSync(path, 'utf8'), { path, resolveImport, resolveImage });
+            const path = resolve(EXAMPLES_DIRECTORY, name);
+            roundTrip(readFileSync(path, 'utf8'), exampleOptions(path));
         });
     }
 });

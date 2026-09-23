@@ -63,11 +63,24 @@ export interface LoadedScript {
  * image any of them draws.
  */
 export async function readAxisFile(path: string, root?: string): Promise<LoadedScript> {
+    return loadAxisSource(await readFile(resolvePath(path), 'utf8'), path, root);
+}
+
+/**
+ * {@link readAxisFile} for source already in hand, read as though it were the
+ * file at `path` - which need not exist - so its imports and images are found
+ * beside it. How the docs' examples are loaded, each as if it sat in
+ * `examples/scripts/`.
+ */
+export async function loadAxisSource(
+    source: string,
+    path: string,
+    root?: string,
+): Promise<LoadedScript> {
     const absolute = resolvePath(path);
     const base = root ?? dirname(absolute);
     const host = nodeImportHost(base);
     const pictures = nodeImageHost(base);
-    const source = await readFile(absolute, 'utf8');
     const files = await loadImports({ path: absolute, source }, host);
     const images = await loadImages({ path: absolute, source }, files, pictures);
 

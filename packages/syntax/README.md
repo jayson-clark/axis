@@ -88,6 +88,13 @@ a function's latex in it. Adding a name to the language is one edit here — and
 a test in the harness, whose suites are driven from this list and fail on a
 name nothing exercises.
 
+Every function, operator and property also carries an `example`, a short
+script that uses it, and may carry `documentation`, a paragraph of Markdown
+beyond its one-line `detail`. Hover shows both, and the reference on the docs
+site is generated from them. The examples are compiled and drawn on a real
+calculator by the test suites, so the reference cannot show code that does not
+work.
+
 Each property says what its value must be (`valueType`) and where it may be
 written (`appliesTo`), so the lookups answer the questions the checker asks:
 

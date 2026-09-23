@@ -142,6 +142,7 @@ result goes in `packages/harness/test`:
 | `macros.test.mts`      | what a `macro` expands to, evaluated rather than just compiled                 |
 | `decompile.test.mts`   | decompiling the graph state a real calculator hands back                       |
 | `writeback.test.mts`   | changes made to a live graph, written back into the script                     |
+| `docs.test.mts`        | every example in the manifest, drawn with no expression in error               |
 | `harness.test.mts`     | the harness itself                                                             |
 
 **Adding a name to the manifest means adding a test.** The first three suites
@@ -152,6 +153,14 @@ the list of names, so a property newly allowed on a column or an image needs a
 case there even when it is already tested on an expression - the same property
 reaches a different part of the graph in each place, and any one of them can
 lose it. That is deliberate, and the fix is a test, not an exemption.
+
+**And an example.** Every function, operator and property in the manifest has
+an `example` - the type will not compile without one - and may have
+`documentation` beyond its `detail`. Hover shows both, and the docs site's
+reference is generated from them and nothing else. An example is a whole
+script, read as though it sat in `examples/scripts/`; the compiler's
+`manifest.test.mts` compiles each one clean and checks it uses the name it
+documents, and the harness' `docs.test.mts` draws it on a calculator.
 
 **Changing how something compiles means changing how it decompiles.** The
 decompiler is the compiler's inverse and is tested as one: `decompile.test.mts`

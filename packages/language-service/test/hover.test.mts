@@ -24,6 +24,16 @@ describe('hover over builtins and the manifest', () => {
         );
     });
 
+    test('shows the manifest’s documentation and example', () => {
+        const fn = hover('y = nthroot(x, 3)', 'nthroot')!.contents;
+        assert.match(fn, /`nthroot\(8, 3\)` is 2/);
+        assert.match(fn, /```axis\ny = nthroot\(x, 3\)\n```/);
+
+        const property = hover('y = x @ lines', 'lines')!.contents;
+        assert.match(property, /draws only the points unless it says `lines`/);
+        assert.match(property, /```axis\n\[\(0, 0\), \(1, 2\), \(2, 1\)\] @ lines\n```/);
+    });
+
     test('describes a list function written as a member', () => {
         assert.match(hover('L = [1, 2]\nm = L.mean', 'mean')!.contents, /mean/i);
     });
