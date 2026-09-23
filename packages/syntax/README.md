@@ -1,6 +1,6 @@
 # @axis-dsl/syntax
 
-The [Axis](https://github.com/jayson-clark/axis) language, read: the lexer, the
+The [Axis](https://jayson-clark.github.io/axis/) language, read: the lexer, the
 parser, the syntax tree, the printer that writes one back out, and the manifest
 of every name the language knows.
 
@@ -15,8 +15,8 @@ language and one way of writing it, and every tool above agrees with every
 other about what a file says. It depends on nothing, touches no filesystem
 and no DOM, and runs anywhere.
 
-[`docs/spec.md`](../../docs/spec.md) is the language this package reads;
-[`src/ast.ts`](./src/ast.ts) is the shape of what it reads it into.
+[The specification](https://jayson-clark.github.io/axis/spec/) is the language this package reads;
+[`src/ast.ts`](https://github.com/jayson-clark/axis/blob/main/packages/syntax/src/ast.ts) is the shape of what it reads it into.
 
 ## Parsing
 
@@ -117,27 +117,27 @@ extension.
 
 ## API
 
-| Export                                                               |                                                                                      |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `parse(source)`                                                      | A `SyntaxTree`: `{ source, tokens, file, diagnostics }`                              |
-| `parseExpression(source)`                                            | One expression, read as a statement's value: `{ expression, tokens, diagnostics }`   |
-| `lex(source)`                                                        | The tokens alone, trivia included, and the lexer's diagnostics                       |
-| `unescapeString(text)`                                               | A string token's text as the value it stands for                                     |
-| `KEYWORDS`, `isTrivia`                                               | The reserved words, and whether a token is whitespace or a comment                   |
-| `format(source, options?)`                                           | The file formatted; `{ indent, maxLineLength }`, four spaces and 100 by default      |
-| `printStatement(node, options?)` / `printExpression(node)`           | A node as canonical Axis text                                                        |
-| `sameTree(a, b)` / `stripParens(node)`                               | Trees compared for meaning rather than layout                                        |
-| `lineIndex(source)`                                                  | Offsets to `{ line, character }` and back                                            |
-| `debugTree(node)`                                                    | A node as an s-expression, for tests and debugging                                   |
-| `SYNTAX_DIAGNOSTICS`                                                 | Every code the lexer and parser report, with a summary and a file that raises it     |
-| `AXIS_MANIFEST`                                                      | Every function, operator, constant, property and setting                             |
-| `findProperty`, `propertiesFor`, `placementsOf`, `enumValue`         | The manifest's lookups, by name and placement                                        |
-| `AXIS_PALETTE`, `AXIS_PALETTE_HEX`                                   | The palette names `color` takes, and their hex                                       |
-| `AXIS_DEFAULT_CONFIG`, `AXIS_DEFAULT_STATE`                          | The settings and state flags Axis applies where Desmos' own default is not the one   |
-| `getFunctionLatex`, `AXIS_LATEX_FOR_CONSTANT`                        | How a builtin is spelled in latex                                                    |
-| `AXIS_FILE_EXTENSION`, `withAxisExtension`, `importTitle`            | What an import names                                                                 |
-| `isImageUrl`, `imageMediaType`, `AXIS_IMAGE_EXTENSIONS`              | What an image names                                                                  |
-| `File`, `Statement`, `Expression`, `Metadata`, `Property`, `Span`, … | The node types, from [`src/ast.ts`](./src/ast.ts)                                    |
-| `Diagnostic`                                                         | `{ code, severity, message, span, path? }`, the type every stage reports problems in |
+| Export                                                               |                                                                                                                |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `parse(source)`                                                      | A `SyntaxTree`: `{ source, tokens, file, diagnostics }`                                                        |
+| `parseExpression(source)`                                            | One expression, read as a statement's value: `{ expression, tokens, diagnostics }`                             |
+| `lex(source)`                                                        | The tokens alone, trivia included, and the lexer's diagnostics                                                 |
+| `unescapeString(text)`                                               | A string token's text as the value it stands for                                                               |
+| `KEYWORDS`, `isTrivia`                                               | The reserved words, and whether a token is whitespace or a comment                                             |
+| `format(source, options?)`                                           | The file formatted; `{ indent, maxLineLength }`, four spaces and 100 by default                                |
+| `printStatement(node, options?)` / `printExpression(node)`           | A node as canonical Axis text                                                                                  |
+| `sameTree(a, b)` / `stripParens(node)`                               | Trees compared for meaning rather than layout                                                                  |
+| `lineIndex(source)`                                                  | Offsets to `{ line, character }` and back                                                                      |
+| `debugTree(node)`                                                    | A node as an s-expression, for tests and debugging                                                             |
+| `SYNTAX_DIAGNOSTICS`                                                 | Every code the lexer and parser report, with a summary and a file that raises it                               |
+| `AXIS_MANIFEST`                                                      | Every function, operator, constant, property and setting                                                       |
+| `findProperty`, `propertiesFor`, `placementsOf`, `enumValue`         | The manifest's lookups, by name and placement                                                                  |
+| `AXIS_PALETTE`, `AXIS_PALETTE_HEX`                                   | The palette names `color` takes, and their hex                                                                 |
+| `AXIS_DEFAULT_CONFIG`, `AXIS_DEFAULT_STATE`                          | The settings and state flags Axis applies where Desmos' own default is not the one                             |
+| `getFunctionLatex`, `AXIS_LATEX_FOR_CONSTANT`                        | How a builtin is spelled in latex                                                                              |
+| `AXIS_FILE_EXTENSION`, `withAxisExtension`, `importTitle`            | What an import names                                                                                           |
+| `isImageUrl`, `imageMediaType`, `AXIS_IMAGE_EXTENSIONS`              | What an image names                                                                                            |
+| `File`, `Statement`, `Expression`, `Metadata`, `Property`, `Span`, … | The node types, from [`src/ast.ts`](https://github.com/jayson-clark/axis/blob/main/packages/syntax/src/ast.ts) |
+| `Diagnostic`                                                         | `{ code, severity, message, span, path? }`, the type every stage reports problems in                           |
 
 MIT

@@ -1,6 +1,6 @@
 # @axis-dsl/viewer
 
-The [Axis](https://github.com/jayson-clark/axis) results panel: a live Desmos
+The [Axis](https://jayson-clark.github.io/axis/) results panel: a live Desmos
 graph, and — in `debug` — the JSON behind it beside it. Also the protocol every
 host drives it with, and the transports that carry that protocol, at
 `@axis-dsl/viewer/protocol`.

@@ -1,6 +1,6 @@
 # Axis for VSCode
 
-[Axis](https://github.com/jayson-clark/axis) is a language for
+[Axis](https://jayson-clark.github.io/axis/) is a language for
 Desmos graphs. This extension previews the `.axis` file you have
 open as a live Desmos graph, and gives the language full editor support.
 
@@ -48,12 +48,7 @@ From the Axis language server, the same one other editors use:
 | `axis.preview.debug`        | Show the preview's Graph and JSON tabs and the file's path. |
 | `axis.format.maxLineLength` | The column the formatter breaks a long line at. `0`: never. |
 
-## Building
+## Learn Axis
 
-From the repository root, `pnpm install` and `pnpm build`. The extension is
-bundled by `scripts/build.mjs` into `dist/`; `pnpm --filter axis-dsl package`
-builds a `.vsix`.
-
-`pnpm test` checks the bundle and the language server inside it.
-`pnpm --filter axis-dsl test:vscode` runs a smoke test in a real VSCode, which
-it downloads into `.vscode-test/` the first time.
+[The docs](https://jayson-clark.github.io/axis/) have a guide, a reference, and a
+[playground](https://jayson-clark.github.io/axis/playground/) to try a file in.

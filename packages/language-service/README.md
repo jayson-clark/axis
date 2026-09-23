@@ -1,6 +1,6 @@
 # @axis-dsl/language-service
 
-Everything an editor asks about an [Axis](https://github.com/jayson-clark/axis)
+Everything an editor asks about an [Axis](https://jayson-clark.github.io/axis/)
 file — diagnostics, completions, hover, formatting, semantic tokens, links,
 go to definition, references, the outline and folding — as plain functions of
 the source and a position, with a Monaco adapter on top.
@@ -15,7 +15,7 @@ one version parses it once — and a zero-based `{ line, character }` in UTF-16
 units, which is how both the Language Server Protocol and Monaco count. What
 comes back is editor-neutral data: ranges, markdown, edits. Two hosts adapt it:
 [`./monaco`](#monaco) for a browser, and
-[`@axis-dsl/language-server`](../language-server) for anything that speaks LSP,
+[`@axis-dsl/language-server`](https://www.npmjs.com/package/@axis-dsl/language-server) for anything that speaks LSP,
 which is what the VSCode extension runs.
 
 The diagnostics are the compiler's own. The service does not keep a second
@@ -82,7 +82,7 @@ squiggle for one the host looked for and did not find.
 
 The path conventions themselves — `withAxisExtension`, `importTitle`,
 `isImageUrl`, `imageMediaType`, `AXIS_IMAGE_EXTENSIONS` — live in
-[`@axis-dsl/syntax`](../syntax) and are re-exported here for a host that
+[`@axis-dsl/syntax`](https://www.npmjs.com/package/@axis-dsl/syntax) and are re-exported here for a host that
 reaches for everything through this package.
 
 ## Monaco
@@ -120,8 +120,8 @@ that wants some of them and not others.
 The app owns `monaco-editor`: the adapter imports only its types, and works on
 whatever instance it is given. Axis ships no editor component,
 because loading Monaco and wrapping it for a framework is app-shaped work every
-bundler spells differently; [`examples/web/src/AxisEditor.tsx`](../../examples/web/src/AxisEditor.tsx)
-is a React wrapper to copy, and [`examples/web/src/monaco.ts`](../../examples/web/src/monaco.ts)
+bundler spells differently; [`examples/web/src/AxisEditor.tsx`](https://github.com/jayson-clark/axis/blob/main/examples/web/src/AxisEditor.tsx)
+is a React wrapper to copy, and [`examples/web/src/monaco.ts`](https://github.com/jayson-clark/axis/blob/main/examples/web/src/monaco.ts)
 the Vite loading and worker setup.
 
 The TextMate grammar the extension highlights with ships here too, as

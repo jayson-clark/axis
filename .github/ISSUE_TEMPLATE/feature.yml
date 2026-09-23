@@ -1,0 +1,22 @@
+name: Feature request
+description: Something you want to graph or write that Axis doesn't let you do yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you want to do
+      description: The graph or the workflow you are after, not only the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: syntax
+    attributes:
+      label: What you would write
+      description: The Axis you would expect to write for it, if it is a language feature.
+      render: text
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: How you get there now, in Axis or in Desmos by hand, and what gets in the way.

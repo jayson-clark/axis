@@ -1,0 +1,19 @@
+name: Docs problem
+description: A page on the docs site, or a README, that is wrong, unclear or missing.
+labels: [documentation]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The URL, or the file in the repository.
+      placeholder: https://jayson-clark.github.io/axis/guide/the-language/
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: What it says, and what it should say or what is missing.
+    validations:
+      required: true
