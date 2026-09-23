@@ -117,7 +117,7 @@ export function stripParens<T>(node: T): T {
 }
 
 /**
- * Whether two trees are the same script: equal once spans, `Paren` nodes and
+ * Whether two trees are the same source: equal once spans, `Paren` nodes and
  * whether metadata was written inline or as a block are set aside - the three
  * things layout may change and meaning may not.
  */

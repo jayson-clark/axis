@@ -4,7 +4,7 @@
 //
 // The compiler's and the harness' `docs.test.mts` compile and draw each one.
 // The site's generated pages are left out: their examples come from the
-// manifest, the diagnostic catalogues and the example scripts, which are
+// manifest, the diagnostic catalogues and the example graphs, which are
 // tested where they are defined. What is here is everything written by hand -
 // the site's own pages, the spec, and the keyword documentation hover shows.
 //

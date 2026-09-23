@@ -1,20 +1,20 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Writing a real calculator's changes back into the script
+// Writing a real calculator's changes back into the file
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // The compiler's own write-back tests build the "after" reading by hand, which
 // tests the logic and nothing about Desmos. This tests the other half: that the
 // graph a real calculator hands back is one the write-back reads correctly, and
-// that the script it writes builds that graph again.
+// that the file it writes builds that graph again.
 //
 // That gap is not theoretical. Desmos leaves a property off the state when it
 // matches its own default, so a slider written `0..10` comes back carrying only
 // the min - and a write-back that rewrote statements from what the calculator
-// returned would take the max out of the script as the price of dragging the
+// returned would take the max out of the file as the price of dragging the
 // slider. The merge is what stops that, and this is the only place that can
 // say whether it works.
 //
-// Every case goes all the way round: load a script, change the live graph the
+// Every case goes all the way round: load a file, change the live graph the
 // way a person would, write the change back, load what was written, and ask
 // the calculator whether it holds the change.
 
@@ -33,7 +33,7 @@ describe('writing a live graph back', { skip }, () => {
     const calculator = useCalculator();
 
     /**
-     * Load a script and take the graph the calculator holds, which is the
+     * Load a file and take the graph the calculator holds, which is the
      * baseline every later reading is compared against.
      *
      * Deliberately not the compilation: Desmos normalises what it is given, so
@@ -89,7 +89,7 @@ describe('writing a live graph back', { skip }, () => {
         await calculator().settle();
     }
 
-    /** Write back what changed since `before`, and apply it to the script. */
+    /** Write back what changed since `before`, and apply it to the file. */
     async function write(opened: {
         source: string;
         compiled: CompilationResult;
@@ -237,7 +237,7 @@ describe('writing a live graph back', { skip }, () => {
         await reloads(written, after, ['expr_2', 'note_3', 'table_6']);
     });
 
-    test('a setting is written into the config block the script has', async () => {
+    test('a setting is written into the config block the file has', async () => {
         const opened = await load('config {\n    showGrid: true\n}\ny = x');
 
         await calculator().updateSettings({ showGrid: false });
@@ -248,7 +248,7 @@ describe('writing a live graph back', { skip }, () => {
         assert.equal((await calculator().getSettings()).showGrid, false);
     });
 
-    test('a pan is written for a script that framed itself', async () => {
+    test('a pan is written for a file that framed itself', async () => {
         const opened = await load(
             'config {\n    xmin: -5\n    xmax: 5\n    ymin: -5\n    ymax: 5\n}\ny = x',
         );

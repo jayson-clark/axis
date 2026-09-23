@@ -2,7 +2,7 @@
 // The program - every file a compilation reads, parsed once
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// A script is compiled together with everything it imports: macros and styles
+// A file is compiled together with everything it imports: macros and styles
 // are hoisted across the whole import graph, a name defined in one file is a
 // function in another, and the entry's config wins over an imported one. So the
 // first thing a compilation does is read the whole graph, and every pass after
@@ -32,12 +32,12 @@ import { forEachStatement } from './walk';
 
 /** One file of a compilation: its text, its tree, and where its lines start. */
 export interface SourceFile {
-    /** The file's identity as the host named it; `''` for a script with no path. */
+    /** The file's identity as the host named it; `''` for source with no path. */
     path: string;
     source: string;
     tree: SyntaxTree;
     lines: LineIndex;
-    /** Whether this is the script being compiled rather than one it imports. */
+    /** Whether this is the file being compiled rather than one it imports. */
     entry: boolean;
 }
 
@@ -156,7 +156,7 @@ export function loadProgram(source: string, options: LoadProgramOptions = {}): P
 
 /**
  * `diagnostic`, marked with the file it belongs to when that is not the entry.
- * The entry's are left bare: they are about the script the caller handed over,
+ * The entry's are left bare: they are about the file the caller handed over,
  * which needs no naming.
  */
 export function located(diagnostic: AxisDiagnostic, file: SourceFile): Diagnostic {

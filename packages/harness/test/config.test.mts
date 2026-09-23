@@ -68,7 +68,7 @@ const NOT_REFLECTED = new Set([
  * read off `getState().graph` instead, in `the viewport` below.
  *
  * They also cannot be tested one at a time the way everything else here is: the
- * four edges are one rectangle, and Desmos squares up whichever pair the script
+ * four edges are one rectangle, and Desmos squares up whichever pair the file
  * left out. `squareAxes` is the switch that decides whether it does.
  */
 const GRAPH_STATE = new Set(['xmin', 'xmax', 'ymin', 'ymax', 'squareAxes', 'userLockedViewport']);
@@ -242,7 +242,7 @@ describe('randomization', { skip }, () => {
         assert.deepEqual(a.listValue, b.listValue);
     });
 
-    test('a script that says nothing gets the modern behaviour', async () => {
+    test('a file that says nothing gets the modern behaviour', async () => {
         // The default, and the whole point of having one: a graph written today
         // should not silently inherit a migration flag from 2024.
         await calculator().load(
@@ -364,7 +364,7 @@ describe('config options Desmos acts on', { skip }, () => {
         assert.deepEqual(await calculator().getErrors(), []);
     });
 
-    test('an imported config merges under the entry script’s', () => {
+    test('an imported config merges under the entry file’s', () => {
         const { options: settings } = compileAxis('import "lib"\nconfig {\n    showGrid: true\n}', {
             path: '/graph.axis',
             resolveImport: () => ({
@@ -373,7 +373,7 @@ describe('config options Desmos acts on', { skip }, () => {
             }),
         });
 
-        assert.equal(settings?.showGrid, true, 'the entry script has to win');
+        assert.equal(settings?.showGrid, true, 'the entry file has to win');
         assert.equal(settings?.degreeMode, true, 'and the import still contributes');
     });
 

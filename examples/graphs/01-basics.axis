@@ -2,7 +2,7 @@
 // Basics - statements, comments, notes and metadata
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// An Axis script is a list of statements, one per line. Each becomes one
+// An Axis file is a list of statements, one per line. Each becomes one
 // expression in the graph, in the order it is written.
 
 "Basics"

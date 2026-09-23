@@ -2,9 +2,9 @@
 // The Axis decompiler
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// A graph back into the script that would build it. The graph is what a
+// A graph back into the file that would build it. The graph is what a
 // compilation hands a host, or what a calculator's `getState` hands back - the
-// two are the same shape - and the script is built as a syntax tree first and
+// two are the same shape - and the file is built as a syntax tree first and
 // only then printed, by the same printer `format` uses, so what comes out is
 // laid out exactly as if somebody had typed it and then formatted it.
 //
@@ -13,17 +13,17 @@
 //
 //     compileAxis(decompileAxis(compileAxis(source))) ≡ compileAxis(source)
 //
-// which `decompile.test.mts` holds every example script to. Most of what
+// which `decompile.test.mts` holds every example to. Most of what
 // follows is lowering (`lower.ts`) run backwards: every key it writes is read
 // here into the property that writes it, and every default it fills in - the
 // ±10 viewport, `movablePointSize` copied from `pointSize`, `parametricDomain`
 // copied from `domain`, the options Axis switches off on its own - is left
-// out again, so a script that said nothing comes back saying nothing.
+// out again, so a file that said nothing comes back saying nothing.
 //
 // Three things a graph can hold have no Axis spelling, and are handled rather
 // than dropped:
 //
-//   - **Imports are gone.** They were flattened into folders when the script
+//   - **Imports are gone.** They were flattened into folders when the file
 //     was compiled, and nothing in the graph records where the contents came
 //     from, so they come back as the folder the reader sees.
 //   - **Styles and macros are gone.** Both are resolved away before anything
@@ -95,12 +95,12 @@ export interface DecompileInput {
 }
 
 export interface DecompileResult {
-    /** The script, formatted, ending in a newline - or empty for an empty graph. */
+    /** The file, formatted, ending in a newline - or empty for an empty graph. */
     source: string;
-    /** The statements the script was printed from, for a caller that wants the tree. */
+    /** The statements the file was printed from, for a caller that wants the tree. */
     statements: Statement[];
     /**
-     * What the script could not say. Each one's span is into {@link source}:
+     * What the file could not say. Each one's span is into {@link source}:
      * the comment written where the thing it is about would have been.
      */
     diagnostics: Diagnostic[];
@@ -192,7 +192,7 @@ export function decompileAxis(input: DecompileInput, options: PrintOptions = {})
  * The decompiler's unit of work, exposed because it is also the unit a change
  * to a live graph arrives in: a dragged point is one expression the calculator
  * hands back different from how it was given, and writing it back into a
- * script means printing this one statement over the characters that produced
+ * file means printing this one statement over the characters that produced
  * it. A folder comes back as its header and metadata, with an empty body - its
  * members are items of their own.
  */
@@ -211,7 +211,7 @@ export function decompileExpression(
 
 /**
  * The `config { … }` block a graph's settings decompile to, or null when every
- * setting is one Axis would have applied anyway - a script that needs no block.
+ * setting is one Axis would have applied anyway - a file that needs no block.
  *
  * Exposed for the same reason as {@link decompileExpression}: a setting changed
  * on a live graph - the viewport panned, the grid switched off - is written
@@ -501,13 +501,13 @@ class Context {
     /**
      * How a line or a point is drawn, which an expression and a table column
      * share. `movablePointSize` is left out where it only repeats `pointSize`:
-     * the compiler copies one into the other for a script that named one size
+     * the compiler copies one into the other for a file that named one size
      * (lower.ts), so writing both back would grow a property nobody typed.
      *
      * A calculator hands a point style it will not draw on a movable point -
      * `SQUARE`, `STAR` - back stashed under a key of its own rather than as
      * `pointStyle`, even for a graph that asked it not to migrate the style.
-     * It is still the style the script gave, and compiled again it is stashed
+     * It is still the style the file gave, and compiled again it is stashed
      * again, so it is read as `pointStyle`.
      */
     private styling(
@@ -724,7 +724,7 @@ class Context {
             if (!header) continue;
 
             // Desmos pads a column with blank cells to the length of the
-            // longest, so trailing ones are nothing the script has to say.
+            // longest, so trailing ones are nothing the file has to say.
             const cells = [...(column.values ?? [])];
             while (cells.length && cells[cells.length - 1].trim() === '') cells.pop();
 
@@ -1061,7 +1061,7 @@ const CONFIG_PROPERTIES = new Map(
     AXIS_MANIFEST.configProperties.map(definition => [definition.name, definition] as const),
 );
 
-/** The framing lowering fills in for an edge a script leaves out, and so is left out here. */
+/** The framing lowering fills in for an edge a file leaves out, and so is left out here. */
 const DEFAULT_VIEWPORT: Readonly<Record<string, number>> = {
     xmin: -10,
     ymin: -10,

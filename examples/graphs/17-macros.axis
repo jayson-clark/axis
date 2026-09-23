@@ -50,7 +50,7 @@ y = WAVE(1, 0) + WAVE(2, TAU / 4) @ color: PURPLE, lineWidth: 3
 // never sin(1 + 2 * x).
 y = WAVE(1 + 2, 0) @ color: ORANGE, lineOpacity: 0.4
 
-// A macro is in scope for the whole script, wherever it is written and whatever
+// A macro is in scope for the whole file, wherever it is written and whatever
 // it is written above - so it belongs at the top level, outside every block. Its
 // body may be a whole equation, which then stands as a statement of its own.
 macro CIRCLE(radius) = x ^ 2 + y ^ 2 = radius ^ 2

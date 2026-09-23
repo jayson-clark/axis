@@ -1,6 +1,6 @@
 <img src="assets/axis-banner.svg" alt="Axis" width="220">
 
-**A scripting language for [Desmos](https://www.desmos.com).** Write a `.axis`
+**A language for [Desmos](https://www.desmos.com) graphs.** Write a `.axis`
 file and it compiles to the expressions, folders, tables and settings a graph is
 made of — with a VSCode extension that graphs it as you type.
 
@@ -41,7 +41,7 @@ works one out, like `rgb(255, a, 0)`. A slider is a range, `lo..hi step s`, with
 either end left off to keep Desmos' default for it and `soft` to let a typed
 value past one.
 
-A compiled script is a finished graph rather than an editor, so Axis opens one
+A compiled file is a finished graph rather than an editor, so Axis opens one
 without the chrome Desmos wraps around a graph at desmos.com: the settings
 menu, the zoom buttons and the border are all off unless a `config` block asks
 for them back (`zoomButtons: true`, and so on), and the expression list starts
@@ -55,11 +55,11 @@ diagnostic the compiler can report.
 ## Features
 
 - **Plain text graphs** — version them, diff them, review them
-- **Imports** — `import "./waves"` drops a whole script in, as a folder
+- **Imports** — `import "./waves"` drops a whole file in, as a folder
 - **Macros and styles** — `macro` names an expression, `style` names a run of
   metadata, and both are resolved away before Desmos sees the graph
 - **Live preview** — the graph updates as you edit, and a point dragged or a
-  slider moved in it is written back into the script
+  slider moved in it is written back into the file
 - **Editor support** — highlighting, completions, hover, formatting,
   diagnostics, go to definition, and paths that complete as you type them and
   open on a ctrl-click — in VSCode, or any editor with a language server client
@@ -80,7 +80,7 @@ pnpm dev
 
 Press <kbd>F5</kbd> in VSCode (the "Extension" launch config) to open an
 Extension Development Host, then open a file from
-[`examples/scripts/`](./examples/scripts) and hit the graph button in the editor
+[`examples/graphs/`](./examples/graphs) and hit the graph button in the editor
 title bar (or run **Axis: Preview Graph**). It asks whether to open in a Simple
 Browser tab or your real browser — pin an answer to stop being asked, or set
 `axis.previewTarget` back to `ask` to be asked again.
@@ -111,7 +111,7 @@ in VSCode settings.
 
 ## Imports
 
-`import` drops the whole of another script into this one, in a folder of its
+`import` drops the whole of another file into this one, in a folder of its
 own — the way to keep a long graph in several files, and to reuse one across
 graphs.
 
@@ -133,12 +133,12 @@ folder rather than opening another. An import's folder starts collapsed, since
 what is in it is written and read elsewhere.
 
 The rest travels with it: an imported file's `config` applies too, with the
-importing script's settings winning wherever the two disagree, and its macros
-and styles are in scope in the script that imports it. A file imported twice is
+importing file's settings winning wherever the two disagree, and its macros
+and styles are in scope in the file that imports it. A file imported twice is
 included once, since a second copy would define every name in it again. A file
 that imports itself, however indirectly, is an error rather than a hang.
 
-A preview watches everything the script imports, so saving any file the graph is
+A preview watches everything the file imports, so saving any file the graph is
 built from reloads it. The path completes as it is typed, a directory at a time,
 and ctrl-clicking it opens the file it names.
 
@@ -190,7 +190,7 @@ argument keeps its own grouping without brackets: `wave(1 + 2, 0)` is
 A macro is in scope for the whole compilation — the lines above its definition,
 and every file that imports the one defining it or that it imports — so a file
 of nothing but macros is a library. Two definitions of one name are an error, as
-is a macro named after a builtin or a name the script defines, one used with the
+is a macro named after a builtin or a name the file defines, one used with the
 wrong number of arguments, and one that expands into itself.
 
 A macro stands for an expression and nothing else — never a statement, a block
@@ -234,9 +234,9 @@ and `hidden`, `secret`, `dragMode` and `onClick` mean what they do everywhere
 else.
 
 The three spellings above are the three things an image may name. A **file** is
-named the way an import names one — relative to the script, or from the
+named the way an import names one — relative to the file, or from the
 workspace root with a leading `/` — and is read at compile time and inlined as a
-`data:` URI. A path is only a path on the machine the script was written on, and
+`data:` URI. A path is only a path on the machine the file was written on, and
 a graph has to carry its pictures with it, so the file travels with it. A
 **URL** is left alone for Desmos to fetch, and a **`data:` URI** is passed
 straight through, which is how Desmos itself stores an image somebody dropped
@@ -267,14 +267,14 @@ calculator.updateSettings(options);
 
 That is the whole of applying a graph: `state` is everything `setState` takes —
 the expression list, the ticker, the viewport, the top-level flags — and
-`options` is everything `updateSettings` takes. `compileAxis` never throws on a
-script: whatever is wrong with one comes back in `diagnostics`, each with a
+`options` is everything `updateSettings` takes. `compileAxis` never throws on its
+source: whatever is wrong with it comes back in `diagnostics`, each with a
 stable `code`, a severity and a `span`, beside the graph the rest of it still
 makes. It also hands back a `sourceMap` from every item in the graph to the
 statement that wrote it, which is what `writeBackGraph` uses to turn a change
-made on the calculator into an edit to the script.
+made on the calculator into an edit to the file.
 
-Compilation is synchronous and touches no filesystem, so a script with imports
+Compilation is synchronous and touches no filesystem, so a file with imports
 or pictures is handed resolvers. `loadImports` and `loadImages` walk the graph
 first, over whatever reading a file means where you are — `node:fs`, a VSCode
 workspace, a `Map`:
@@ -291,7 +291,7 @@ import { withAxisExtension } from '@axis-dsl/syntax';
 import { dirname, resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
 
-const scripts = {
+const sources = {
     resolve: (specifier, from) => resolve(dirname(from), withAxisExtension(specifier)),
     read: path => readFile(path, 'utf8'),
 };
@@ -300,11 +300,11 @@ const pictures = {
     read: async path => new Uint8Array(await readFile(path)),
 };
 
-const files = await loadImports({ path, source }, scripts);
+const files = await loadImports({ path, source }, sources);
 const images = await loadImages({ path, source }, files, pictures);
 const { state, options, diagnostics, dependencies } = compileAxis(source, {
     path,
-    resolveImport: createImportResolver(files, scripts.resolve),
+    resolveImport: createImportResolver(files, sources.resolve),
     resolveImage: createImageResolver(images, pictures.resolve),
 });
 ```
@@ -367,7 +367,7 @@ instance you hand it (0.56+) rather than bundling one, so your app owns both.
 
 ## Other editors
 
-Everything the VSCode extension knows about a script comes from
+Everything the VSCode extension knows about a file comes from
 [`@axis-dsl/language-server`](./packages/language-server), and any editor with a
 Language Server Protocol client can use it the same way — Neovim, Helix, Zed,
 Emacs, Sublime:
@@ -390,7 +390,7 @@ several editors. What only the extension has is the live preview.
 | `@axis-dsl/language-server`  | The language service over LSP, with imports and images read off disk           |
 | `@axis-dsl/viewer`           | The results panel, and the protocol a host drives it with                      |
 | `@axis-dsl/desmos`           | The Desmos calculator API, typed by hand                                       |
-| `@axis-dsl/harness`          | Runs a script against a real headless Desmos                                   |
+| `@axis-dsl/harness`          | Runs a file against a real headless Desmos                                     |
 | `axis-dsl`                   | The VSCode extension                                                           |
 
 Every package is released together, at one version.
@@ -399,7 +399,7 @@ Every package is released together, at one version.
 
 The compiler can only tell you what it emitted.
 [`@axis-dsl/harness`](./packages/harness) tells you what Desmos made of it: it
-loads a script into a real calculator in a headless Chromium and hands back the
+loads a file into a real calculator in a headless Chromium and hands back the
 graph state, the expression list, and Desmos' own verdict on every expression.
 
 ```sh
@@ -407,7 +407,7 @@ pnpm test:browser   # download Chromium, once
 ```
 
 ```sh
-$ npx axis-inspect examples/scripts/16-imports.axis
+$ npx axis-inspect examples/graphs/16-imports.axis
 16-imports.axis — 15 expressions, 0 diagnostics, 0 errors
 
   0  text       Two libraries, each arriving as one folder.
@@ -435,11 +435,11 @@ no Chromium is installed.
 
 ## What changed in 2.0
 
-Axis 1 read a script by rewriting its text in passes, and every pass had to
+Axis 1 read a file by rewriting its text in passes, and every pass had to
 guess where the one before it had left things. Axis 2 reads it with a real
 lexer and parser into a syntax tree, and everything — the compiler, the
 formatter, the editor services, the decompiler — works on that tree. What that
-changes for a script:
+changes for a file:
 
 - **New syntax.** Metadata is `@` and `@{ … }` rather than `#` and `#{ … }`,
   which frees `#` for colours. Statements are separated by a newline or `;`,
@@ -447,8 +447,8 @@ changes for a script:
   `max` and `step` properties. Colours may be palette names, a boolean property
   may be written bare, a folder may be untitled, a macro is `macro f(x) = …`
   with an `=`, and `style` is new.
-- **No migrator.** A 1.x script has to be rewritten by hand;
-  [`examples/scripts`](./examples/scripts) and the spec are the guide to what it
+- **No migrator.** A 1.x file has to be rewritten by hand;
+  [`examples/graphs`](./examples/graphs) and the spec are the guide to what it
   becomes.
 - **Precedence is a table, not an accident.** Every expression is emitted from
   the tree with exactly the brackets it needs, so `2^10` is 1024 and `4^2/2` is

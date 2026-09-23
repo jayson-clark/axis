@@ -64,7 +64,7 @@ of its palette in turn.
 Palette names, unlike enum values, **are** case-sensitive. That is because
 any other spelling is already an expression: `red` is the product r·e·d, which
 Desmos would accept and draw in no colour you meant. So a palette name in the
-wrong case is an error, unless the script defines a variable of that name
+wrong case is an error, unless the file defines a variable of that name
 itself:
 
 ```axis error="invalid-color"

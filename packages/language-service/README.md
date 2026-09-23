@@ -1,7 +1,7 @@
 # @axis-dsl/language-service
 
 Everything an editor asks about an [Axis](https://github.com/jayson-clark/axis)
-script — diagnostics, completions, hover, formatting, semantic tokens, links,
+file — diagnostics, completions, hover, formatting, semantic tokens, links,
 go to definition, references, the outline and folding — as plain functions of
 the source and a position, with a Monaco adapter on top.
 
@@ -19,7 +19,7 @@ comes back is editor-neutral data: ranges, markdown, edits. Two hosts adapt it:
 which is what the VSCode extension runs.
 
 The diagnostics are the compiler's own. The service does not keep a second
-opinion about what is wrong with a script: it runs the parser and then
+opinion about what is wrong with a file: it runs the parser and then
 `compileAxis`, so an editor underlines exactly what a compile would report,
 code for code.
 
@@ -30,7 +30,7 @@ import { getCompletions, getDiagnostics, getHover, formatSource } from '@axis-ds
 
 getDiagnostics('y = sine(x)\ncolor = 1 @ color: red');
 // [{ code: 'unknown-function', severity: 'error', range, span, source: 'axis',
-//    message: '`sine` is not a function - neither a built-in one nor one this script defines.' },
+//    message: '`sine` is not a function - neither a built-in one nor one this file defines.' },
 //  { code: 'invalid-color', …, message: "`red` is not a colour; the palette's names are capitalised: `RED`." }]
 
 getHover('f(x) = x^2\ny = f(2)', { line: 1, character: 4 });
@@ -44,13 +44,13 @@ formatSource('a=1;b=2'); // 'a = 1; b = 2'
 
 Completions know where the cursor is — a property name after `@`, a value
 after `color:`, a style after `use:`, a keyword at the start of a statement, a
-name anywhere an expression goes — and offer what the manifest and the script
-define there, the script's own names first. A snippet is a TextMate snippet
+name anywhere an expression goes — and offer what the manifest and the file
+define there, the file's own names first. A snippet is a TextMate snippet
 body, which VSCode and Monaco both expand natively.
 
 ### Imports
 
-A script that imports another can use what it defines, so the services that
+A file that imports another can use what it defines, so the services that
 care — diagnostics, completions, hover, definitions, semantic tokens — take the
 compiler's resolvers as `ProgramOptions`:
 

@@ -74,7 +74,7 @@ describe('hover over builtins and the manifest', () => {
     });
 });
 
-describe('hover over what the script defines', () => {
+describe('hover over what the file defines', () => {
     test('prints a variable’s definition, metadata left off', () => {
         const source = 'amp = 3 @ slider: 0..5\ny = amp sin(x)';
         const contents = hover(source, 'amp', 1)!.contents;

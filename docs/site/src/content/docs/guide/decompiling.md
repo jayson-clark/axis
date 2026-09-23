@@ -1,13 +1,13 @@
 ---
 title: Decompiling
-description: Reading a Desmos graph back into an Axis script.
+description: Reading a Desmos graph back into an Axis file.
 sidebar:
   order: 9
 ---
 
-The compiler turns a script into a graph. The decompiler runs the other way: it
+The compiler turns a file into a graph. The decompiler runs the other way: it
 takes a graph state - what the compiler hands a calculator, or what a
-calculator hands back - and writes the script that builds it. It is how a
+calculator hands back - and writes the file that builds it. It is how a
 graph made by clicking at desmos.com becomes a file, and it is what the
 preview's write-back is made of.
 
@@ -92,16 +92,16 @@ The contract is that decompiling loses nothing the compiler needs:
 compileAxis(decompileAxis(compileAxis(s)).source)  ≡  compileAxis(s)
 ```
 
-That holds for every example script, and for the state a real calculator hands
+That holds for every example, and for the state a real calculator hands
 back - which is not the object it was given. Desmos leaves a property off when
 it matches its own default, writes a switched-off clickable by omitting it,
-and normalises the latex; the decompiler reads all of that as the script that
+and normalises the latex; the decompiler reads all of that as the file that
 would produce it.
 
 It also leaves out what compiling would fill in again anyway: a viewport edge
 of ±10, a setting equal to Axis' own default, a `movablePointSize` equal to
 the `pointSize`, and the `actions: true` beside a ticker. So a decompiled
-script is no longer than it needs to be.
+file is no longer than it needs to be.
 
 A few things a calculator adds are read back as what they mean. Newer point
 styles come back from a calculator stashed under `__stashed_V12PointStyle`,
@@ -111,7 +111,7 @@ graph are config. Its `randomSeed` is kept only for a graph that calls
 
 ## What a graph cannot say
 
-Some of a script never reaches the graph, so it cannot come back:
+Some of a file never reaches the graph, so it cannot come back:
 
 - **Comments and blank lines** are gone.
 - **Imports** come back as the folders they were flattened into.
@@ -139,18 +139,18 @@ warning whose span is that comment:
 | `unsupported-item`  | a list item Axis has no statement for, or an image with no URL |
 | `unsupported-value` | a colour or enum value Axis cannot write, or a blank cell      |
 
-So a decompiled script always compiles, and the warnings say exactly what it
+So a decompiled file always compiles, and the warnings say exactly what it
 is missing.
 
 ## Write-back
 
 The preview's write-back is the decompiler working a statement at a time.
 Decompiling the whole graph after every drag would throw away everything a
-script has and a graph does not - the comments, the macros, the styles, the
+file has and a graph does not - the comments, the macros, the styles, the
 imports - so instead `writeBackGraph` compares the graph before and after a
 change, decompiles only the items that changed, and rewrites exactly the
 characters of the statements that drew them. It merges the change onto what
-the script said rather than taking the calculator's answer whole, so a slider
+the file said rather than taking the calculator's answer whole, so a slider
 bound Desmos did not bother to hand back is not deleted from the file.
 
 The [compiler's README](https://github.com/jayson-clark/axis/tree/main/packages/compiler#writing-a-changed-graph-back)

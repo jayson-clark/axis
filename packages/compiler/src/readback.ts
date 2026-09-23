@@ -226,7 +226,7 @@ function mergeValue(
 /**
  * A range, end by end. Desmos leaves an end off the state when it matches its
  * own default, so the range a slider comes back with is rarely the range the
- * script wrote; an end the graph did not move stays exactly as the author had
+ * file wrote; an end the graph did not move stays exactly as the author had
  * it, and so does how soft the ends are.
  */
 function mergeRange(written: Range | null, before: Range | null, after: Range): Range {
@@ -328,7 +328,7 @@ export function applyWrites(
 }
 
 /**
- * A column's cells as the script can write them: the empty cells Desmos keeps
+ * A column's cells as the file can write them: the empty cells Desmos keeps
  * on the end of a column dropped, since a list has no way to say one.
  */
 export function cellValues(values: readonly string[]): string[] {

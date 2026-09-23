@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Every script the docs show, compiled
+// Every example the docs show, compiled
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // A code block on the site is a claim about the language. The hand-written ones

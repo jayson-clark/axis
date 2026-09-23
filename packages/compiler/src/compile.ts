@@ -5,15 +5,15 @@
 // `.axis` source in, one Desmos graph out (spec §9). Four passes, each over the
 // whole import graph at once:
 //
-//   1. load     parse the script and every file it imports      (program.ts)
+//   1. load     parse the entry and every file it imports     (program.ts)
 //   2. gather   the macros, styles and names they define        (symbols.ts)
 //   3. check    everything the parser could not know             (check.ts)
 //   4. lower    macros and styles resolved, trees into a state  (lower.ts)
 //
 // Every pass reports what is wrong and carries on, so a compilation never
-// throws on anything a script can say: it hands back every diagnostic beside
+// throws on anything a file can say: it hands back every diagnostic beside
 // whatever graph could still be built, and a preview keeps drawing the parts
-// of a script that are fine while one line is being typed.
+// of a file that are fine while one line is being typed.
 //
 // Compilation is synchronous and never touches a filesystem. Imports and
 // images are asked for through `resolveImport` and `resolveImage`, which a host
@@ -42,13 +42,13 @@ export interface CompilationResult {
     /**
      * The calculator options, for `calculator.updateSettings` - after
      * `setState`, which resets them. The Axis defaults, under whatever the
-     * script's config (and its imports') said.
+     * file's config (and its imports') said.
      */
     options: CalculatorOptions;
     /**
      * Every problem found, from the parser, the checker and the compiler, in
      * source order within each file. One with a `path` belongs to an imported
-     * file; one without, to the script itself.
+     * file; one without, to the entry itself.
      */
     diagnostics: Diagnostic[];
     /**
@@ -61,23 +61,23 @@ export interface CompilationResult {
      */
     sourceMap: Map<string, StatementOrigin>;
     /**
-     * Where the entry script's own `config { … }` block is written, if it has
+     * Where the entry file's own `config { … }` block is written, if it has
      * one. An imported file's is not it: the entry's is the one that wins, so
      * it is the one a change to the graph's settings belongs in. Absent for a
-     * script with no config block at all, which is the signal to a host
+     * file with no config block at all, which is the signal to a host
      * writing settings back that it has to open one.
      */
     configOrigin?: StatementOrigin;
     /**
-     * Every file the graph was built from besides the script, as the resolvers
-     * named them. A host watching a script for changes watches these too.
+     * Every file the graph was built from besides the entry, as the resolvers
+     * named them. A host watching a file for changes watches these too.
      */
     dependencies: { imports: string[]; images: string[] };
 }
 
 export interface CompileOptions {
     /**
-     * Where the script itself lives. Handed back to the resolvers as the file
+     * Where the entry file lives. Handed back to the resolvers as the file
      * a path was written in, so relative imports and images have something to
      * be relative to.
      */
@@ -95,7 +95,7 @@ export interface CompileOptions {
     resolveImage?: ResolveImage;
 }
 
-/** Compile a `.axis` script into one Desmos graph state and its calculator options. */
+/** Compile a `.axis` file into one Desmos graph state and its calculator options. */
 export function compileAxis(source: string, options: CompileOptions = {}): CompilationResult {
     const program = loadProgram(source, options);
     const { symbols, diagnostics: symbolDiagnostics } = collectSymbols(program);
@@ -126,7 +126,7 @@ export function compileAxis(source: string, options: CompileOptions = {}): Compi
 }
 
 /**
- * The script's own diagnostics first, then each import's in the order the
+ * The file's own diagnostics first, then each import's in the order the
  * imports were read, and within a file by where they start - which is the
  * order a reader meets them in.
  */

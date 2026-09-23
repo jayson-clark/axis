@@ -1,8 +1,8 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// The example scripts' directory, as a place to compile from
+// The examples' directory, as a place to compile from
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The scripts in `examples/scripts/` import `./lib/…` and draw `./images/…`,
+// The files in `examples/graphs/` import `./lib/…` and draw `./images/…`,
 // and so do the manifest's examples and the docs', which are read as though
 // they sat beside them. These resolve both off disk, synchronously, the way a
 // host would after walking the import graph.
@@ -14,7 +14,7 @@ import { imageMediaType } from '@axis-dsl/syntax';
 import type { CompileOptions } from '../../dist/index.js';
 
 export const EXAMPLES_DIRECTORY = fileURLToPath(
-    new URL('../../../../examples/scripts/', import.meta.url),
+    new URL('../../../../examples/graphs/', import.meta.url),
 );
 
 export const resolveImport = (specifier: string, from: string) => {
@@ -33,7 +33,7 @@ export const resolveImage = (url: string, from: string) => {
     return { path, dataUri: `data:${imageMediaType(path)};base64,${data}` };
 };
 
-/** What to compile a script with, as the file at `path` - by default, one beside the examples. */
+/** What to compile a file with, as the file at `path` - by default, one beside the examples. */
 export function exampleOptions(path = resolve(EXAMPLES_DIRECTORY, 'example.axis')): CompileOptions {
     return { path, resolveImport, resolveImage };
 }

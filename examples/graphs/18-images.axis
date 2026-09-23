@@ -3,12 +3,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // `image "…"` places a picture. What it names may be an address Desmos fetches,
-// a `data:` URI it reads on the spot, or - as here - a file beside this script,
+// a `data:` URI it reads on the spot, or - as here - a file beside this one,
 // named the way an import names one: relative to this file, or from the
 // workspace with a leading `/`.
 //
 // A file is read at compile time and travels with the graph as a data URI. A
-// path is only a path on the machine the script was written on; nobody else's
+// path is only a path on the machine the file was written on; nobody else's
 // browser can fetch one, and a graph has to carry its pictures with it.
 
 config { xmin: -8; xmax: 8; ymin: -5; ymax: 5 }

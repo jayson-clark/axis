@@ -25,7 +25,7 @@ export function normalizeUri(uri: string): string {
  *
  * Relative to the file it is written in, as an import in any other language
  * is. A leading `/` is relative to the workspace folder holding that file
- * instead (spec §7): a script that names an absolute path on the machine it was
+ * instead (spec §7): a file that names an absolute path on the machine it was
  * written on is not one anybody else can open. Outside every workspace folder,
  * a leading `/` falls back to the file's own directory, as v1's extension did.
  */
@@ -54,7 +54,7 @@ function workspaceRootOf(file: URI, roots: readonly string[]): URI | undefined {
     return best === undefined ? undefined : URI.parse(best);
 }
 
-/** What an `import` names: a script, `.axis` implied. */
+/** What an `import` names: an Axis file, `.axis` implied. */
 export const resolveImportUri = (from: string, specifier: string, roots: readonly string[]) =>
     resolveFileUri(from, withAxisExtension(specifier), roots);
 

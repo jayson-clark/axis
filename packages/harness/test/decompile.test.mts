@@ -30,7 +30,7 @@ type Comparable = Record<string, unknown>;
  * A state as it can be compared between two loads of the same graph.
  *
  * Items are compared by where they stand rather than by their ids, since a
- * graph saved at desmos.com names them its own way and the script it
+ * graph saved at desmos.com names them its own way and the file it
  * decompiles to names them the compiler's; and the blank rows Desmos keeps for
  * spacing are left out, since there is no statement that writes one.
  *
@@ -108,7 +108,7 @@ function settingsOf(settings: CalculatorOptions): Comparable {
 }
 
 /**
- * Decompile what the calculator holds now, apply the script that comes back,
+ * Decompile what the calculator holds now, apply the source that comes back,
  * and hand back the source - having checked it parsed and compiled cleanly.
  */
 async function reload(
@@ -142,15 +142,15 @@ async function assertRoundTrip(
 describe('a graph read back off the calculator', { skip }, () => {
     const calculator = useCalculator();
 
-    const scripts = readdirSync(exampleDirectory()).filter(name => name.endsWith('.axis'));
+    const files = readdirSync(exampleDirectory()).filter(name => name.endsWith('.axis'));
 
-    for (const name of scripts) {
+    for (const name of files) {
         test(`${name} decompiles to the same graph`, async () => {
-            const script = await readAxisFile(example(name));
-            const loaded = await calculator().load(script.source, {
-                path: script.path,
-                resolveImport: script.resolveImport,
-                resolveImage: script.resolveImage,
+            const file = await readAxisFile(example(name));
+            const loaded = await calculator().load(file.source, {
+                path: file.path,
+                resolveImport: file.resolveImport,
+                resolveImage: file.resolveImage,
             });
             const settings = settingsOf(await calculator().getSettings());
 
@@ -165,10 +165,10 @@ describe('a graph read back off the calculator', { skip }, () => {
     }
 
     test('a calculator’s whole settings decompile to the same settings', async () => {
-        // Every default spelled out is noise in a script, but not wrong: the
+        // Every default spelled out is noise in a file, but not wrong: the
         // settings come back as they were.
-        const script = await readAxisFile(example('15-config.axis'));
-        await calculator().load(script.source, { path: script.path });
+        const file = await readAxisFile(example('15-config.axis'));
+        await calculator().load(file.source, { path: file.path });
         const settings = await calculator().getSettings();
 
         await assertRoundTrip(calculator(), settings);
@@ -282,7 +282,7 @@ describe('what Desmos leaves out of a graph state', { skip }, () => {
 // A graph written in Desmos rather than in Axis
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Everything above starts from a script, so everything above starts from latex
+// Everything above starts from a file, so everything above starts from latex
 // the compiler wrote. A graph somebody built on desmos.com and shared does not:
 // its lists are sized brackets, its names carry digits in the middle, its
 // widths and opacities are expressions rather than numbers, its sliders

@@ -192,7 +192,7 @@ const EXPRESSION: Record<string, PropertyCase> = {
         expected: { slider: { ...SLIDER, playDirection: -1 } },
     },
     // Desmos writes this into a graph it saves and drops it from one it is
-    // given, playing or not - so a script can carry the speed a graph was
+    // given, playing or not - so a file can carry the speed a graph was
     // saved with, and no more. The compiler still emits it, which is what
     // keeps a decompiled graph the graph it was read from.
     animationPeriod: {
@@ -201,7 +201,7 @@ const EXPRESSION: Record<string, PropertyCase> = {
         expected: { slider: { ...SLIDER, isPlaying: true } },
         dropped: true,
     },
-    // Desmos keeps the same bounds twice, so one property in the script sets
+    // Desmos keeps the same bounds twice, so one property in the file sets
     // both keys; `parametricDomain` is the second of them written on its own.
     domain: {
         statement: '(cos(t), sin(t))',
@@ -435,7 +435,7 @@ describe('metadata, placement by placement', { skip }, () => {
                 assert.deepEqual(
                     compiled.diagnostics.map(diagnostic => diagnostic.message),
                     [],
-                    `${source} is not a clean script`,
+                    `${source} is not clean`,
                 );
                 const target = spec.find(compiled.state.expressions?.list ?? []);
                 assert.ok(target?.id, `${property} compiled to nothing to look for`);
@@ -461,7 +461,7 @@ describe('metadata, placement by placement', { skip }, () => {
 });
 
 /**
- * Drop a `playDirection` the graph grew rather than the script asked for.
+ * Drop a `playDirection` the graph grew rather than the file asked for.
  *
  * Desmos adds one the moment a playing slider turns around at an end, so
  * whether it is on the state depends on how long the graph has been open. A
@@ -491,7 +491,7 @@ function withoutPlayDirection(
 /** Load `source` and return the applied expression the compiler emitted last. */
 async function lastApplied(calculator: () => AxisCalculator, source: string): Promise<Expression> {
     const compiled = compileAxis(source);
-    assert.deepEqual(compiled.diagnostics, [], `${source} is not a clean script`);
+    assert.deepEqual(compiled.diagnostics, [], `${source} is not clean`);
     const id = compiled.state.expressions?.list?.at(-1)?.id;
     await calculator().load(source);
     const list = (await calculator().getState()).expressions?.list ?? [];
@@ -645,7 +645,7 @@ describe('colours', { skip }, () => {
         assert.equal((curve as Expression).colorLatex, undefined);
     });
 
-    test('unless the script defines that name itself', async () => {
+    test('unless the file defines that name itself', async () => {
         const curve = await lastApplied(calculator, 'red = rgb(255, 0, 0)\ny = x @ color: red');
 
         assert.equal(curve.colorLatex, 'r_{ed}');
@@ -815,8 +815,8 @@ describe('metadata Desmos acts on', { skip }, () => {
         assert.equal((await calculator().evaluate('b')).numericValue, 0);
     });
 
-    test('a point the script says nothing about is still Desmos’ to drag', async () => {
-        // A property the script never wrote has to reach Desmos as a missing
+    test('a point the file says nothing about is still Desmos’ to drag', async () => {
+        // A property the file never wrote has to reach Desmos as a missing
         // key, not as an undefined one: `dragMode: undefined` reads as present,
         // and Desmos stops deciding for itself - the point arrives frozen where
         // `AUTO` would have let it be dragged along its slider. `getState` shows
@@ -827,16 +827,16 @@ describe('metadata Desmos acts on', { skip }, () => {
         assert.equal((point as Expression).dragMode, 'AUTO');
     });
 
-    test('a draggable point is drawn the way the script asked, not Desmos’ way', async () => {
+    test('a draggable point is drawn the way the file asked, not Desmos’ way', async () => {
         // Desmos draws a point it decides is movable with a style and a size of
         // its own: the author's style goes into a stash, and `pointSize` is
         // ignored in favour of `movablePointSize`. So a big square point
         // silently arrives as a small round one the moment its coordinates turn
         // out to be draggable - which is what makes this worth pinning.
         //
-        // Neither is anything a script should have to know. Axis applies every
+        // Neither is anything a file should have to know. Axis applies every
         // graph with `doNotMigrateMovablePointStyle` for the style, and
-        // compiles `pointSize` into both sizes; the script below says neither.
+        // compiles `pointSize` into both sizes; the source below says neither.
         const point = (await lastApplied(
             calculator,
             'a = 1\nb = 2\n(a, b) @ pointStyle: SQUARE, pointSize: 30',

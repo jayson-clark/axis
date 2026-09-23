@@ -26,7 +26,7 @@ export class FileSystem {
         return this.documents.get(uri) ?? this.documents.get(normalizeUri(uri));
     }
 
-    /** A script's source. Rejects when there is no such file, which is what the compiler's loader expects. */
+    /** An Axis file's source. Rejects when there is no such file, which is what the compiler's loader expects. */
     public async readText(uri: string): Promise<string> {
         const open = this.document(uri);
         if (open) {

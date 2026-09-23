@@ -27,7 +27,7 @@ describe('names', () => {
         reports('y = foo()', 'unknown-function');
     });
 
-    test('a builtin, a function the script defines, anywhere in it, is a call', () => {
+    test('a builtin, a function the file defines, anywhere in it, is a call', () => {
         clean('y = sin(x) + mean([1, 2]) + random()');
         clean('y = f(x)\nf(x) = x ^ 2');
         clean('area(w, h) = w * h\na = area(2, 3)');
@@ -177,7 +177,7 @@ describe('colours', () => {
 
     test('a palette name in the wrong case is not a colour', () => {
         reports('y = x @ color: red', 'invalid-color');
-        // Unless the script defines it.
+        // Unless the file defines it.
         clean('red = rgb(255, 0, 0)\ny = x @ color: red');
     });
 

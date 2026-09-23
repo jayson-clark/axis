@@ -12,7 +12,7 @@ This is the bottom of the stack. The compiler lowers the tree it builds, the
 language service answers an editor from it, and the decompiler builds trees of
 its own and prints them with its printer — so there is one reading of the
 language and one way of writing it, and every tool above agrees with every
-other about what a script says. It depends on nothing, touches no filesystem
+other about what a file says. It depends on nothing, touches no filesystem
 and no DOM, and runs anywhere.
 
 [`docs/spec.md`](../../docs/spec.md) is the language this package reads;
@@ -77,7 +77,7 @@ what it produces reads as though it were typed. Given no `Paren` nodes they add
 exactly the brackets precedence needs to read back as the same tree.
 `sameTree` compares two trees for meaning — spans, brackets, and whether
 metadata was inline or a block set aside — which is how the round-trip tests
-tell a layout change from a change in what a script says.
+tell a layout change from a change in what a file says.
 
 ## The manifest
 
@@ -89,7 +89,7 @@ a test in the harness, whose suites are driven from this list and fail on a
 name nothing exercises.
 
 Every function, operator and property also carries an `example`, a short
-script that uses it, and may carry `documentation`, a paragraph of Markdown
+file that uses it, and may carry `documentation`, a paragraph of Markdown
 beyond its one-line `detail`. Hover shows both, and the reference on the docs
 site is generated from them. The examples are compiled and drawn on a real
 calculator by the test suites, so the reference cannot show code that does not
@@ -112,7 +112,7 @@ What the quoted path of an `import` or an `image` names is the language's to
 say (spec §7), so it lives here too, where every host can reach the one copy:
 `withAxisExtension` adds the `.axis` an import may leave off, `importTitle` is
 the folder name an import takes by default, `isImageUrl` tells a URL Desmos can
-load from a path beside the script, and `imageMediaType` knows a picture by its
+load from a path beside the file, and `imageMediaType` knows a picture by its
 extension.
 
 ## API
@@ -129,7 +129,7 @@ extension.
 | `sameTree(a, b)` / `stripParens(node)`                               | Trees compared for meaning rather than layout                                        |
 | `lineIndex(source)`                                                  | Offsets to `{ line, character }` and back                                            |
 | `debugTree(node)`                                                    | A node as an s-expression, for tests and debugging                                   |
-| `SYNTAX_DIAGNOSTICS`                                                 | Every code the lexer and parser report, with a summary and a script that raises it   |
+| `SYNTAX_DIAGNOSTICS`                                                 | Every code the lexer and parser report, with a summary and a file that raises it     |
 | `AXIS_MANIFEST`                                                      | Every function, operator, constant, property and setting                             |
 | `findProperty`, `propertiesFor`, `placementsOf`, `enumValue`         | The manifest's lookups, by name and placement                                        |
 | `AXIS_PALETTE`, `AXIS_PALETTE_HEX`                                   | The palette names `color` takes, and their hex                                       |

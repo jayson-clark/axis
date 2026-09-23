@@ -7,7 +7,7 @@
 //     style name { property: value; property: value }
 //
 // and `use: name` in a statement's metadata applies it, as if its properties
-// had been written there. A style is resolved away when the script compiles, so
+// had been written there. A style is resolved away when the file compiles, so
 // the graph only ever sees the properties themselves.
 //
 // Styles live at the top level, and like macros they are in scope everywhere -
@@ -36,7 +36,7 @@ folder "Composing styles" {
 }
 
 // The style they compose, written below the statements that use it - which is
-// fine, since a style is in scope for the whole script.
+// fine, since a style is in scope for the whole file.
 style hot { use: marker; color: RED }
 style cold { use: marker; color: BLUE }
 

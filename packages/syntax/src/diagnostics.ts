@@ -2,17 +2,17 @@
 // The diagnostics the lexer and parser report
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// Every code is declared once, here, with what it means and a script that
+// Every code is declared once, here, with what it means and a file that
 // raises it; the lexer's and the parser's `report` take nothing else, so a new
 // code cannot be raised without an entry. The summaries are the spec's (§8) -
 // a test holds the two tables to each other - and the docs site's page of
 // diagnostics is generated from this and the compiler's catalogue.
 
-/** What a diagnostic code means, and a script that raises it. */
+/** What a diagnostic code means, and a file that raises it. */
 export interface DiagnosticInfo {
     /** A phrase, as the spec's table has it: "a string still open at the end of its line". */
     summary: string;
-    /** A script that raises this code and no other. */
+    /** A file that raises this code and no other. */
     example: string;
 }
 

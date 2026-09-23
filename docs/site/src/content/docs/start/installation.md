@@ -5,9 +5,9 @@ sidebar:
   order: 1
 ---
 
-There are three ways to run a script: in VSCode, with a live preview beside it;
+There are three ways to graph a file: in VSCode, with a live preview beside it;
 in a browser, in the playground; and from a terminal, against a real headless
-Desmos calculator. All three compile with the same compiler, so a script that
+Desmos calculator. All three compile with the same compiler, so a file that
 works in one works in the others.
 
 Everything here is built from a checkout of the repository, which needs
@@ -28,7 +28,7 @@ builds them once and stops.
 
 Open the repository in VSCode and press <kbd>F5</kbd> (the "Extension" launch
 configuration) to start an Extension Development Host with Axis loaded. Open
-any file from `examples/scripts/` in it - they are a tour of the language, one
+any file from `examples/graphs/` in it - they are a tour of the language, one
 topic per file - and the language support starts straight away: diagnostics as
 you type, completion of keywords, properties, names and paths, hover, go to
 definition (into imported files too), formatting, and the outline.
@@ -49,7 +49,7 @@ It works the other way too. Drag a point, move a slider, recolour a curve or
 pan the graph in the preview, and the statement that drew it is rewritten in
 the editor - unsaved, as an edit <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes. Only the
 statement that changed is rewritten, so the comments and layout around it stay
-as they were. A change is not written while the script has edits the preview
+as they were. A change is not written while the file has edits the preview
 has not seen (save first), when it belongs to an imported file, or when it
 lands on a statement a macro expanded into; the reason goes to the **Axis**
 output channel and briefly to the status bar.
@@ -74,7 +74,7 @@ compiled graph state, the settings, and what the calculator made of them.
 
 ### Other editors
 
-Everything the extension knows about a script comes from the Axis language
+Everything the extension knows about a file comes from the Axis language
 server, and any editor with a Language Server Protocol client - Neovim, Helix,
 Zed, Emacs, Sublime - can use it the same way:
 
@@ -98,7 +98,7 @@ pnpm --filter @axis-dsl/web dev
 ```
 
 Edit on the left and the graph updates on the right; drag something on the
-right and the script on the left catches up, exactly as in the VSCode preview.
+right and the source on the left catches up, exactly as in the VSCode preview.
 It is also the example to copy for embedding Axis in an app of your own -
 `examples/web/src/AxisEditor.tsx` is a short React wrapper around Monaco, and
 `examples/web/src/monaco.ts` shows the loading and worker setup.
@@ -106,7 +106,7 @@ It is also the example to copy for embedding Axis in an app of your own -
 ## The command line
 
 The compiler can only say what it emitted, not whether Desmos accepts it.
-`axis-inspect`, from `@axis-dsl/harness`, loads a script into a real Desmos
+`axis-inspect`, from `@axis-dsl/harness`, loads a file into a real Desmos
 calculator in a headless Chromium and prints the compiler's diagnostics beside
 the verdict Desmos reached on every expression. It needs that Chromium
 downloaded once:
@@ -118,7 +118,7 @@ pnpm test:browser
 and is then run on a file:
 
 ```sh
-node packages/harness/dist/cli.js examples/scripts/06-sliders-and-animation.axis
+node packages/harness/dist/cli.js examples/graphs/06-sliders-and-animation.axis
 ```
 
 ```
@@ -150,7 +150,7 @@ axis-inspect - < graph.axis       # source on stdin
 It exits `1` if the compiler reported an error or Desmos put any expression in
 error, so it works as a check in CI, or for an agent, without anybody parsing
 its output. `--eval` takes Axis rather than latex: `--eval 'amp'` asks about the
-variable the script calls `amp`.
+variable the file calls `amp`.
 
 The first run fetches Desmos' `calculator.js` and caches it on disk, so later
 runs need no network at all.

@@ -4,7 +4,7 @@
 //
 // The compiler never touches a filesystem — it asks a host for an import's
 // source. This is that host for Node, resolving specifiers the same way the
-// VSCode extension does, so a script that previews in the editor compiles here.
+// VSCode extension does, so a file that previews in the editor compiles here.
 
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve as resolvePath } from 'node:path';
@@ -22,7 +22,7 @@ import { withAxisExtension } from '@axis-dsl/syntax';
 
 /**
  * Reads imports relative to the importing file. A leading `/` is relative to
- * `root` instead, which is the workspace folder in the editor and the script's
+ * `root` instead, which is the workspace folder in the editor and the file's
  * own directory here.
  */
 export function nodeImportHost(root: string = process.cwd()): ImportHost {
@@ -50,8 +50,8 @@ export function nodeImageHost(root: string = process.cwd()): ImageHost {
     };
 }
 
-/** A script and the resolvers its imports and images need, ready for the compiler. */
-export interface LoadedScript {
+/** Source and the resolvers its imports and images need, ready for the compiler. */
+export interface LoadedSource {
     path: string;
     source: string;
     resolveImport: ResolveImport;
@@ -59,10 +59,10 @@ export interface LoadedScript {
 }
 
 /**
- * Read the script at `path`, every file it imports, transitively, and every
+ * Read the file at `path`, every file it imports, transitively, and every
  * image any of them draws.
  */
-export async function readAxisFile(path: string, root?: string): Promise<LoadedScript> {
+export async function readAxisFile(path: string, root?: string): Promise<LoadedSource> {
     return loadAxisSource(await readFile(resolvePath(path), 'utf8'), path, root);
 }
 
@@ -70,13 +70,13 @@ export async function readAxisFile(path: string, root?: string): Promise<LoadedS
  * {@link readAxisFile} for source already in hand, read as though it were the
  * file at `path` - which need not exist - so its imports and images are found
  * beside it. How the docs' examples are loaded, each as if it sat in
- * `examples/scripts/`.
+ * `examples/graphs/`.
  */
 export async function loadAxisSource(
     source: string,
     path: string,
     root?: string,
-): Promise<LoadedScript> {
+): Promise<LoadedSource> {
     const absolute = resolvePath(path);
     const base = root ?? dirname(absolute);
     const host = nodeImportHost(base);

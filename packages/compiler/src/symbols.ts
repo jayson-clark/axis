@@ -3,7 +3,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // Four namespaces, all global to the compilation (spec §4.5, §6): macros,
-// styles, and the functions and variables the script defines. Global because
+// styles, and the functions and variables the file defines. Global because
 // that is how the language reads - a macro or a style is in scope above where
 // it is written and in every file an import brings in, and a function defined
 // in one file is called from another - so they are gathered from the whole
@@ -94,7 +94,7 @@ export function definitionOf(expression: Expression): Definition | undefined {
 }
 
 /**
- * The names a script may not define for itself: every function and operator,
+ * The names a file may not define for itself: every function and operator,
  * and the constants that are values rather than letters.
  *
  * The Greek letters are in the manifest as constants, but to Desmos they are
@@ -209,9 +209,9 @@ export function collectSymbols(program: Program): { symbols: Symbols; diagnostic
         });
     }
 
-    // The same for a macro with the name of something the script defines: the
+    // The same for a macro with the name of something the file defines: the
     // name keeps meaning the function or the variable, which is what the rest
-    // of the script was written against.
+    // of the file was written against.
     for (const [name, macro] of symbols.macros) {
         const kind = symbols.functions.has(name)
             ? 'function'
@@ -222,7 +222,7 @@ export function collectSymbols(program: Program): { symbols: Symbols; diagnostic
             diagnostics.push(
                 collision(
                     macro,
-                    `The macro \`${name}\` has the name of a ${kind} the script defines; a macro shadows nothing.`,
+                    `The macro \`${name}\` has the name of a ${kind} the file defines; a macro shadows nothing.`,
                 ),
             );
             symbols.macros.delete(name);
@@ -244,5 +244,5 @@ function elsewhere(first: SourceFile, second: SourceFile): string {
     if (first === second) {
         return '';
     }
-    return first.entry ? ' - first in the script itself' : ` - first in ${first.path}`;
+    return first.entry ? ' - first in the file itself' : ` - first in ${first.path}`;
 }

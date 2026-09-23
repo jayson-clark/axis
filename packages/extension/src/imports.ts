@@ -25,7 +25,7 @@ function resolveFileUri(from: vscode.Uri, target: string): vscode.Uri {
         return vscode.Uri.joinPath(directory, target);
     }
 
-    // A script that names an absolute path on the machine it was written on
+    // A file that names an absolute path on the machine it was written on
     // is not one anybody else can open, so `/` is the workspace folder.
     const workspace = vscode.workspace.getWorkspaceFolder(from);
     return vscode.Uri.joinPath(workspace?.uri ?? directory, target.slice(1));

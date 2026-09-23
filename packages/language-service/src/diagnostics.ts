@@ -37,7 +37,7 @@ export interface Diagnostic {
 }
 
 /**
- * A semantic checker: everything wrong with a script that its syntax does not
+ * A semantic checker: everything wrong with a file that its syntax does not
  * show. Given the tree, returns what a compile would add to the parser's.
  *
  * Diagnostics carrying a `path` other than the document's belong to another

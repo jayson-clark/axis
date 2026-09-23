@@ -2,7 +2,7 @@
 // The ticker, checked against a graph that really has one
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// A ticker is the one thing a script can say that leaves no trace in the
+// A ticker is the one thing a file can say that leaves no trace in the
 // expression list, so nothing about it can be checked by looking at what the
 // compiler emitted. It either runs or it does not, and only a calculator knows
 // which - as the `actions` case below is there to remember.
@@ -98,7 +98,7 @@ describe('the ticker', { skip }, () => {
         );
     });
 
-    test('its handler may be a run the script named', async () => {
+    test('its handler may be a run the file named', async () => {
         const { diagnostics } = await calculator().load(
             'a = 0\nb = 0\nadvance = a -> a + 1, b -> b + 2\nticker advance @ minStep: 20, playing',
         );
@@ -149,7 +149,7 @@ describe('the ticker', { skip }, () => {
         assert.equal((await calculator().getSettings()).actions, true);
     });
 
-    test('a script that switches actions off keeps them off', async () => {
+    test('a file that switches actions off keeps them off', async () => {
         const source = 'config { actions: false }\na = 0\nticker a -> a + 1 @ playing';
 
         assert.deepEqual(compileAxis(source).options, {
@@ -183,7 +183,7 @@ describe('the ticker', { skip }, () => {
         assert.equal((await calculator().getState()).expressions?.ticker?.handlerLatex, 'a\\to1');
     });
 
-    test('an imported ticker runs, unless the script has one of its own', async () => {
+    test('an imported ticker runs, unless the file has one of its own', async () => {
         const options: CompileOptions = {
             path: '/graph.axis',
             resolveImport: () => ({

@@ -19,7 +19,7 @@
 // Lowering reads the tree the checker has already been over, so it assumes
 // nothing is wrong and takes care that nothing it is handed can make it
 // throw: a value the checker rejected is left off, and a statement it cannot
-// write at all is left out, so a script with a mistake in it still graphs
+// write at all is left out, so a file with a mistake in it still graphs
 // everything else (spec §8).
 
 import type {
@@ -114,9 +114,9 @@ export interface Lowered {
 }
 
 /**
- * The framing a graph gets when its script does not ask for one. Without a
+ * The framing a graph gets when its file does not ask for one. Without a
  * viewport in the state each host would fall back on whatever its calculator
- * happened to be showing, so the same script would open differently in the
+ * happened to be showing, so the same file would open differently in the
  * preview, the playground and the harness.
  */
 const DEFAULT_VIEWPORT = { xmin: -10, ymin: -10, xmax: 10, ymax: 10 };
@@ -157,17 +157,17 @@ export function lowerProgram(
     const images: string[] = [];
     let configOrigin: StatementOrigin | undefined;
 
-    // Held apart rather than merged as they are found, so the entry script's
+    // Held apart rather than merged as they are found, so the entry file's
     // settings win over an imported file's wherever its config block is written.
     const importedConfigs: Map<string, unknown>[] = [];
     const entryConfigs: Map<string, unknown>[] = [];
-    // A graph has one ticker, so the same bargain: an imported script may bring
-    // one, and the entry script's replaces it rather than merging with it.
+    // A graph has one ticker, so the same bargain: an imported file may bring
+    // one, and the entry file's replaces it rather than merging with it.
     let importedTicker: TickerState | undefined;
     let entryTicker: TickerState | undefined;
 
     // Ids are handed out in the order expressions reach the list, so the same
-    // script always lowers to the same ids - which is what lets a graph read
+    // file always lowers to the same ids - which is what lets a graph read
     // back off the calculator be matched to the statements that made it.
     let count = 0;
     const nextId = (prefix: string) => `${prefix}_${++count}`;
@@ -308,7 +308,7 @@ export function lowerProgram(
                 // `red` is a palette name in the wrong case, which the checker
                 // reports - and as an expression it is r·e·d, three sliders
                 // nobody asked for. Left off like any other rejected value,
-                // unless the script defines the name, when it is a variable.
+                // unless the file defines the name, when it is a variable.
                 if (node.kind === 'Identifier' && isMiscasePalette(node.name, symbols)) {
                     return {};
                 }
@@ -455,7 +455,7 @@ export function lowerProgram(
             // rather than an empty one (#10).
             ...(statement.title && { title: statement.title.value }),
             // Desmos says "not collapsed" by leaving the key off rather than
-            // by storing `false`, so a folder the script says nothing about
+            // by storing `false`, so a folder the file says nothing about
             // carries nothing.
             ...(read.boolean('collapsed') === true && { collapsed: true }),
             ...(read.boolean('hidden') === true && { hidden: true }),
@@ -714,10 +714,10 @@ export function lowerProgram(
             pointStyle: read.enum('pointStyle'),
             pointSize,
             // Desmos sizes a movable point from its own property and ignores
-            // `pointSize` entirely, so a script that set only that would watch
+            // `pointSize` entirely, so a file that set only that would watch
             // its point resize the moment the point turned out to be draggable.
             // `pointSize` means the size; `movablePointSize` overrides it for
-            // the draggable case, for a script that really does want the two
+            // the draggable case, for a file that really does want the two
             // to differ.
             movablePointSize: read.latex('movablePointSize') ?? pointSize,
             pointOpacity: read.latex('pointOpacity'),
@@ -785,13 +785,13 @@ export function lowerProgram(
 
         return {
             // A bound Desmos does not carry is its own default, which is not
-            // the same as no bound - so an end the script leaves out is left
+            // the same as no bound - so an end the file leaves out is left
             // out here too, rather than pinned to a number nobody chose. Each
             // end is latex, and need not be a literal: a slider's range can be
             // computed from the rest of the graph.
             ...(min !== undefined && { min }),
             ...(max !== undefined && { max }),
-            // A bound is a limit unless the script says otherwise (spec §4.4).
+            // A bound is a limit unless the file says otherwise (spec §4.4).
             // Desmos says a soft bound by leaving the flag off entirely, so a
             // soft end is written as nothing at all rather than as `false`.
             ...((range.soft === 'none' || range.soft === 'max') && { hardMin: true }),
@@ -806,7 +806,7 @@ export function lowerProgram(
      *
      * Desmos keeps the same bounds twice - under `domain`, which it reads, and
      * under `parametricDomain`, the older key it still writes beside it - so one
-     * property in the script sets both. A graph whose two copies disagree says
+     * property in the file sets both. A graph whose two copies disagree says
      * so by setting the second explicitly.
      */
     const buildDomains = (read: Reader): Partial<DesmosExpressionItem> => {
@@ -883,7 +883,7 @@ export function lowerProgram(
         doNotMigrateMovablePointStyle: true,
         graph: {
             ...graph,
-            // A script that names only some edges gets the defaults for the
+            // A file that names only some edges gets the defaults for the
             // rest: `xmin: 0` alone is a half-written rectangle, and Desmos
             // would ignore it.
             viewport: { ...DEFAULT_VIEWPORT, ...graph.viewport },
@@ -953,7 +953,7 @@ function splitConfig(
     config: ReadonlyMap<string, unknown>,
     hasTicker: boolean,
 ): { options: CalculatorOptions; graph: GraphSettings; flags: GraphStateFlags } {
-    // Axis's own defaults sit under whatever the script wrote, so a config
+    // Axis's own defaults sit under whatever the file wrote, so a config
     // block that names one of them still has the last word. Each bucket has
     // its own defaults, since a default goes wherever its key does.
     const options: Record<string, unknown> = { ...AXIS_DEFAULT_CONFIG };
@@ -966,7 +966,7 @@ function splitConfig(
     // is nothing but an action, but it is not in the list, so a graph whose
     // only action is its ticker is left with actions switched off and simply
     // never ticks. Turning them on here is the difference between a ticker
-    // that runs and one that silently does not; a script that writes `actions`
+    // that runs and one that silently does not; a file that writes `actions`
     // itself, including `actions: false`, still has the last word.
     if (hasTicker && !config.has('actions')) {
         options.actions = true;
@@ -1006,7 +1006,7 @@ function imageDraggable(mode: string | undefined): true | undefined {
     return mode !== undefined && mode !== 'NONE' ? true : undefined;
 }
 
-/** Whether `name` is a palette name in the wrong case that the script does not define. */
+/** Whether `name` is a palette name in the wrong case that the file does not define. */
 function isMiscasePalette(name: string, symbols: Symbols): boolean {
     const lower = name.toLowerCase();
     return (

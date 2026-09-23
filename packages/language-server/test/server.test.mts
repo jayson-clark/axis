@@ -32,7 +32,7 @@ describe('the language server', () => {
     const workspace = tempWorkspace({
         'main.axis': 'import "./lib/waves"\ny = wave(x)\n',
         'lib/waves.axis': 'wave(x) = sin(x)\n',
-        'lib/notes.txt': 'not a script',
+        'lib/notes.txt': 'not an Axis file',
         'lib/more/ripples.axis': '',
         'pictures/beach.png': '',
     });
@@ -71,7 +71,7 @@ describe('the language server', () => {
         assert.ok(capabilities.documentLinkProvider);
     });
 
-    test('asks the client to watch scripts and pictures', async () => {
+    test('asks the client to watch Axis files and pictures', async () => {
         await client.registered;
         assert.equal(client.watchers.length, 1);
         assert.match(client.watchers[0], /axis/);

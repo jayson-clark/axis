@@ -18,7 +18,7 @@ import { COMPILER_DIAGNOSTICS, DECOMPILER_DIAGNOSTICS } from '../dist/index.js';
 import { compileAxis } from './support/compile.mts';
 import { EXAMPLES_DIRECTORY, exampleOptions, resolveImport } from './support/examples.mts';
 
-/** Where the catalogue's examples are compiled, beside the example scripts. */
+/** Where the catalogue's examples are compiled, beside the examples. */
 const GRAPH = resolve(EXAMPLES_DIRECTORY, 'graph.axis');
 
 describe('the compiler diagnostics catalogue', () => {

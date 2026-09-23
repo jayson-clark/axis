@@ -139,9 +139,9 @@ ticker would run and change nothing, silently. The compiler spells it for you.
 A graph has exactly one ticker, and Desmos keeps it beside the expression list
 rather than in it - so `ticker` goes at the top level, outside every folder,
 and a second one is an error. An imported file's ticker is replaced by the
-importing script's.
+importing file's.
 
 Desmos decides whether actions are allowed at all (the `actions` setting, left
 at `auto`) by looking at the expression list, and the ticker is not in it. A
 graph whose only action is its ticker would never tick, so Axis switches
-`actions` on for any script with a ticker.
+`actions` on for any file with a ticker.

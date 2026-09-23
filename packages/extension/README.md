@@ -1,7 +1,7 @@
 # Axis for VSCode
 
-[Axis](https://github.com/jayson-clark/axis) is a scripting language that
-compiles to Desmos graphs. This extension previews the `.axis` file you have
+[Axis](https://github.com/jayson-clark/axis) is a language for
+Desmos graphs. This extension previews the `.axis` file you have
 open as a live Desmos graph, and gives the language full editor support.
 
 ## Preview
@@ -9,11 +9,11 @@ open as a live Desmos graph, and gives the language full editor support.
 Run **Axis: Preview Graph**, or press the graph button in the editor title bar.
 The preview opens in a Simple Browser tab or your own browser - pin a choice to
 stop being asked, or set `axis.previewTarget`. It reloads when you save the
-script, or any file it imports or draws.
+file, or any file it imports or draws.
 
 Change the graph by hand - drag a point, move a slider, recolour a curve, pan -
 and the statement that drew it is rewritten in the editor, unsaved, to undo like
-any other edit. A change is not written while the script has edits the preview
+any other edit. A change is not written while the file has edits the preview
 has not seen (save first), or when it belongs to an imported file; the reason
 goes to the **Axis** output channel and briefly to the status bar.
 

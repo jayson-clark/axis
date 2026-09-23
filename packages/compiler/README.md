@@ -29,10 +29,10 @@ calculator.updateSettings(options);
 `state` is the whole graph state, the payload of one `setState`: the expression
 list, the ticker beside it, the viewport and the rest of the `graph` settings,
 and the flags Desmos reads off the top of a state. `options` is the calculator
-options - the Axis defaults under whatever the script's `config` said. Both are
+options - the Axis defaults under whatever the file's `config` said. Both are
 typed by [`@axis-dsl/desmos`](https://www.npmjs.com/package/@axis-dsl/desmos),
 and applying them is the two calls above and nothing else: the state is
-complete, with a viewport of ±10 filled in for a script that names none.
+complete, with a viewport of ±10 filled in for a file that names none.
 
 The viewport is why there are two halves. `xmin` and its siblings read like any
 other config key, but Desmos keeps them in a graph's **state**, not in its
@@ -48,9 +48,9 @@ a property in the wrong shape is dropped rather than reported.
 
 ## Diagnostics
 
-`compileAxis` never throws on a script. Everything wrong with one - from the
+`compileAxis` never throws on a file. Everything wrong with one - from the
 parser, the checker or the compiler - comes back in `diagnostics`, beside the
-graph the rest of the script still makes, so a preview keeps drawing while a
+graph the rest of the file still makes, so a preview keeps drawing while a
 line is half written:
 
 ```ts
@@ -62,12 +62,12 @@ const { diagnostics } = compileAxis('y = sine(x) @ color: red');
 ```
 
 Each has a stable `code` to match on, and a `span` of UTF-16 offsets into the
-file it is about - the script, unless the diagnostic carries a `path`, in which
+file it is about - the entry, unless the diagnostic carries a `path`, in which
 case it is the imported file of that name. `docs/spec.md` §8 lists the codes.
 
 Every code is declared once, in a catalogue - `SYNTAX_DIAGNOSTICS` in
 `@axis-dsl/syntax` for the lexer and parser, `COMPILER_DIAGNOSTICS` and
-`DECOMPILER_DIAGNOSTICS` here - with the spec's summary of it and a script
+`DECOMPILER_DIAGNOSTICS` here - with the spec's summary of it and a file
 that raises it. Everything that reports one is typed to take only a
 catalogued code, so `AxisDiagnosticCode` is the complete list, and the tests
 hold the spec's tables and the catalogues to each other.
@@ -75,7 +75,7 @@ hold the spec's tables and the catalogues to each other.
 ## The passes
 
 `compileAxis` is a pipeline over a syntax tree, and each stage is exported on
-its own for a tool that wants one of them - an editor checking a script
+its own for a tool that wants one of them - an editor checking a file
 without lowering it, say, which is what `@axis-dsl/language-service` does:
 
 ```ts
@@ -88,7 +88,7 @@ const { diagnostics: checked } = checkProgram(program, symbols);
 const diagnostics = [...program.diagnostics, ...defined, ...checked];
 ```
 
-`loadProgram` parses the script and everything it imports, in the order the
+`loadProgram` parses the file and everything it imports, in the order the
 imports land. `collectSymbols` gathers every macro, style, function and
 variable the whole program defines - macros and styles are global across a
 compilation, which is why this is a pass over every file before any is checked.
@@ -103,7 +103,7 @@ properties, and `emitLatex` writes each expression as the latex Desmos reads.
 
 ## Imports
 
-Compilation is synchronous and touches no filesystem, so a script with
+Compilation is synchronous and touches no filesystem, so a file with
 `import "./waves"` in it is handed a resolver rather than a path to go reading.
 `loadImports` walks the import graph first over whatever reading a file means
 where you are - `node:fs`, a VSCode workspace, a `Map` in a test:
@@ -133,7 +133,7 @@ file imported twice only once, and is handed back in `dependencies.imports`, so
 two specifiers naming the same file must resolve to the same string.
 
 `dependencies.imports` names every file that was read, transitively. That is the
-set to watch if the graph is live: a script is stale when anything it imports
+set to watch if the graph is live: a file is stale when anything it imports
 changes, not only when it does.
 
 A file `loadImports` cannot read is left out rather than failing the walk, and
@@ -146,7 +146,7 @@ quietly smaller than was asked for.
 `image "./beach.png"` names a file the way an import does, and is reached the
 same way - through a resolver, because the compiler still touches no filesystem.
 What it resolves to is a `data:` URI, which is inlined into the graph: Desmos
-stores an image as its URL, and a path on the machine the script was written on
+stores an image as its URL, and a path on the machine the file was written on
 is not one anybody else's browser can fetch, so a graph has to carry its
 pictures with it.
 
@@ -158,7 +158,7 @@ const pictures = {
   read: async path => new Uint8Array(await readFile(path)),
 };
 
-// `files` is what loadImports handed back: an imported script draws its own
+// `files` is what loadImports handed back: an imported file draws its own
 // images, so one walk of the import graph serves both.
 const images = await loadImages({ path, source }, files, pictures);
 const { state, dependencies } = compileAxis(source, {
@@ -203,7 +203,7 @@ has no node for - `\sum`, `\int` - is a `LatexParseError` rather than a guess.
 
 ## Decompiling
 
-The other direction: a graph back into the script that builds it.
+The other direction: a graph back into the file that builds it.
 
 ```ts
 import { decompileAxis } from '@axis-dsl/compiler';
@@ -228,16 +228,16 @@ and, more to the point, source that compiles to the graph it was read from:
 compileAxis(decompileAxis(compileAxis(source)).source) ≡ compileAxis(source)
 ```
 
-That holds for every example script, and for the graph state a real calculator
+That holds for every example, and for the graph state a real calculator
 hands back, which is not the same object: Desmos leaves a slider bound off when
 it matches its own default, writes a switched-off clickable by omitting
 `enabled` rather than storing `false`, and normalises the latex. What lowering
 filled in - a viewport edge of ±10, a setting equal to Axis' default - is left
-out again, so a decompiled script is no longer than it has to be.
+out again, so a decompiled file is no longer than it has to be.
 
 What a graph cannot tell you:
 
-- **Imports are gone.** They were flattened into folders when the script was
+- **Imports are gone.** They were flattened into folders when the file was
   compiled, so they come back as the folders the reader sees. **Macros and
   styles are gone** too: the graph holds what they expanded to, and that is
   what comes back.
@@ -266,13 +266,13 @@ which is the unit write-back works in.
 
 ## Writing a changed graph back
 
-A Desmos graph is not only something a script produces; it is something a person
+A Desmos graph is not only something a file produces; it is something a person
 edits. Dragging a point moves it, dragging a slider re-numbers it, the colour
-picker recolours it — and every one of those is a change the script it came from
+picker recolours it — and every one of those is a change the file it came from
 now disagrees with.
 
 Decompiling the whole graph and writing that out would close the gap and would
-throw away everything a script has that a graph does not: the comments, the
+throw away everything a file has that a graph does not: the comments, the
 blank lines, the macros, the styles, the folders an import stands for. So
 `writeBackGraph` works a statement at a time, and returns the characters to
 replace:
@@ -313,7 +313,7 @@ comes back in `skipped` with a reason:
 - a statement a **macro** expanded into — the text there is not what the
   compiler read, so rewriting it would replace the macro with its expansion
   (deleting one is fine, and is done)
-- a statement in a file the script **imports** — only the script handed over is
+- a statement in a file it **imports** — only the source handed over is
   edited, and the reason names the file
 - an **animating slider** or a **running ticker**, which is the graph working
   rather than somebody changing it; left in, a file would rewrite itself for as
@@ -321,7 +321,7 @@ comes back in `skipped` with a reason:
   holds every change back, since what it drove cannot be told from an edit
 - an expression **moved between folders**, and anything added to the folder an
   import stands for
-- a **picture added in Desmos**, which arrives carrying its own bytes — a script
+- a **picture added in Desmos**, which arrives carrying its own bytes — a file
   has no `image` statement meaning "these bytes", only ones that name a file or
   a URL, so writing it out would put the whole picture into the source
 - a key Desmos changed that **no Axis property says** — the rest of the change
@@ -330,7 +330,7 @@ comes back in `skipped` with a reason:
 Statements sharing a line through `;` are each written on their own: an edit
 replaces exactly the span of the statement that changed.
 
-What it is careful about, each of which would cost a script something real if
+What it is careful about, each of which would cost a file something real if
 it were got wrong:
 
 - **A property Desmos did not hand back is not a property that was removed.** A
@@ -346,16 +346,16 @@ it were got wrong:
   carries the bytes and the path is gone. Dragging a picture is a real edit and
   is written; the name it was written with comes back from the source, never
   from the graph, or the filename would be replaced by a megabyte of base64.
-- **The viewport is only written for a script that framed itself.** Panning and
-  zooming are how anybody reads a graph. A script with no `xmin` in its config
+- **The viewport is only written for a file that framed itself.** Panning and
+  zooming are how anybody reads a graph. A file with no `xmin` in its config
   does not grow four lines about one the first time somebody scrolls.
 
 The statement that does get rewritten is printed by the formatter's printer
 over exactly its own span, so it keeps its place, its trailing comment, its
 `@{ … }` block and the comments inside it, and the order its properties were
-written in. Settings go into the script's own `config` block, or one opened at
+written in. Settings go into the file's own `config` block, or one opened at
 the top for them; an expression made in the calculator goes at the end of the
-folder it was made in, or of the script; one deleted there is deleted here.
+folder it was made in, or of the file; one deleted there is deleted here.
 
 ## API
 
@@ -365,10 +365,10 @@ folder it was made in, or of the script; one deleted there is deleted here.
 | `loadImports(entry, host)`                                       | Reads every file reachable by `import`, transitively; returns a `Map` keyed by path             |
 | `createImportResolver(files, resolve)`                           | Turns that `Map` into the synchronous `resolveImport` the compiler wants                        |
 | `findImports(source)`                                            | Just the specifiers one file imports, in order                                                  |
-| `loadImages(entry, files, host)`                                 | Reads every image file the script and its imports draw; returns a `Map` of data URIs            |
+| `loadImages(entry, files, host)`                                 | Reads every image the entry file and its imports draw; returns a `Map` of data URIs             |
 | `createImageResolver(images, resolve)`                           | Turns that `Map` into the synchronous `resolveImage` the compiler wants                         |
 | `findImageFiles(source)`                                         | Just the image paths one file draws, in order                                                   |
-| `loadProgram(source, options?)`                                  | The first pass: the script and everything it imports, parsed                                    |
+| `loadProgram(source, options?)`                                  | The first pass: the file and everything it imports, parsed                                      |
 | `collectSymbols(program)`                                        | The second: every macro, style, function and variable the program defines                       |
 | `checkProgram(program, symbols)`                                 | The third: every semantic diagnostic, and which calls are really products                       |
 | `expandMacros(expression, macros)`                               | One expression with its macros substituted, as trees                                            |

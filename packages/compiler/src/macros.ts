@@ -15,7 +15,7 @@
 // the checker has already said everything there is to say about a use - an
 // arity that does not match, a macro that uses itself. A use the checker
 // rejected is left standing rather than expanded, so the expander never has a
-// reason to fail and the graph gets whatever the rest of the script makes.
+// reason to fail and the graph gets whatever the rest of the file makes.
 
 import type { Expression } from '@axis-dsl/syntax';
 import type { MacroDefinition } from './symbols';

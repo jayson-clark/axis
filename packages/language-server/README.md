@@ -1,10 +1,10 @@
 # @axis-dsl/language-server
 
 The [Axis](https://github.com/jayson-clark/axis) language server: everything
-`@axis-dsl/language-service` knows about a script, spoken over the Language
+`@axis-dsl/language-service` knows about an Axis file, spoken over the Language
 Server Protocol, plus the file-system work the service leaves to a host -
 resolving and reading imports and images, listing a directory for a path
-completion, and noticing when a file a script reads has changed.
+completion, and noticing when a file an Axis file reads has changed.
 
 The VSCode extension bundles it and talks to it over node IPC. Any other editor
 starts the `axis-language-server` bin over stdio.
@@ -16,7 +16,7 @@ starts the `axis-language-server` bin over stdio.
 | Diagnostics                      | Pushed (`textDocument/publishDiagnostics`), debounced 250 ms after an edit. Everything a compile would report, with imports resolved; an import or image whose file is not there is reported as `Cannot find "…"` or `Cannot find image "…"` on its path. |
 | Re-checking                      | A document is checked again when a file it imports or draws is created, changed, deleted or saved, or edited unsaved in another open buffer. The server registers the file watcher itself.                                                                |
 | Completion                       | Keywords, properties in metadata, names (including those an import defines), and paths inside `import "…"` / `image "…"`, read off disk.                                                                                                                  |
-| Hover                            | Keywords, builtins, and the names a script or its imports define.                                                                                                                                                                                         |
+| Hover                            | Keywords, builtins, and the names a file or its imports define.                                                                                                                                                                                           |
 | Formatting                       | Whole document and range. The line length is `axis.format.maxLineLength` from the client's settings (100 when unset).                                                                                                                                     |
 | Semantic tokens                  | Full and range, over the service's `SEMANTIC_TOKEN_LEGEND`.                                                                                                                                                                                               |
 | Links                            | The path in an `import` or `image`, resolved to the file it names.                                                                                                                                                                                        |
@@ -24,7 +24,7 @@ starts the `axis-language-server` bin over stdio.
 | References, highlights           | Within the file.                                                                                                                                                                                                                                          |
 | Document symbols, folding ranges |                                                                                                                                                                                                                                                           |
 
-Open documents take precedence over disk: a script that imports a file you are
+Open documents take precedence over disk: a file that imports another you are
 editing sees your unsaved changes.
 
 Paths resolve the way the compiler's hosts resolve them: relative to the file

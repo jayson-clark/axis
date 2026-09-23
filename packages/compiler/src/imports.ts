@@ -1,8 +1,8 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// Imports - resolving one script's `import "…"` statements to source
+// Imports - resolving one file's `import "…"` statements to source
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// `import "./curves.axis"` drops the whole of another script into this one. The
+// `import "./curves.axis"` drops the whole of another file into this one. The
 // compiler does the dropping in, but it never touches a filesystem: it asks for
 // a specifier's source through a {@link ResolveImport} callback and is handed
 // text back. That keeps compilation synchronous and pure, which is what lets

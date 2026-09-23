@@ -1,6 +1,6 @@
 {
     "name": "axis-dsl",
-    "displayName": "Axis — Desmos Scripting Language",
+    "displayName": "Axis — Desmos Graph Language",
     "description": "Previews the .axis file you have open as a live Desmos graph, with Axis language support",
     "version": "2.1.0",
     "publisher": "axis",

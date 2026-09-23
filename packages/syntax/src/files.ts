@@ -5,12 +5,12 @@
 // A path is a string to the parser, but the language says more about it than
 // that (spec §7): `.axis` may be left off an import, the folder an import lands
 // in is named after its file, and an image is either a URL Desmos can already
-// load or a picture beside the script, known by its extension. The compiler,
+// load or a picture beside the file, known by its extension. The compiler,
 // the language service, the language server, the harness and the extension all
 // have to agree on every one of those, so they live here, at the bottom of the
 // stack, where each of them can reach the one copy.
 
-/** The extension an Axis script is saved with. */
+/** The extension an Axis file is saved with. */
 export const AXIS_FILE_EXTENSION = '.axis';
 
 /** `./curves` names `./curves.axis`: the extension may be left off an import (spec §7). */
@@ -32,7 +32,7 @@ export function importTitle(path: string): string {
 /**
  * True when `url` is something Desmos can already load: an address it fetches,
  * or a `data:` URI it reads. Anything else is a path, and names a file next to
- * the script the way an import does.
+ * the file the way an import does.
  */
 export function isImageUrl(url: string): boolean {
     return /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url);

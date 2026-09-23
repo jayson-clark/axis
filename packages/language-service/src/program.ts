@@ -5,7 +5,7 @@
 // Two things only the compiler can say, because both need the whole import
 // graph rather than one file's tree: everything a compile would report, and
 // what the files an import brings in define. Macros, styles and every
-// definition are global to a compilation (spec §4.5, §6), so a script uses
+// definition are global to a compilation (spec §4.5, §6), so a file uses
 // names it never defines - `use: faint`, `envelope(x)` - and an editor that
 // only read the file in front of it would call them unknown.
 //
@@ -26,7 +26,7 @@ import {
 import type { Diagnostic, Identifier, Statement, SyntaxTree } from '@axis-dsl/syntax';
 import { allStatements } from './symbols';
 
-/** How to find what a script imports: the compiler's resolvers, and where the script lives. */
+/** How to find what a file imports: the compiler's resolvers, and where the file lives. */
 export interface ProgramOptions {
     /** The document's path, as the resolvers name files; relative imports resolve against it. */
     path?: string;

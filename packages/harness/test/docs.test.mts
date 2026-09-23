@@ -6,7 +6,7 @@
 // on the docs site, in the spec or in the keywords' hover. The compiler's own
 // suites have already said each one compiles cleanly; this says Desmos draws
 // it - no expression in error, and no console error from the page. An example
-// is read as though it sat in `examples/scripts/`, so an import of
+// is read as though it sat in `examples/graphs/`, so an import of
 // `./lib/waves` or a picture of `./images/wave.png` is the real file.
 
 import { test, describe } from 'node:test';
@@ -17,12 +17,12 @@ import { documentationBlocks } from '../../../docs/site/scripts/blocks.mts';
 import { loadAxisSource, type AxisCalculator } from '../dist/index.js';
 import { exampleDirectory, skip, useCalculator } from './support.mts';
 
-/** Load `source` beside the example scripts and say what Desmos objected to. */
+/** Load `source` beside the example files and say what Desmos objected to. */
 async function problemsWith(calculator: AxisCalculator, source: string): Promise<string[]> {
-    const script = await loadAxisSource(source, resolve(exampleDirectory(), 'example.axis'));
+    const loaded = await loadAxisSource(source, resolve(exampleDirectory(), 'example.axis'));
     // The page's console errors are kept for the calculator's whole life.
     const before = calculator.consoleErrors().length;
-    const { diagnostics } = await calculator.load(script.source, script);
+    const { diagnostics } = await calculator.load(loaded.source, loaded);
     const inspection = await calculator.inspect();
     return [
         ...diagnostics.map(diagnostic => `${diagnostic.code}: ${diagnostic.message}`),

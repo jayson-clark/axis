@@ -83,7 +83,7 @@ export function getPathCompletions(
     const byName = (one: DirectoryEntry, other: DirectoryEntry) =>
         one.name.localeCompare(other.name);
 
-    // A dotfile is not something a script names, and `.git` and its like would
+    // A dotfile is not something a file names, and `.git` and its like would
     // otherwise be most of what a list of directories offers.
     const visible = entries.filter(entry => !entry.name.startsWith('.'));
 
@@ -106,7 +106,7 @@ export function getPathCompletions(
             const detail =
                 context.kind === 'import'
                     ? entry.name.endsWith(AXIS_FILE_EXTENSION)
-                        ? 'Axis script'
+                        ? 'Axis file'
                         : undefined
                     : imageMediaType(entry.name);
             return detail === undefined

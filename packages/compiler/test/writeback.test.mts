@@ -1,5 +1,5 @@
 // ═════════════════════════════════════════════════════════════════════════════
-// A changed graph, back into the script that built it
+// A changed graph, back into the file that built it
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // What the cases below are really about is what survives. Any of them could be
@@ -10,7 +10,7 @@
 //
 // So each test changes something and then asserts on the whole file: the
 // statement that changed, and that everything around it is exactly what it
-// was. Most compare the written script as a string for that reason.
+// was. Most compare the written file as a string for that reason.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,7 +33,7 @@ function snapshot(compiled: CompilationResult): GraphSnapshot {
     return { state: structuredClone(compiled.state), options: structuredClone(compiled.options) };
 }
 
-/** Compile a script and take the graph it built twice: as it was, and to change. */
+/** Compile a file and take the graph it built twice: as it was, and to change. */
 function open(source: string, options: CompileOptions = {}) {
     const compiled = compileAxis(source, { path: PATH, ...options });
     return { source, compiled, before: snapshot(compiled), after: snapshot(compiled) };
@@ -41,7 +41,7 @@ function open(source: string, options: CompileOptions = {}) {
 
 type Opened = ReturnType<typeof open>;
 
-/** Write the change back and apply it, returning the new script and the report. */
+/** Write the change back and apply it, returning the new file and the report. */
 function write({ source, compiled, before, after }: Opened, options: WriteBackOptions = {}) {
     const result = writeBackGraph(source, { before, after }, compiled, options);
     return { ...result, source: applySourceEdits(source, result.edits) };
@@ -63,7 +63,7 @@ function remove(snapshot: GraphSnapshot, id: string) {
 }
 
 /**
- * The property this whole feature rests on: the script written back compiles
+ * The property this whole feature rests on: the file written back compiles
  * to the graph the calculator is showing.
  */
 function reproduces(opened: Opened, written: string, options: CompileOptions = {}) {
@@ -71,7 +71,7 @@ function reproduces(opened: Opened, written: string, options: CompileOptions = {
     assert.deepEqual(
         recompiled.diagnostics.filter(d => d.severity === 'error'),
         [],
-        'the written script has errors',
+        'the written file has errors',
     );
     assert.deepEqual(recompiled.state.expressions, opened.after.state.expressions);
 }
@@ -438,7 +438,7 @@ describe('a slider', () => {
     test('keeps the bound Desmos did not hand back', () => {
         // Exactly what a calculator reads back: the max is Desmos' own
         // default, so it is left off the state - and dragging the slider must
-        // not take it out of the script.
+        // not take it out of the file.
         const opened = open('a = 1 @ slider: 0..10');
         const read = item(opened.before, 'expr_1').slider as Item;
         delete read.max;
@@ -503,7 +503,7 @@ describe('what it refuses to write', () => {
         assert.equal(write(opened).source, 'macro PT(a, b) = (a, b)\ny = x');
     });
 
-    test('a statement in a file this script imports, by name', () => {
+    test('a statement in a file this one imports, by name', () => {
         const opened = open('import "./lib.axis"\ny = x', {
             resolveImport: () => ({ path: 'lib.axis', source: 'L = (1, 2)' }),
         });
@@ -523,7 +523,7 @@ describe('what it refuses to write', () => {
         assert.match(skipped[0].reason, /between folders/);
     });
 
-    test('a script that changed since the graph was compiled', () => {
+    test('a file that changed since the graph was compiled', () => {
         const opened = open('y = x\nP = (1, 2)');
         item(opened.after, 'expr_2').latex = 'P=\\left(3,3\\right)';
 
@@ -544,7 +544,7 @@ describe('what it refuses to write', () => {
         assert.match(skipped[0].reason, /comment/);
     });
 
-    test('an expression that was never in this script', () => {
+    test('an expression that was never in this file', () => {
         const opened = open('y = x');
         opened.after.state.expressions!.list!.push({
             type: 'expression',
@@ -555,7 +555,7 @@ describe('what it refuses to write', () => {
 
         const { skipped } = write(opened);
         assert.equal(skipped.length, 1);
-        assert.match(skipped[0].reason, /folder that is not in this script/);
+        assert.match(skipped[0].reason, /folder that is not in this file/);
     });
 });
 
@@ -569,7 +569,7 @@ describe('a picture', () => {
         dataUri: 'data:image/png;base64,AAAABBBBCCCCDDDD',
     });
 
-    /** Compile a script that draws a picture, and drag the picture. */
+    /** Compile a file that draws a picture, and drag the picture. */
     function dragged(source: string) {
         const opened = open(source, { resolveImage });
         const image = list(opened.after).find(candidate => candidate.type === 'image');
@@ -722,14 +722,14 @@ describe('settings', () => {
         assert.equal(write(opened).source, 'config { showGrid: false }\ny = x');
     });
 
-    test('open a config block at the top of a script that has none', () => {
-        const opened = open('// a script with no settings\ny = x');
+    test('open a config block at the top of a file that has none', () => {
+        const opened = open('// a file with no settings\ny = x');
         opened.after.options = { ...opened.after.options, showGrid: false };
 
         const { source } = write(opened);
         assert.equal(
             source,
-            'config {\n    showGrid: false\n}\n\n// a script with no settings\ny = x',
+            'config {\n    showGrid: false\n}\n\n// a file with no settings\ny = x',
         );
     });
 
@@ -742,7 +742,7 @@ describe('settings', () => {
 });
 
 describe('the viewport', () => {
-    test('is written back for a script that framed itself', () => {
+    test('is written back for a file that framed itself', () => {
         const opened = open('config {\n    xmin: -5\n    xmax: 5\n}\ny = x');
         opened.after.state.graph = { viewport: { xmin: -20, xmax: 20, ymin: -8, ymax: 8 } };
 
@@ -754,7 +754,7 @@ describe('the viewport', () => {
         reproduces(opened, source);
     });
 
-    test('is left out of a script that never named one', () => {
+    test('is left out of a file that never named one', () => {
         const opened = open('config {\n    showGrid: false\n}\ny = x');
         opened.after.state.graph = { viewport: { xmin: -20, xmax: 20, ymin: -8, ymax: 8 } };
 
@@ -772,7 +772,7 @@ describe('the viewport', () => {
 });
 
 describe('an expression made in the calculator', () => {
-    test('lands at the end of the script', () => {
+    test('lands at the end of the file', () => {
         const opened = open('// a comment\ny = x');
         opened.after.state.expressions!.list!.push({
             type: 'expression',
@@ -838,14 +838,14 @@ describe('an expression made in the calculator', () => {
 });
 
 describe('an expression deleted in the calculator', () => {
-    test('is deleted from the script, lines and trailing comment with it', () => {
+    test('is deleted from the file, lines and trailing comment with it', () => {
         const opened = open('// a comment\ny = x // gone\nz = 3');
         remove(opened.after, 'expr_1');
 
         assert.equal(write(opened).source, '// a comment\nz = 3');
     });
 
-    test('takes the last line of a script without leaving it dangling', () => {
+    test('takes the last line of a file without leaving it dangling', () => {
         const opened = open('y = x\nz = 3');
         remove(opened.after, 'expr_2');
 
@@ -918,13 +918,13 @@ describe('a graph nobody touched', () => {
         assert.deepEqual(result, { edits: [], skipped: [] });
     });
 
-    test('including a script it has just written itself', () => {
+    test('including a file it has just written itself', () => {
         const opened = open('P = (1, 2) @ dragMode: XY\ny = x @ color: RED');
         item(opened.after, 'expr_1').latex = 'P=\\left(4,4\\right)';
         item(opened.after, 'expr_2').color = '#123456';
         const { source } = write(opened);
 
-        // The next round: the graph the new script builds, read against itself.
+        // The next round: the graph the new file builds, read against itself.
         const next = open(source);
         assert.deepEqual(diffGraphs(next.before, opened.after), []);
         assert.deepEqual(writeBackGraph(source, next, next.compiled).edits, []);

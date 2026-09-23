@@ -36,12 +36,12 @@ On an image, `dragMode` is a switch rather than a direction: Desmos only keeps
 whether a picture is draggable, so any mode but `NONE` makes it so.
 
 In the VSCode preview and the playground, dragging a point is also an edit:
-the statement that drew it is rewritten in the script with the point's new
+the statement that drew it is rewritten in the file with the point's new
 coordinates.
 
 ## Actions
 
-An action is `target -> new value`. On its own in a script it does nothing;
+An action is `target -> new value`. On its own in a file it does nothing;
 given to `onClick`, it runs when the object is clicked.
 
 ```axis
@@ -50,7 +50,7 @@ n = 0 @ slider: 0..10 step 1
 (0, -3) @ color: RED, pointSize: 20, onClick: n -> 0, description: "Reset n"
 ```
 
-The target is a variable the script defines, and setting it is how anything
+The target is a variable the file defines, and setting it is how anything
 else moves: a point defined as a variable jumps to wherever the action sends
 it. `description` is what a screen reader announces for a clickable object.
 

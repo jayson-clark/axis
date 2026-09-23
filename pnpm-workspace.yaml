@@ -1,6 +1,6 @@
 packages:
   - 'packages/*'
-  # examples/scripts holds .axis files, not a package; pnpm skips any directory
+  # examples/graphs holds .axis files, not a package; pnpm skips any directory
   # here without a package.json.
   - 'examples/*'
   - 'docs/site'

@@ -57,7 +57,7 @@ export type ViewerMessage =
      * Off unless a host asks, and deliberately so: watching means every drag,
      * every recolour and every pan comes back over this wire, and a host that
      * has nowhere to put them would only be paying for them. A host that does -
-     * one with the script the graph was compiled from - switches it on.
+     * one with the file the graph was compiled from - switches it on.
      */
     | { command: 'setSync'; data: { enabled: boolean } };
 

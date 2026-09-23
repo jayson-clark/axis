@@ -25,13 +25,13 @@ function latexOf(source: string): string {
     return emitLatex(parsed.expression);
 }
 
-/** Load `source`, which has to be a script the checker has nothing to say about. */
+/** Load `source`, which has to be source the checker has nothing to say about. */
 async function loadClean(calculator: AxisCalculator, source: string): Promise<void> {
     const { diagnostics } = await calculator.load(source);
     assert.deepEqual(
         diagnostics.map(diagnostic => `${diagnostic.code}: ${diagnostic.message}`),
         [],
-        `${source} is not a clean script`,
+        `${source} is not clean`,
     );
 }
 
@@ -503,7 +503,7 @@ describe('the operators Axis writes for you', { skip }, () => {
 
     test('a coefficient in front of a name does not hide it', async () => {
         // `3cos(t)` once compiled to three variables multiplied together - a
-        // graph Desmos rejects, in three of the example scripts, with nothing
+        // graph Desmos rejects, in three of the example files, with nothing
         // to say why. Juxtaposition is multiplication (spec §5.1).
         assert.equal(latexOf('3cos(t)'), '3\\cos\\left(t\\right)');
         assert.equal(latexOf('2pi'), '2\\pi');
