@@ -10,6 +10,20 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Added
+
+- A diagnostic's code links to its entry in the
+  [reference](https://jayson-clark.github.io/axis/reference/diagnostics/): in
+  the hover in Monaco and the playground, and as LSP's `codeDescription` in
+  VSCode and other editors. The language service puts the link on each
+  diagnostic as `href`, and exports `diagnosticDocsUrl(code)` for a host that
+  reports its own.
+
+### Fixed
+
+- The reference lists `invalid-color` once, with both the lexer's and the
+  checker's meaning of it, instead of under two headings with the same name.
+
 ## 2.2.0 - 2026-09-23
 
 ### Added

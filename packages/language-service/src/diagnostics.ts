@@ -12,12 +12,18 @@
 //
 // `missingImportDiagnostic` and `missingImageDiagnostic` are for a host that
 // checks the file system itself rather than handing the compiler resolvers.
+//
+// Every code the catalogues declare has an entry in the docs site's reference,
+// and each diagnostic carries a link to it, so an editor can show the code as
+// something to click rather than something to search for.
 
-import type {
-    Diagnostic as SyntaxDiagnostic,
-    DiagnosticSeverity,
-    Span,
-    SyntaxTree,
+import { COMPILER_DIAGNOSTICS } from '@axis-dsl/compiler';
+import {
+    SYNTAX_DIAGNOSTICS,
+    type Diagnostic as SyntaxDiagnostic,
+    type DiagnosticSeverity,
+    type Span,
+    type SyntaxTree,
 } from '@axis-dsl/syntax';
 import { rangeToSpan, spanToRange, toTree, type DocumentInput, type Range } from './document';
 import type { DocumentLink } from './links';
@@ -34,6 +40,33 @@ export interface Diagnostic {
     /** The offsets `range` was worked out from, for a host that wants them. */
     span: Span;
     source: 'axis';
+    /**
+     * The code's entry in the reference, from {@link diagnosticDocsUrl}. Always
+     * set by this package when the code has one; optional so that a host
+     * building its own diagnostics need not make one up.
+     */
+    href?: string;
+}
+
+/** The reference page with an entry for every code, by the code's own heading. */
+const DIAGNOSTICS_PAGE = 'https://jayson-clark.github.io/axis/reference/diagnostics/';
+
+/** The codes with an entry there: the ones the catalogues declare. */
+const DOCUMENTED = new Set([
+    ...Object.keys(SYNTAX_DIAGNOSTICS),
+    ...Object.keys(COMPILER_DIAGNOSTICS),
+]);
+
+/**
+ * The link to a code's entry in the reference: what it means, and a file that
+ * raises it. Undefined for a code with no entry - one a host made up, or
+ * `import-not-found` and `image-not-found`, which only a host reports.
+ *
+ * The site generates that page from the same catalogues, one heading per code,
+ * and its build fails if the link this returns for any of them does not arrive.
+ */
+export function diagnosticDocsUrl(code: string): string | undefined {
+    return DOCUMENTED.has(code) ? `${DIAGNOSTICS_PAGE}#${code}` : undefined;
 }
 
 /**
@@ -94,6 +127,7 @@ export function toDiagnostic(tree: SyntaxTree, diagnostic: SyntaxDiagnostic): Di
         range: spanToRange(tree, diagnostic.span),
         span: diagnostic.span,
         source: 'axis',
+        href: diagnosticDocsUrl(diagnostic.code),
     };
 }
 

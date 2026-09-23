@@ -28,6 +28,7 @@ export {
     AXIS_WORD_PATTERN,
 } from './language';
 export {
+    diagnosticDocsUrl,
     getDiagnostics,
     missingImageDiagnostic,
     missingImportDiagnostic,
