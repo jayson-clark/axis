@@ -446,9 +446,13 @@ function in the manifest may be used this way.
 
 - `f(x) = …` where the left is a call on fresh identifiers: a function
   definition
-- `a = …` where `a` is an identifier other than `x`, `y` (or `r`, `theta` in
-  polar form): a variable definition
+- `a = …` where `a` is an identifier other than `x`, `y`, `r` or `theta`: a
+  variable definition
 - anything else: an equation
+
+`theta = …` is reported as `theta-equation`: Desmos graphs `r` in terms of
+`theta` and never the reverse, in a polar graph or a cartesian one, so the curve
+is written `r = …`.
 
 The same goes for regression `~`, which v2 does not yet support.
 
@@ -588,6 +592,7 @@ left off, and a statement that cannot be written at all is left out.
 | ----------------------- | -------------------------------------------------------------------------------- |
 | `unknown-function`      | a call on a name that is not a function (§5.3)                                   |
 | `assign-to-builtin`     | defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`   |
+| `theta-equation`        | `theta = …`, which Desmos will not graph - write `r = …` (§5.5)                  |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |

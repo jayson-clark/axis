@@ -230,6 +230,25 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
      * for its body.
      */
     const checkStatementExpression = (expression: Expression, scope: Scope): void => {
+        // `theta = …` is neither a definition nor anything Desmos will draw:
+        // it graphs r in terms of θ and never the reverse, and says so in a
+        // cartesian graph as much as a polar one. The statement is still
+        // written, and Desmos rejects it; this is so the author hears why
+        // before it gets that far.
+        if (
+            expression.kind === 'Comparison' &&
+            expression.operators.length === 1 &&
+            expression.operators[0] === '=' &&
+            expression.operands[0].kind === 'Identifier' &&
+            expression.operands[0].name === 'theta'
+        ) {
+            report(
+                'theta-equation',
+                'Desmos cannot graph `theta` in terms of anything; write the curve as `r = …`.',
+                expression.operands[0].span,
+            );
+        }
+
         const definition = definitionOf(expression);
         if (!definition) {
             checkExpression(expression, scope);

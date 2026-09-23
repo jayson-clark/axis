@@ -100,8 +100,9 @@ export function definitionOf(expression: Expression): Definition | undefined {
  * The Greek letters are in the manifest as constants, but to Desmos they are
  * letters like any other - `alpha = 2` is a variable called α. `pi`, `tau`, `e`
  * and `infinity` are not: Desmos reads `\pi=3` as an equation that is simply
- * false, and draws nothing without a word. `theta` is left to the definition
- * rule, which reads `theta = …` as polar.
+ * false, and draws nothing without a word. `theta` is a coordinate, so
+ * `theta = …` is never a definition; the checker reports it as
+ * `theta-equation`.
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
     ...AXIS_FUNCTION_NAME_SET,

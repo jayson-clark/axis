@@ -10,6 +10,11 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Added
+
+- `theta-equation`: the checker reports `theta = …`, which Desmos refuses to
+  graph in any mode, and suggests writing the curve as `r = …`.
+
 ### Changed
 
 - Axis is described as a language for Desmos graphs rather than a scripting

@@ -25,6 +25,10 @@ export const COMPILER_DIAGNOSTICS = {
         summary: 'defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`',
         example: 'pi = 3',
     },
+    'theta-equation': {
+        summary: '`theta = …`, which Desmos will not graph - write `r = …` (§5.5)',
+        example: 'theta = 1',
+    },
     'multiple-subscripts': {
         summary: 'a name in an expression with more than one `_` part (`x_1_2`)',
         example: 'a = x_1_2',
