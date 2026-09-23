@@ -1,6 +1,6 @@
 {
     "name": "@axis-dsl/language-service",
-    "version": "2.1.0",
+    "version": "2.1.1-rc.0",
     "description": "Axis language services over the syntax tree: diagnostics, completions, formatting, semantic tokens, with a Monaco adapter",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",

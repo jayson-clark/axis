@@ -10,6 +10,10 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+## 2.1.1-rc.0 - 2026-09-23
+
+Releases are published from CI
+
 ## 2.1.0 - 2026-09-22
 
 ### Added
