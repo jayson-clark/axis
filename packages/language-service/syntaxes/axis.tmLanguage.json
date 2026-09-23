@@ -473,15 +473,15 @@
             "patterns": [
                 {
                     "name": "support.function.trig.axis",
-                    "match": "\\b(?:sin|cos|tan|csc|sec|cot|arcsin|arccos|arctan|arccsc|arcsec|arccot|sinh|cosh|tanh|csch|sech|coth)\\b"
+                    "match": "\\b(?:sin|cos|tan|csc|sec|cot|arcsin|arccos|arctan|arccsc|arcsec|arccot|sinh|cosh|tanh|csch|sech|coth|arcsinh|arccosh|arctanh|arccsch|arcsech|arccoth)\\b"
                 },
                 {
                     "name": "support.function.math.axis",
-                    "match": "\\b(?:sqrt|nthroot|abs|ln|log|sum|prod|int|exp|floor|ceil|round|sign|sgn|mod|gcd|lcm)\\b"
+                    "match": "\\b(?:sqrt|nthroot|abs|ln|log|sum|prod|int|exp|floor|ceil|round|sign|sgn|mod|gcd|lcm|erf)\\b"
                 },
                 {
                     "name": "support.function.statistics.axis",
-                    "match": "\\b(?:total|length|count|mean|median|min|max|stdev|stdevp|mad|var|varp|discretedist|random)\\b"
+                    "match": "\\b(?:total|length|count|mean|median|min|max|stdev|stdevp|mad|var|varp|quantile|quartile|cov|covp|corr|spearman|tscore|discretedist|random)\\b"
                 },
                 {
                     "name": "support.function.list.axis",
@@ -498,6 +498,10 @@
                 {
                     "name": "support.function.combinatorics.axis",
                     "match": "\\b(?:nCr|nPr|factorial)\\b"
+                },
+                {
+                    "name": "support.function.complex.axis",
+                    "match": "\\b(?:real|imag|conj|arg)\\b"
                 },
                 {
                     "name": "support.function.audio.axis",

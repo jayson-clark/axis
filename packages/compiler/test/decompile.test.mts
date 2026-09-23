@@ -141,6 +141,13 @@ const PROPERTY_CASES: Record<string, string[]> = {
     showLabel: ['(0, 0) @ label: "a", showLabel'],
     labelSize: ['(0, 0) @ label: "a", showLabel, labelSize: 2'],
     labelOrientation: ['(0, 0) @ label: "a", labelOrientation: above_left'],
+    labelAngle: ['(0, 0) @ label: "a", showLabel, labelAngle: pi / 4'],
+    interactiveLabel: ['(0, 0) @ label: "a", showLabel, interactiveLabel'],
+    editableLabelMode: [
+        '(0, 0) @ label: "a", showLabel, editableLabelMode: MATH',
+        '(0, 0) @ label: "a", showLabel, editableLabelMode: TEXT',
+    ],
+    displayEvaluationAsFraction: ['a = 1 / 3 @ displayEvaluationAsFraction'],
     pointOutline: ['(0, 0) @ pointOutline'],
     dragMode: ['a = 0\n(a, 0) @ dragMode: X', 'image "https://example.com/a.png" @ dragMode: XY'],
     playing: ['a = 0 @ playing', 'a = 0 @ playing: false', 'n = 0\nticker n -> n + 1 @ playing'],
@@ -681,6 +688,20 @@ describe('config', () => {
 
     test('leaves out a setting of the wrong kind or no Axis name', () => {
         assert.equal(fromState({}, { fontSize: 'large', notASetting: true }), '');
+    });
+
+    test('writes `allowComplex` for a graph in complex mode, and only for one', () => {
+        assert.equal(
+            roundTrip('config { allowComplex: true }\na = real(3 + 4i)'),
+            'config {\n    allowComplex\n}\n\na = real(3 + 4i)\n',
+        );
+        assert.equal(
+            fromState({ graph: { complex: true } } as never),
+            'config {\n    allowComplex\n}\n',
+        );
+        // Desmos allows complex mode by default, so its own options say
+        // nothing about whether the graph is in it.
+        assert.equal(fromState({}, { allowComplex: true }), '');
     });
 
     test('writes the calculator a geometry or 3D graph is for', () => {

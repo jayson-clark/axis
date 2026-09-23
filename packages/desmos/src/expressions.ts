@@ -173,6 +173,14 @@ export interface Expression {
     showLabel?: boolean;
     labelSize?: string;
     labelOrientation?: LabelOrientation | string;
+    /** Latex for the angle the label is turned by, counter-clockwise. */
+    labelAngle?: string;
+    /** Show the label only while the point is hovered or clicked. */
+    interactiveLabel?: boolean;
+    /** Whether the viewer may edit the label in place, and as what. */
+    editableLabelMode?: 'NONE' | 'MATH' | 'TEXT';
+    /** Show the value under the expression as a fraction. */
+    displayEvaluationAsFraction?: boolean;
     /** Drop the outline Desmos draws behind a label. */
     suppressTextOutline?: boolean;
     /** Draw a ring around each point, in the graph's background colour. */

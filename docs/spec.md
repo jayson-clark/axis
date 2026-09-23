@@ -440,6 +440,12 @@ or more than one.
 
 Only identifiers are callable. `(f)(x)` is a product.
 
+`real`, `imag`, `conj` and `arg` exist only in complex mode, which
+`config { allowComplex: true }` turns on - in the entry file's config, or an
+imported one's where the entry says nothing. Anywhere else Desmos rejects them,
+so a use of one, called or written as a member (`z.real`), is
+`requires-complex-mode`.
+
 ### 5.4 Members
 
 `.name` after an expression is a `Member`: point coordinates (`P.x`, `P.y`) and
@@ -642,6 +648,7 @@ left off, and a statement that cannot be written at all is left out.
 | `unknown-function`      | a call on a name that is not a function (§5.3)                                   |
 | `assign-to-builtin`     | defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`   |
 | `theta-equation`        | `theta = …`, which Desmos will not graph - write `r = …` (§5.5)                  |
+| `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)   |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |
@@ -704,7 +711,9 @@ at the top level, where Desmos reads it; the viewport under `graph`, with any
 edge the file did not give filled in from ±10; `graph.product`, when
 `calculator` is `GEOMETRY` (`"geometry-calculator"`) or `GRAPHING_3D`
 (`"graphing-3d"`) - those calculators drop a state that does not name them, and
-a host builds the calculator the state names; and the ticker beside the list
+a host builds the calculator the state names; `graph.complex: true` for
+`allowComplex: true`, since the option only permits complex mode and the graph
+is what turns it on; and the ticker beside the list
 only when there is one. The options are the Axis defaults under the merged
 config, with `actions: true` added for a file with a ticker and no `actions`
 of its own - Desmos decides `auto` from the list, which the ticker is not in.
@@ -791,7 +800,9 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **What a calculator adds is read back**: a point style stashed under
   `__stashed_V12PointStyle` is the `pointStyle`; the settings it mirrors into
   `graph` are config, with `options` winning; its `graph.product` is
-  `calculator`; its `randomSeed` is kept only for a graph that calls `random`
+  `calculator`; its `graph.complex` is `allowComplex`, and an `allowComplex`
+  option without it is left out, since a calculator allows complex mode by
+  default whether or not it is on; its `randomSeed` is kept only for a graph that calls `random`
   or `shuffle`. The hidden folder a geometry calculator keeps its
   constructions in is not written, and whatever it holds is written at the top
   level.
@@ -808,6 +819,10 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   `gap = a - b with a = 2, b = 1` (§5.1), not `(gap = a - b) with …`. A latex
   name that would close up into a keyword or `true`/`false` keeps its
   subscript apart: `f_{or}` is `f_or`.
+- **One name for each function**: the other spellings Desmos accepts are read
+  as the name Axis has - `arsinh` as `arcsinh`, and `arcosh`, `artanh`,
+  `arcsch`, `arsech`, `arcoth` alike; `inverseCdf` and `inversecdf` as
+  `quantile`; `TScore` as `tscore`.
 - **What Axis cannot write** is reported, never thrown. Latex `parseLatex`
   has no reading for (`\sum`, `\int`, …) leaves out the expression - or only
   the property, if that is where it is - and a `// unsupported: <latex>`

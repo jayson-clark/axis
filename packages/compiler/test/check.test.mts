@@ -122,6 +122,28 @@ describe('names', () => {
     test('a string is not a value', () => {
         reports('y = "text"', 'unexpected-string');
     });
+
+    test('a complex-number function needs complex mode', () => {
+        reports('a = real(3 + 4i)', 'requires-complex-mode');
+        reports('z = 3 + 4i\nb = z.imag', 'requires-complex-mode');
+        reports('config { allowComplex: false }\na = arg(1)', 'requires-complex-mode');
+        clean('config { allowComplex: true }\na = real(3 + 4i)\nb = (3 + 4i).conj');
+        clean('config { allowComplex }\na = arg(1)');
+    });
+
+    test('complex mode is the merged config’s: the entry file wins over an import', () => {
+        const allowing = { path: 'lib', source: 'config { allowComplex: true }' };
+        assert.deepEqual(
+            compileAxis('import "lib"\na = real(1)', { resolveImport: () => allowing }).diagnostics,
+            [],
+        );
+        assert.deepEqual(
+            codes('import "lib"\nconfig { allowComplex: false }\na = real(1)', {
+                resolveImport: () => allowing,
+            }),
+            ['requires-complex-mode'],
+        );
+    });
 });
 
 describe('properties', () => {

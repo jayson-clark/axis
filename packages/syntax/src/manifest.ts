@@ -34,7 +34,20 @@ export interface FunctionDefinition {
     example: string;
     snippet?: string;
     category:
-        'trig' | 'math' | 'list' | 'color' | 'statistics' | 'combinatorics' | 'geometry' | 'audio';
+        | 'trig'
+        | 'math'
+        | 'list'
+        | 'color'
+        | 'statistics'
+        | 'combinatorics'
+        | 'complex'
+        | 'geometry'
+        | 'audio';
+    /**
+     * Whether Desmos knows it only in complex mode. Anywhere else it is an
+     * error on the calculator, so the checker reports it first.
+     */
+    complex?: true;
     /**
      * LaTeX command Desmos expects for this function. Only names that are real
      * LaTeX commands set this; everything else falls back to
@@ -329,6 +342,52 @@ export const AXIS_MANIFEST = {
             category: 'trig',
             latex: '\\coth',
         },
+        {
+            name: 'arcsinh',
+            detail: 'Inverse hyperbolic sine',
+            example: 'y = arcsinh(x)',
+            snippet: 'arcsinh(${1:x})',
+            category: 'trig',
+        },
+        {
+            name: 'arccosh',
+            detail: 'Inverse hyperbolic cosine',
+            documentation: 'Defined from 1 up.',
+            example: 'y = arccosh(x)',
+            snippet: 'arccosh(${1:x})',
+            category: 'trig',
+        },
+        {
+            name: 'arctanh',
+            detail: 'Inverse hyperbolic tangent',
+            documentation: 'Defined between -1 and 1.',
+            example: 'y = arctanh(x)',
+            snippet: 'arctanh(${1:x})',
+            category: 'trig',
+        },
+        {
+            name: 'arccsch',
+            detail: 'Inverse hyperbolic cosecant',
+            example: 'y = arccsch(x)',
+            snippet: 'arccsch(${1:x})',
+            category: 'trig',
+        },
+        {
+            name: 'arcsech',
+            detail: 'Inverse hyperbolic secant',
+            documentation: 'Defined above 0, up to 1.',
+            example: 'y = arcsech(x)',
+            snippet: 'arcsech(${1:x})',
+            category: 'trig',
+        },
+        {
+            name: 'arccoth',
+            detail: 'Inverse hyperbolic cotangent',
+            documentation: 'Defined outside -1 to 1.',
+            example: 'y = arccoth(x)',
+            snippet: 'arccoth(${1:x})',
+            category: 'trig',
+        },
 
         // Mathematical functions
         {
@@ -474,6 +533,15 @@ export const AXIS_MANIFEST = {
             snippet: 'lcm(${1:x}, ${2:y})',
             category: 'math',
         },
+        {
+            name: 'erf',
+            detail: 'Error function',
+            documentation:
+                'The integral of `2 / sqrt(pi) exp(-t^2)` from 0 to `x`, which has no closed form.',
+            example: 'y = erf(x)',
+            snippet: 'erf(${1:x})',
+            category: 'math',
+        },
 
         // Statistical functions
         {
@@ -564,6 +632,63 @@ export const AXIS_MANIFEST = {
             detail: 'Population variance',
             example: 'L = [3, 1, 4, 1, 5]\nv = varp(L)',
             snippet: 'varp(${1:list})',
+            category: 'statistics',
+        },
+        {
+            name: 'quantile',
+            detail: 'The value a fraction p of the way through a list',
+            documentation:
+                '`quantile(L, 0.5)` is the median. `p` runs from 0 to 1, and the answer is interpolated between the two values it falls between.',
+            example: 'L = [3, 1, 4, 1, 5]\nq = quantile(L, 0.9)',
+            snippet: 'quantile(${1:list}, ${2:p})',
+            category: 'statistics',
+        },
+        {
+            name: 'quartile',
+            detail: 'The first, second or third quartile of a list',
+            documentation: '`quartile(L, 2)` is the median; 0 and 4 are the minimum and maximum.',
+            example: 'L = [3, 1, 4, 1, 5]\nq = quartile(L, 1)',
+            snippet: 'quartile(${1:list}, ${2:n})',
+            category: 'statistics',
+        },
+        {
+            name: 'cov',
+            detail: 'Covariance of two lists',
+            documentation: 'The sample covariance. `covp` is the population one.',
+            example: 'xs = [1, 2, 3, 4]\nys = [2, 4, 5, 9]\nc = cov(xs, ys)',
+            snippet: 'cov(${1:xs}, ${2:ys})',
+            category: 'statistics',
+        },
+        {
+            name: 'covp',
+            detail: 'Population covariance of two lists',
+            example: 'xs = [1, 2, 3, 4]\nys = [2, 4, 5, 9]\nc = covp(xs, ys)',
+            snippet: 'covp(${1:xs}, ${2:ys})',
+            category: 'statistics',
+        },
+        {
+            name: 'corr',
+            detail: 'Correlation coefficient of two lists',
+            documentation: "Pearson's r, from -1 to 1.",
+            example: 'xs = [1, 2, 3, 4]\nys = [2, 4, 5, 9]\nr = corr(xs, ys)',
+            snippet: 'corr(${1:xs}, ${2:ys})',
+            category: 'statistics',
+        },
+        {
+            name: 'spearman',
+            detail: 'Rank correlation of two lists',
+            documentation:
+                "Spearman's rho: the correlation of the two lists' ranks, so any rising relationship scores 1.",
+            example: 'xs = [1, 2, 3, 4]\nys = [2, 4, 5, 9]\nr = spearman(xs, ys)',
+            snippet: 'spearman(${1:xs}, ${2:ys})',
+            category: 'statistics',
+        },
+        {
+            name: 'tscore',
+            detail: "The t-score of a list's mean against a value",
+            documentation: '`(mean(L) - mu) / (stdev(L) / sqrt(length(L)))`.',
+            example: 'L = [3, 1, 4, 1, 5]\nt = tscore(L, 2)',
+            snippet: 'tscore(${1:list}, ${2:mu})',
             category: 'statistics',
         },
         {
@@ -724,6 +849,46 @@ export const AXIS_MANIFEST = {
             example: 'a = factorial(5)\nb = 5!',
             snippet: 'factorial(${1:n})',
             category: 'combinatorics',
+        },
+
+        // Complex numbers - Desmos knows these only in complex mode
+        {
+            name: 'real',
+            detail: 'Real part of a complex number',
+            documentation: 'Only in complex mode, which `config { allowComplex: true }` turns on.',
+            example: 'config { allowComplex: true }\nz = 3 + 4i\na = real(z)',
+            snippet: 'real(${1:z})',
+            category: 'complex',
+            complex: true,
+        },
+        {
+            name: 'imag',
+            detail: 'Imaginary part of a complex number',
+            documentation: 'Only in complex mode, which `config { allowComplex: true }` turns on.',
+            example: 'config { allowComplex: true }\nz = 3 + 4i\nb = imag(z)',
+            snippet: 'imag(${1:z})',
+            category: 'complex',
+            complex: true,
+        },
+        {
+            name: 'conj',
+            detail: 'Complex conjugate',
+            documentation: 'Only in complex mode, which `config { allowComplex: true }` turns on.',
+            example: 'config { allowComplex: true }\nz = 3 + 4i\nw = conj(z)',
+            snippet: 'conj(${1:z})',
+            category: 'complex',
+            complex: true,
+        },
+        {
+            name: 'arg',
+            detail: 'Argument (angle) of a complex number',
+            documentation:
+                'The angle from the positive real axis, from -π to π. Only in complex mode, which `config { allowComplex: true }` turns on.',
+            example: 'config { allowComplex: true }\nz = 3 + 4i\nm = arg(z)',
+            snippet: 'arg(${1:z})',
+            category: 'complex',
+            complex: true,
+            latex: '\\arg',
         },
 
         // Audio — plays rather than draws, and is gated by the `tone` config
@@ -1064,6 +1229,45 @@ export const AXIS_MANIFEST = {
                 'below_left',
                 'below_right',
             ],
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'labelAngle',
+            detail: 'Turn the label by an angle [default: 0]',
+            documentation:
+                'Counter-clockwise, in radians unless `config { degreeMode: true }` says degrees.',
+            example: '(2, 1) @ label: "tilted", showLabel, labelAngle: pi / 4',
+            snippet: 'labelAngle: ${1:0}',
+            valueType: 'expression',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'interactiveLabel',
+            detail: 'Show the label only when the point is hovered or clicked [default: false]',
+            documentation:
+                'Desmos switches it off on a point that can be dragged, so it goes with `dragMode: none` on a movable point.',
+            example: '(2, 1) @ label: "hidden until clicked", showLabel, interactiveLabel',
+            snippet: 'interactiveLabel',
+            valueType: 'boolean',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'editableLabelMode',
+            detail: 'Let the viewer edit the label in place, as math or as text [default: NONE]',
+            documentation:
+                'A `MATH` label is edited as an expression and a `TEXT` one as words; either is typed into on the graph itself.',
+            example: 'P = (2, 1) @ label: "edit me", showLabel, editableLabelMode: TEXT',
+            snippet: 'editableLabelMode: ${1|NONE,MATH,TEXT|}',
+            valueType: 'enum',
+            values: ['NONE', 'MATH', 'TEXT'],
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'displayEvaluationAsFraction',
+            detail: "Show the expression's value as a fraction [default: false]",
+            example: 'a = 1 / 3 @ displayEvaluationAsFraction',
+            snippet: 'displayEvaluationAsFraction',
+            valueType: 'boolean',
             appliesTo: ['expression', 'style'],
         },
         {
@@ -1895,8 +2099,10 @@ export const AXIS_MANIFEST = {
         },
         {
             name: 'allowComplex',
-            detail: 'Allow complex numbers [default: false]',
-            example: 'config { allowComplex: true }\ny = sin(x)',
+            detail: 'Put the graph in complex mode [default: false]',
+            documentation:
+                'In complex mode `i` is the imaginary unit, `sqrt(-1)` is `i` rather than undefined, a complex number is drawn as a point, and `real`, `imag`, `conj` and `arg` exist.',
+            example: 'config { allowComplex: true }\nz = 3 + 4i\nw = conj(z)',
             snippet: 'allowComplex: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['config'],
@@ -2058,6 +2264,11 @@ export const AXIS_CONSTANT_NAMES: readonly string[] = AXIS_MANIFEST.constants
 export const AXIS_FUNCTION_NAME_SET: ReadonlySet<string> = new Set(AXIS_FUNCTION_NAMES);
 export const AXIS_OPERATOR_NAME_SET: ReadonlySet<string> = new Set(AXIS_OPERATOR_NAMES);
 export const AXIS_CONSTANT_NAME_SET: ReadonlySet<string> = new Set(AXIS_CONSTANT_NAMES);
+
+/** The functions Desmos knows only in complex mode (spec §5.3). */
+export const AXIS_COMPLEX_FUNCTION_NAMES: ReadonlySet<string> = new Set(
+    AXIS_MANIFEST.functions.filter(fn => fn.complex).map(fn => fn.name),
+);
 
 /** Every name the language defines in expressions: functions, operators and constants. */
 export const AXIS_BUILTIN_NAMES: ReadonlySet<string> = new Set([

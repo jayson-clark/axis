@@ -25,6 +25,7 @@
 // never what somebody meant.
 
 import {
+    AXIS_COMPLEX_FUNCTION_NAMES,
     AXIS_CONSTANT_NAME_SET,
     AXIS_FUNCTION_NAME_SET,
     AXIS_OPERATOR_NAME_SET,
@@ -94,6 +95,8 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     const report = (code: CompilerDiagnosticCode, message: string, span: Span): void => {
         diagnostics.push(located({ code, severity: 'error', message, span }, file));
     };
+
+    const complexMode = allowsComplex(program);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Statements
@@ -345,6 +348,13 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 }
                 return;
 
+            case 'Member':
+                // `z.real` is `real(z)` written after it (§5.4), and as much
+                // an error outside complex mode.
+                checkComplex(node.name.name, node.name, scope);
+                checkExpression(node.target, scope);
+                return;
+
             case 'BigOperator': {
                 // The bounds are read outside the variable, as Desmos reads
                 // them, and the body inside it. A name already bound here - a
@@ -484,7 +494,11 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
             return;
         }
 
-        if (AXIS_FUNCTION_NAME_SET.has(name) || symbols.functions.has(name)) {
+        if (symbols.functions.has(name)) {
+            return;
+        }
+        if (AXIS_FUNCTION_NAME_SET.has(name)) {
+            checkComplex(name, node.callee, scope);
             return;
         }
 
@@ -500,6 +514,25 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 : `\`${name}\` is not a function - neither a built-in one nor one this file defines.`,
             node.callee.span,
         );
+    };
+
+    /**
+     * `real(z)` in a graph that is not in complex mode, which Desmos rejects:
+     * "The 'real' function is only available in complex mode."
+     */
+    const checkComplex = (name: string, at: Identifier, scope: Scope): void => {
+        if (
+            AXIS_COMPLEX_FUNCTION_NAMES.has(name) &&
+            !complexMode &&
+            !scope.bound.has(name) &&
+            !symbols.functions.has(name)
+        ) {
+            report(
+                'requires-complex-mode',
+                `\`${name}\` is only known in complex mode; turn it on with \`config { allowComplex: true }\`.`,
+                at.span,
+            );
+        }
     };
 
     /**
@@ -944,4 +977,28 @@ function findStyleCycles(
         visit(name, []);
     }
     return cycles;
+}
+
+/**
+ * Whether the graph will be in complex mode: `allowComplex: true` in a config
+ * block, the entry file's winning over an imported one's as it does when the
+ * blocks are merged. A block inside a folder is misplaced and lowers to
+ * nothing, so it says nothing here either.
+ */
+function allowsComplex(program: Program): boolean {
+    let imported: boolean | undefined;
+    let entry: boolean | undefined;
+    for (const file of program.files) {
+        for (const statement of file.tree.file.statements) {
+            if (statement.kind !== 'ConfigStatement') continue;
+            for (const property of statement.entries) {
+                if (property.key.name !== 'allowComplex') continue;
+                const value = property.value;
+                const on = value === null || (value.kind === 'Identifier' && value.name === 'true');
+                if (file.entry) entry = on;
+                else imported = on;
+            }
+        }
+    }
+    return entry ?? imported ?? false;
 }

@@ -43,6 +43,10 @@ folder "Labels" {
     (3, 3) @ color: RED, label: "Above", showLabel, labelOrientation: above
     (-3, 3) @ color: BLUE, label: "Below", showLabel, labelOrientation: below
     (3, -3) @ color: GREEN, label: "Bigger", showLabel, labelSize: 2
+    (6, 0) @ color: ORANGE, label: "Turned", showLabel, labelAngle: pi / 4
+    "interactiveLabel shows the label only on hover or click; editableLabelMode lets the viewer type into it."
+    (-6, 0) @ color: ORANGE, label: "Click me", showLabel, interactiveLabel
+    (0, -6) @ color: ORANGE, label: "Edit me", showLabel, editableLabelMode: TEXT
     "description is read by screen readers."
     (-3, -3) @{
         color: PURPLE

@@ -21,11 +21,30 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 - `@axis-dsl/desmos` types the `Desmos.Geometry` and `Desmos.Calculator3D`
   constructors, and exports `DesmosProduct`, `stateProduct` and
   `DESMOS_PRODUCT_CONSTRUCTORS` for building the calculator a state belongs to.
+- The inverse hyperbolic functions `arcsinh`, `arccosh`, `arctanh`, `arccsch`,
+  `arcsech` and `arccoth`, and the error function `erf` (#62).
+- The statistics `quantile`, `quartile`, `cov`, `covp`, `corr`, `spearman` and
+  `tscore` (#63).
+- The complex-number functions `real`, `imag`, `conj` and `arg` (#68). Outside
+  complex mode Desmos rejects them, and the new `requires-complex-mode`
+  diagnostic says so first.
+- The expression properties `labelAngle`, `interactiveLabel`,
+  `editableLabelMode` and `displayEvaluationAsFraction`, which the decompiler
+  and write-back read back as well (#69).
+- Decompiling reads the other spellings Desmos accepts for a function as the
+  name Axis has for it: `arsinh` as `arcsinh`, `inverseCdf` as `quantile`,
+  `TScore` as `tscore`, and so on.
+- `examples/20-complex-numbers.axis`.
 
 ### Fixed
 
 - `DesmosEnabledFeatures` names the geometry calculator `GeometryCalculator`,
   as Desmos does, rather than `Geometry`.
+- `config { allowComplex: true }` puts the graph in complex mode. It used to
+  write only the calculator option, which permits complex mode without turning
+  it on, so `sqrt(-1)` stayed undefined. A file that says `allowComplex: true`
+  now draws in complex mode. The decompiler writes `allowComplex` only for a
+  graph that is in complex mode.
 
 ## 2.3.0 - 2026-09-23
 

@@ -29,6 +29,10 @@ export const COMPILER_DIAGNOSTICS = {
         summary: '`theta = …`, which Desmos will not graph - write `r = …` (§5.5)',
         example: 'theta = 1',
     },
+    'requires-complex-mode': {
+        summary: '`real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)',
+        example: 'a = real(3)',
+    },
     'multiple-subscripts': {
         summary: 'a name in an expression with more than one `_` part (`x_1_2`)',
         example: 'a = x_1_2',

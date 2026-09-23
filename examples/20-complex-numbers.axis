@@ -1,0 +1,35 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Complex numbers - complex mode, i, and the functions only it knows
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// allowComplex turns complex mode on for the whole graph. In it, i is the
+// imaginary unit, a complex number is drawn as the point it is on the plane,
+// and real, imag, conj and arg exist - outside it, each of those is an error.
+
+config {
+    allowComplex: true
+}
+
+"Complex numbers"
+
+z = 3 + 4i @ color: BLUE, label: "z", showLabel
+w = conj(z) @ color: RED, label: "conj(z)", showLabel
+
+folder "Its parts" {
+    "The real and imaginary parts, the length, and the angle from the real axis."
+    a = real(z) @ hidden
+    b = imag(z) @ hidden
+    m = abs(z) @ hidden
+    theta_z = arg(z) @ hidden
+    "Written after the number, as a member, they read the same."
+    a2 = z.real @ hidden
+}
+
+folder "Arithmetic" {
+    "Multiplying by i turns a number a quarter turn."
+    z i @ color: GREEN, label: "iz", showLabel
+    "The square root of -1 is i."
+    s = sqrt(-1) @ hidden
+    "The powers of a unit number walk round the circle."
+    u = (cos(0.5) + i sin(0.5)) ^ [0...12] @ color: PURPLE
+}

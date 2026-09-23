@@ -95,6 +95,12 @@ export interface GraphSettings {
      * and ignores whatever it is handed.
      */
     product?: DesmosProduct;
+    /**
+     * Complex mode, which is what makes `sqrt(-1)` i and lets `real`, `imag`,
+     * `conj` and `arg` be used. The `allowComplex` option only permits it:
+     * without this it stays off, whatever the option says.
+     */
+    complex?: boolean;
 }
 
 /** The calculators a graph state can belong to, as its `graph.product` names them. */

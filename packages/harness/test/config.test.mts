@@ -424,8 +424,12 @@ describe('config options Desmos acts on', { skip }, () => {
         assert.ok(real?.isError || Number.isNaN((real?.evaluation as { value: number })?.value));
 
         await calculator().load('config {\n    allowComplex: true\n}\na = sqrt(-1)');
+        const complex = (await calculator().inspectExpressions())[0].analysis;
 
-        assert.deepEqual(await calculator().getErrors(), []);
+        // The option alone only permits complex mode; the graph has to be in
+        // it, or the square root of -1 is as undefined as ever.
+        assert.equal((await calculator().getState()).graph?.complex, true);
+        assert.deepEqual(complex?.evaluation, { type: 'Number', value: [0, 1] });
     });
 
     test('an imported config merges under the entry file’s', () => {
