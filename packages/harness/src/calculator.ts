@@ -19,8 +19,10 @@ import {
     Calculator,
     CalculatorOptions,
     AXIS_DESMOS_API_KEY,
+    DESMOS_PRODUCT_CONSTRUCTORS,
     DesmosExpression,
     DesmosNamespace,
+    DesmosProduct,
     ExpressionAnalysis,
     ExpressionState,
     GraphSettings,
@@ -29,6 +31,7 @@ import {
     GraphState,
     MathBounds,
     Point,
+    stateProduct,
 } from '@axis-dsl/desmos';
 import { CompilationResult, CompileOptions, compileAxis, emitLatex } from '@axis-dsl/compiler';
 import { parseExpression } from '@axis-dsl/syntax';
@@ -39,7 +42,13 @@ declare global {
     interface Window {
         Desmos?: DesmosNamespace;
         /** Installed by the bootstrap below; everything else reads it. */
-        __axisHarness?: { calculator: Calculator; lastChange: number };
+        __axisHarness?: {
+            calculator: Calculator;
+            lastChange: number;
+            product: DesmosProduct;
+            /** Replace the calculator with a fresh one of another kind. */
+            rebuild(constructor: string, product: DesmosProduct): void;
+        };
     }
 }
 
@@ -172,20 +181,37 @@ export class AxisCalculator {
             await page.evaluate(
                 ([settings, viewport]) => {
                     const container = document.getElementById('calculator')!;
-                    const calculator = window.Desmos!.GraphingCalculator(container, settings);
-                    calculator.setMathBounds(viewport);
-
-                    const harness = { calculator, lastChange: Date.now() };
-                    window.__axisHarness = harness;
-
-                    // Two signals, because they fire for different things: the
-                    // event covers edits to the graph, the observer covers the
-                    // asynchronous recompute that follows one.
                     const touch = () => {
-                        harness.lastChange = Date.now();
+                        window.__axisHarness!.lastChange = Date.now();
                     };
-                    calculator.observeEvent('change', touch);
-                    calculator.observe('expressionAnalysis', touch);
+                    // Every kind of calculator is built the same way, with the
+                    // settings and the framing the harness was launched with.
+                    const build = (constructor: string) => {
+                        const desmos = window.Desmos! as unknown as Record<
+                            string,
+                            (element: HTMLElement, options?: CalculatorOptions) => Calculator
+                        >;
+                        const calculator = desmos[constructor](container, settings);
+                        calculator.setMathBounds(viewport);
+                        // Two signals, because they fire for different things:
+                        // the event covers edits to the graph, the observer
+                        // covers the asynchronous recompute that follows one.
+                        calculator.observeEvent('change', touch);
+                        calculator.observe('expressionAnalysis', touch);
+                        return calculator;
+                    };
+
+                    window.__axisHarness = {
+                        calculator: build('GraphingCalculator'),
+                        lastChange: Date.now(),
+                        product: 'graphing',
+                        rebuild(constructor, product) {
+                            this.calculator.destroy();
+                            this.calculator = build(constructor);
+                            this.product = product;
+                            this.lastChange = Date.now();
+                        },
+                    };
                 },
                 [
                     (options.settings ?? {}) as CalculatorOptions,
@@ -260,16 +286,23 @@ export class AxisCalculator {
         state,
         options,
     }: Pick<CompilationResult, 'state' | 'options'>): Promise<void> {
+        const product = stateProduct(state);
         await this.page.evaluate(
-            ([graphState, calculatorOptions]) => {
-                const { calculator } = window.__axisHarness!;
+            ([graphState, calculatorOptions, product, constructor]) => {
+                const harness = window.__axisHarness!;
+                // A calculator is built for one product and cannot become
+                // another, so a state for a different one gets a new one - as
+                // it does in the viewer.
+                if (harness.product !== product) {
+                    harness.rebuild(constructor, product);
+                }
                 // setState, not setExpressions: folder membership only travels
                 // as part of a whole graph state.
-                calculator.setState(graphState);
+                harness.calculator.setState(graphState);
                 // updateSettings has to follow setState, which resets them.
-                calculator.updateSettings(calculatorOptions);
+                harness.calculator.updateSettings(calculatorOptions);
             },
-            [state, options] as const,
+            [state, options, product, DESMOS_PRODUCT_CONSTRUCTORS[product]] as const,
         );
         await this.settle();
     }

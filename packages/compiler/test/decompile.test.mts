@@ -682,6 +682,43 @@ describe('config', () => {
     test('leaves out a setting of the wrong kind or no Axis name', () => {
         assert.equal(fromState({}, { fontSize: 'large', notASetting: true }), '');
     });
+
+    test('writes the calculator a geometry or 3D graph is for', () => {
+        assert.equal(
+            roundTrip('config { calculator: GEOMETRY }\ny = x'),
+            'config {\n    calculator: GEOMETRY\n}\n\ny = x\n',
+        );
+        assert.equal(
+            roundTrip('config { calculator: GRAPHING_3D }\ny = x'),
+            'config {\n    calculator: GRAPHING_3D\n}\n\ny = x\n',
+        );
+        assert.equal(roundTrip('config { calculator: GRAPHING }\ny = x'), 'y = x\n');
+    });
+
+    test('reads the product and the mode a 3D calculator writes back', () => {
+        assert.equal(
+            fromState({ graph: { product: 'graphing-3d', threeDMode: true } } as never),
+            'config {\n    calculator: GRAPHING_3D\n}\n',
+        );
+    });
+
+    test('leaves out the folder a geometry calculator keeps for itself', () => {
+        // Every geometry graph has it, hidden; written into the file, it would
+        // come back as a second one beside the calculator's own.
+        const source = fromState({
+            graph: { product: 'geometry-calculator' },
+            ...items(
+                {
+                    type: 'folder',
+                    id: '**dcg_geo_folder**',
+                    title: 'geometry',
+                    secret: true,
+                } as DesmosExpression,
+                { type: 'expression', id: '1', latex: 'y=x' },
+            ),
+        } as never);
+        assert.equal(source, 'config {\n    calculator: GEOMETRY\n}\n\ny = x\n');
+    });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

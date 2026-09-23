@@ -51,6 +51,7 @@ import type {
     TickerState,
 } from '@axis-dsl/desmos';
 import {
+    AXIS_CALCULATOR_PRODUCTS,
     AXIS_DEFAULT_CONFIG,
     AXIS_DEFAULT_STATE,
     AXIS_MANIFEST,
@@ -129,6 +130,15 @@ export interface DecompileExpressionOptions {
 // Entry points
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * The folder a geometry calculator keeps its constructions in. It adds one,
+ * hidden, to every graph, so it is the calculator's rather than the file's:
+ * written into the file it would come back as a second one. Anything in it is
+ * written at the top level, which is the best Axis can do until it has
+ * geometry of its own.
+ */
+const GEOMETRY_FOLDER_ID = '**dcg_geo_folder**';
+
 /** Turn a graph back into the `.axis` source that builds it. */
 export function decompileAxis(input: DecompileInput, options: PrintOptions = {}): DecompileResult {
     const list = input.state.expressions?.list ?? [];
@@ -147,7 +157,7 @@ export function decompileAxis(input: DecompileInput, options: PrintOptions = {})
     // compiler makes of a folder written inside a folder.
     const folders = new Map<string, DesmosExpression[]>();
     for (const item of list) {
-        if (item.type === 'folder') {
+        if (item.type === 'folder' && item.id !== GEOMETRY_FOLDER_ID) {
             folders.set(item.id, []);
         }
     }
@@ -160,7 +170,7 @@ export function decompileAxis(input: DecompileInput, options: PrintOptions = {})
     }
 
     for (const item of list) {
-        if (inFolder(item)) {
+        if (inFolder(item) || item.id === GEOMETRY_FOLDER_ID) {
             continue;
         }
         if (item.type === 'folder') {
@@ -1090,6 +1100,12 @@ function settingsStatement({ state, options }: DecompileInput): ConfigStatement 
     for (const [key, value] of Object.entries(graph)) {
         settings.set(key, value);
     }
+    // The calculator is named by the product it writes, and the graphing
+    // calculator - Axis's default - writes none.
+    const calculator = Object.entries(AXIS_CALCULATOR_PRODUCTS).find(
+        ([, product]) => product !== undefined && product === graph.product,
+    );
+    if (calculator) settings.set('calculator', calculator[0]);
     for (const [key, value] of Object.entries(viewport ?? {})) {
         settings.set(key, value);
     }

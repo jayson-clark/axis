@@ -1290,6 +1290,18 @@ export const AXIS_MANIFEST = {
     /** Entries of the `config` block, which become the calculator's settings. */
     configProperties: [
         {
+            name: 'calculator',
+            detail: 'Which Desmos calculator draws the graph [default: GRAPHING]',
+            documentation:
+                'The geometry and 3D calculators draw the same expressions the graphing calculator does; ' +
+                'their own tools are not in Axis yet.',
+            example: 'config { calculator: GEOMETRY }\nP = (1, 2)\ny = x',
+            snippet: 'calculator: ${1|GRAPHING,GEOMETRY,GRAPHING_3D|}',
+            valueType: 'enum',
+            values: ['GRAPHING', 'GEOMETRY', 'GRAPHING_3D'],
+            appliesTo: ['config'],
+        },
+        {
             name: 'degreeMode',
             detail: 'Use degrees instead of radians [default: false]',
             example: 'config { degreeMode: true }\ny = sin(x)',
@@ -2168,6 +2180,18 @@ export const AXIS_VIEWPORT_PROPERTY_NAMES = ['xmin', 'xmax', 'ymin', 'ymax'] as 
 
 /** Graph-state config keys that are not part of the viewport rectangle. */
 export const AXIS_GRAPH_PROPERTY_NAMES = ['squareAxes', 'userLockedViewport'] as const;
+
+/**
+ * The Desmos product each `calculator:` value names, which the compiler writes
+ * as the state's `graph.product`. `GRAPHING` names none: the graphing
+ * calculator writes no product into a state of its own, so a file that says
+ * nothing compiles to the same state it always has.
+ */
+export const AXIS_CALCULATOR_PRODUCTS: Readonly<Record<string, string | undefined>> = {
+    GRAPHING: undefined,
+    GEOMETRY: 'geometry-calculator',
+    GRAPHING_3D: 'graphing-3d',
+};
 
 /**
  * The config keys Desmos reads off the *top* of a graph state, outside `graph`.

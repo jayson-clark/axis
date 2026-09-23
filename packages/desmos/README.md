@@ -67,17 +67,18 @@ name in its Content-Security-Policy.
 
 ## API
 
-| Export                                                                     |                                                                     |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `DesmosNamespace`                                                          | The `window.Desmos` global installed by `calculator.js`             |
-| `Calculator` / `BasicCalculator`                                           | A calculator instance and its methods                               |
-| `CalculatorOptions` and the other option interfaces                        | What the constructors take                                          |
-| `ExpressionState` (`Expression`, `Table`, `Note`, `Folder`, `GraphImage`)  | The five things a graph's expression list is made of                |
-| `TickerState`, `SliderState`, `ClickableInfo`, `TableColumn`, …            | The pieces of a graph state they carry                              |
-| `LineStyle`, `PointStyle`, `DragMode`, `LabelOrientation`, `AxisArrowMode` | The style enums, as runtime values                                  |
-| `GraphState`, `MathBounds`, `ScreenshotOptions`, `HelperExpression`, …     | The rest of the runtime surface                                     |
-| `desmosScriptUrl(apiKey)`                                                  | The `calculator.js` URL for a key                                   |
-| `DESMOS_API_VERSION` / `DESMOS_SCRIPT_ORIGIN` / `DESMOS_DOCS_URL`          | The version these types are written against, and where it is served |
-| `AXIS_DESMOS_API_KEY`                                                      | The Axis project's key, every Axis host's default                   |
+| Export                                                                     |                                                                         |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `DesmosNamespace`                                                          | The `window.Desmos` global installed by `calculator.js`                 |
+| `Calculator` / `BasicCalculator`                                           | A calculator instance and its methods                                   |
+| `CalculatorOptions` and the other option interfaces                        | What the constructors take                                              |
+| `ExpressionState` (`Expression`, `Table`, `Note`, `Folder`, `GraphImage`)  | The five things a graph's expression list is made of                    |
+| `TickerState`, `SliderState`, `ClickableInfo`, `TableColumn`, …            | The pieces of a graph state they carry                                  |
+| `LineStyle`, `PointStyle`, `DragMode`, `LabelOrientation`, `AxisArrowMode` | The style enums, as runtime values                                      |
+| `GraphState`, `MathBounds`, `ScreenshotOptions`, `HelperExpression`, …     | The rest of the runtime surface                                         |
+| `DesmosProduct` / `stateProduct(state)` / `DESMOS_PRODUCT_CONSTRUCTORS`    | Which calculator a state belongs to, and the constructor that builds it |
+| `desmosScriptUrl(apiKey)`                                                  | The `calculator.js` URL for a key                                       |
+| `DESMOS_API_VERSION` / `DESMOS_SCRIPT_ORIGIN` / `DESMOS_DOCS_URL`          | The version these types are written against, and where it is served     |
+| `AXIS_DESMOS_API_KEY`                                                      | The Axis project's key, every Axis host's default                       |
 
 MIT

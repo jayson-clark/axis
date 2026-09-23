@@ -10,6 +10,23 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Added
+
+- `config { calculator: GEOMETRY }` and `calculator: GRAPHING_3D` draw a graph
+  on the Desmos geometry or 3D calculator instead of the graphing one. The
+  viewer, the preview, the playground and the harness build whichever the
+  graph asks for, and decompiling a geometry or 3D graph writes the
+  `calculator` back. Only what the graphing calculator draws is supported so
+  far: nothing specific to geometry or 3D is in the language yet.
+- `@axis-dsl/desmos` types the `Desmos.Geometry` and `Desmos.Calculator3D`
+  constructors, and exports `DesmosProduct`, `stateProduct` and
+  `DESMOS_PRODUCT_CONSTRUCTORS` for building the calculator a state belongs to.
+
+### Fixed
+
+- `DesmosEnabledFeatures` names the geometry calculator `GeometryCalculator`,
+  as Desmos does, rather than `Geometry`.
+
 ## 2.3.0 - 2026-09-23
 
 ### Added

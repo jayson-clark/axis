@@ -159,6 +159,21 @@ zoom buttons and the border are off, and the expression list starts collapsed.
 `expressionsCollapsed: false`, and so on. The
 [settings reference](../../reference/settings/) lists every entry.
 
+`calculator` picks which Desmos calculator draws the graph: `GRAPHING`, the
+default, `GEOMETRY` or `GRAPHING_3D`.
+
+```axis
+config { calculator: GEOMETRY }
+
+A = (0, 0)
+B = (4, 1)
+polygon(A, B, (1, 3))
+```
+
+The geometry and 3D calculators draw the same expressions the graphing one
+does. What only they have - geometric constructions, a `z` axis - is not in
+Axis yet.
+
 ## The other statements
 
 Four statements have pages of their own:

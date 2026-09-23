@@ -263,6 +263,11 @@ The `config` colours - `backgroundColor`, `textColor`, `accentColor` - are
 `color` too, but Desmos wants a hex string there, so they take only a hex
 literal or a palette name, never an expression.
 
+`calculator` picks which Desmos calculator draws the graph: `GRAPHING`, the
+default, `GEOMETRY` or `GRAPHING_3D`. The geometry and 3D calculators draw the
+same expressions the graphing one does; nothing of their own - constructions,
+a `z` axis - is in Axis yet.
+
 ### 4.4 Ranges
 
 ```ebnf
@@ -696,7 +701,10 @@ So the state is complete. It is version 11; it carries
 `doNotMigrateMovablePointStyle: true`, without which Desmos substitutes its
 own style for any point it decides is movable; `includeFunctionParametersInRandomSeed`
 at the top level, where Desmos reads it; the viewport under `graph`, with any
-edge the file did not give filled in from ±10; and the ticker beside the list
+edge the file did not give filled in from ±10; `graph.product`, when
+`calculator` is `GEOMETRY` (`"geometry-calculator"`) or `GRAPHING_3D`
+(`"graphing-3d"`) - those calculators drop a state that does not name them, and
+a host builds the calculator the state names; and the ticker beside the list
 only when there is one. The options are the Axis defaults under the merged
 config, with `actions: true` added for a file with a ticker and no `actions`
 of its own - Desmos decides `auto` from the list, which the ticker is not in.
@@ -782,8 +790,11 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   legacy behaviour and is written `false`.
 - **What a calculator adds is read back**: a point style stashed under
   `__stashed_V12PointStyle` is the `pointStyle`; the settings it mirrors into
-  `graph` are config, with `options` winning; its `randomSeed` is kept only for
-  a graph that calls `random` or `shuffle`.
+  `graph` are config, with `options` winning; its `graph.product` is
+  `calculator`; its `randomSeed` is kept only for a graph that calls `random`
+  or `shuffle`. The hidden folder a geometry calculator keeps its
+  constructions in is not written, and whatever it holds is written at the top
+  level.
 - **Structure**: folders gather their members wherever the list keeps them; a
   folder with no title is `folder { … }`; a folder claiming to sit in another
   is written beside it. Tables write each column's own metadata, trailing

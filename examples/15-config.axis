@@ -8,6 +8,10 @@
 // here, or share one with a ; between them.
 
 config {
+    // Which Desmos calculator draws the graph: GRAPHING, GEOMETRY or
+    // GRAPHING_3D. The other two draw everything the graphing one does.
+    calculator: GRAPHING
+
     // Angles
     degreeMode: false
 
