@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, passthroughImageService } from 'astro/config';
 import react from '@astrojs/react';
 import starlight from '@astrojs/starlight';
+import { absoluteLinks } from './scripts/absolute-links.mjs';
 import { playgroundLink } from './src/components/playground-link.ts';
 import grammar from '@axis-dsl/language-service/syntaxes/axis.tmLanguage.json' with { type: 'json' };
 
@@ -18,6 +19,7 @@ const base = '/axis';
 export default defineConfig({
     site: 'https://jayson-clark.github.io',
     base,
+    markdown: { rehypePlugins: [absoluteLinks(base)] },
     // Every image is an SVG, which there is nothing to optimise in.
     image: { service: passthroughImageService() },
     integrations: [

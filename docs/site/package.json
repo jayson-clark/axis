@@ -7,25 +7,27 @@
     "scripts": {
         "generate": "node scripts/generate.mjs",
         "dev": "node scripts/generate.mjs && astro dev",
-        "build": "node scripts/generate.mjs && astro build",
+        "build": "node scripts/generate.mjs && astro build && node scripts/check-links.mjs",
         "preview": "astro preview"
     },
     "dependencies": {
+        "@astrojs/markdown-remark": "catalog:",
         "@astrojs/react": "catalog:",
         "@astrojs/starlight": "catalog:",
-        "astro": "catalog:",
         "@axis-dsl/compiler": "workspace:*",
         "@axis-dsl/desmos": "workspace:*",
         "@axis-dsl/language-service": "workspace:*",
         "@axis-dsl/syntax": "workspace:*",
         "@axis-dsl/viewer": "workspace:*",
+        "astro": "catalog:",
         "monaco-editor": "catalog:",
         "react": "catalog:",
-        "react-dom": "catalog:"
+        "react-dom": "catalog:",
+        "unist-util-visit": "catalog:"
     },
     "devDependencies": {
+        "@types/node": "catalog:",
         "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "@types/node": "catalog:"
+        "@types/react-dom": "catalog:"
     }
 }
