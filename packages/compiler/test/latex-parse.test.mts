@@ -68,14 +68,16 @@ describe('what Desmos writes', () => {
         cases([
             ['y=x^2', eq('y', pow('x', 2))],
             ['x^{10}', pow('x', 10)],
-            // An unbraced script is one character, as in TeX: x²·3.
-            ['x^23', imp(pow('x', 2), 3)],
+            // An unbraced script is one character, as in TeX: x²·3 - a
+            // product with a number on its right, which Axis writes `*`.
+            ['x^23', mul(pow('x', 2), 3)],
             ['x^n', pow('x', 'n')],
             ['2^{-1}', pow(2, neg(1))],
             ['e^{\\pi}', pow('e', 'pi')],
             ['x^\\pi', pow('x', 'pi')],
             ['2^{3^{2}}', pow(2, pow(3, 2))],
-            ['x^{\\left(n-1\\right)}', pow('x', paren(sub('n', 1)))],
+            // The braces group; brackets round all of what they hold do not.
+            ['x^{\\left(n-1\\right)}', pow('x', sub('n', 1))],
             ['-x^{2}', neg(pow('x', 2))],
         ]);
     });
@@ -315,6 +317,10 @@ describe('a number with nothing after its point', () => {
         ['\\left(2.,-0.\\right)', tuple(2, neg(0))],
         ['x\\le31.', cmp('x', '<=', 31)],
         ['3.\\left(y+1\\right)', imp(3, paren(add('y', 1)))],
+        ['1.y-1.2', sub(imp(1, 'y'), 1.2)],
+        ['2.x', imp(2, 'x')],
+        ['\\pm=\\left[-1,1\\right]', eq('pm', list(neg(1), 1))],
+        ['\\pm\\frac{\\pi}{4}', imp('pm', div('pi', 4))],
         ['20\\ 000', num(20000)],
         ['1\\ 234\\ 567.5', num('1234567.5')],
     ]);

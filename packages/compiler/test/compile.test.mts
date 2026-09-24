@@ -312,6 +312,19 @@ describe('config', () => {
         );
     });
 
+    test('leaves a token’s definition where it was on a calculator with no hidden folder', () => {
+        const compiled = compileAxis('y = x\n$1 = (0, 0)');
+        assert.deepEqual(
+            compiled.diagnostics.map(diagnostic => diagnostic.code),
+            ['requires-calculator'],
+        );
+        const list = compiled.state.expressions?.list ?? [];
+        assert.deepEqual(
+            list.map(item => (item as { folderId?: string }).folderId),
+            [undefined, undefined],
+        );
+    });
+
     test('gathers a chart’s settings into its vizProps, and a count is no mode at all', () => {
         const [histogram, boxplot] = listOf(
             'histogram([1, 2], 1) @ binAlignment: left, histogramMode: count\nboxplot([1, 2]) @ axisOffset: 2, showBoxplotOutliers: false',

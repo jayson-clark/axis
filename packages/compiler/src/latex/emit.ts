@@ -252,7 +252,9 @@ function braced(node: Expression): string {
  * Whether operand `index` of `node` is the value of a named action - `R = a ->
  * 1, b -> 2`, `R = a -> 1` (spec §5.6) - which is written bare. In brackets a
  * run of actions is a point to Desmos, and it runs the last coordinate and
- * drops the rest.
+ * drops the rest. A value with bindings, `g = a - b with a = 2`, is written
+ * bare too, as Desmos writes it - and has to be, when what it binds for is a
+ * run: `R = (a -> 1, b -> m with m = 3)` is a point, and Desmos says so.
  */
 function isActionDefinition(node: Expression & { kind: 'Comparison' }, index: number): boolean {
     const operand = node.operands[index];
@@ -260,7 +262,7 @@ function isActionDefinition(node: Expression & { kind: 'Comparison' }, index: nu
         node.operators.length === 1 &&
         node.operators[0] === '=' &&
         index === 1 &&
-        (operand.kind === 'Sequence' || operand.kind === 'Action')
+        (operand.kind === 'Sequence' || operand.kind === 'Action' || operand.kind === 'With')
     );
 }
 
@@ -365,7 +367,12 @@ function scoped(body: Expression, keyword: string, bindings: readonly Binding[])
     const written = bindings
         .map(({ name, value }) => `${identifierLatex(name.name)}=${at(value, LEVEL.additive)}`)
         .join(',');
-    return join(join(at(body, LEVEL.sequence), keyword), written);
+    // A chain of them reads left to right, as Desmos reads it - `a with b = 1
+    // for n = L` is the `with`, then the `for` over it - so a `with` or a
+    // `for` as the body needs no brackets.
+    const inner =
+        body.kind === 'With' || body.kind === 'For' ? emit(body) : at(body, LEVEL.sequence);
+    return join(join(inner, keyword), written);
 }
 
 /**

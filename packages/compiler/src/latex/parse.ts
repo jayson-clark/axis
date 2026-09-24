@@ -36,6 +36,7 @@ import {
     FUNCTION_FOR_COMMAND,
     FUNCTION_NAMES,
     nameFromLatex,
+    SYMBOL_NAMES,
 } from './names';
 
 /** Latex this parser has no reading for, and where in it the trouble is. */
@@ -148,8 +149,10 @@ function tokenize(latex: string): Token[] {
         const number = /^(?:\d+(?:\.\d+)?|\.\d+)/.exec(rest);
         if (number && !rest.startsWith('...')) {
             // `3.` is 3 to Desmos, which keeps whatever was typed: a point
-            // with nothing after it, and no member name or range to start.
-            const bare = /^\d+\.(?![.\d]|[a-zA-Z]|\\operatorname)/.exec(rest);
+            // with no digit after it, and no range to start. That goes for a
+            // letter after it too - `1.y` is 1 times y, not a member of 1,
+            // which Desmos says a number has none of.
+            const bare = /^\d+\.(?![.\d])/.exec(rest);
             const end = start + (bare ? bare[0].length : number[0].length);
             push({ type: 'number', text: number[0], start, end });
             continue;
@@ -494,6 +497,7 @@ class Parser {
         for (;;) {
             const token = this.peek();
             let operator: '*' | '/' | 'implicit';
+            let written = true;
 
             if (token.type === 'command' && (token.name === 'cdot' || token.name === 'times')) {
                 operator = '*';
@@ -502,12 +506,17 @@ class Parser {
             } else if (token.type === 'symbol' && (token.text === '*' || token.text === '/')) {
                 operator = token.text;
             } else if (this.opensOperand(token)) {
-                operator = 'implicit';
+                // `s_{1}2^{x}` is a product, but one Axis writes with a `*`:
+                // two numbers side by side would be one number, so the
+                // emitter puts a `\cdot` before any number on the right, and
+                // the tree says so too, or it would not read back the same.
+                operator = token.type === 'number' ? '*' : 'implicit';
+                written = false;
             } else {
                 return left;
             }
 
-            if (operator !== 'implicit') {
+            if (written) {
                 this.advance();
             }
             const right = this.prefix();
@@ -742,6 +751,12 @@ class Parser {
                     ? constant
                     : nameFromLatex(constant, subscript, `${latex}_{${subscript}}`);
             return this.maybeCall({ kind: 'Identifier', name, span: this.span(start) });
+        }
+
+        const symbol = [...SYMBOL_NAMES].find(([, command]) => command === latex)?.[0];
+        if (symbol) {
+            this.advance();
+            return this.maybeCall({ kind: 'Identifier', name: symbol, span: this.span(start) });
         }
 
         const fn = FUNCTION_FOR_COMMAND.get(latex);
@@ -1042,8 +1057,13 @@ class Parser {
         switch (token.type) {
             case 'group-open': {
                 this.advance();
-                const expression = this.bindingLevel(true);
+                let expression = this.bindingLevel(true);
                 this.expect('group-close', "Expected '}'");
+                // The braces group already: brackets round the whole of what
+                // they hold are only drawn, and the emitter leaves them out.
+                while (expression.kind === 'Paren') {
+                    expression = expression.expression;
+                }
                 return expression;
             }
             case 'number':

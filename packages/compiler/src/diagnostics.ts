@@ -22,7 +22,8 @@ export const COMPILER_DIAGNOSTICS = {
         example: 'y = sine(x)',
     },
     'assign-to-builtin': {
-        summary: 'defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`',
+        summary:
+            "defining or binding a function's name, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`",
         example: 'pi = 3',
     },
     'theta-equation': {

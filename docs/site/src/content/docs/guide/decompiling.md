@@ -109,6 +109,12 @@ and are written as the `pointStyle` they are. The settings it mirrors into the
 graph are config. Its `randomSeed` is kept only for a graph that calls
 `random` or `shuffle`, where it decides what the graph draws.
 
+Random draws themselves are the one thing a round trip does not keep. Desmos
+seeds each `random` and `shuffle` partly from the id of the expression it sits
+in, and a compiled graph's ids are Axis's own, so a graph read back and
+compiled again draws different numbers from the same seed: the same kind of
+numbers, not the same ones.
+
 ## What a graph cannot say
 
 Some of a file never reaches the graph, so it cannot come back:

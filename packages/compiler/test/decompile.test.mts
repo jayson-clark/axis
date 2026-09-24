@@ -927,15 +927,14 @@ describe('a graph written in Desmos rather than in Axis', () => {
             items({ type: 'expression', id: '1', latex: 'g_{ap}=a-b\\operatorname{with}a=2,b=1' }),
         );
         assert.equal(source, 'gap = a - b with a = 2, b = 1\n');
+        // And compiled, it is written the same way back.
         assert.equal(
             (listOf(source)[0] as Expression).latex,
-            'g_{ap}=\\left(a-b\\operatorname{with}a=2,b=1\\right)',
+            'g_{ap}=a-b\\operatorname{with}a=2,b=1',
         );
     });
 
-    test('gives back a `with` or `for` definition without the brackets it compiled to', () => {
-        // The compiler brackets the value so its latex never depends on how
-        // `=` and `with` bind; the statement's `=` does that in source.
+    test('gives back a `with` or `for` definition as it was written', () => {
         for (const source of [
             'g = a - b with a = 2, b = 3\n',
             'f(x) = x n with n = 3\n',

@@ -649,8 +649,23 @@ class Context {
         return [property('color', color)];
     }
 
-    /** A hex colour as a palette name or a literal, or undefined for anything but hex. */
-    private hex(value: string): Expression | undefined {
+    /**
+     * A hex colour as a palette name or a literal, or undefined for anything
+     * but hex. A colour is CSS to the calculator, so one typed with space
+     * round it, or as an opaque `rgb(…)`, draws the same as its hex and is
+     * read as that. A translucent one has no spelling in Axis.
+     */
+    private hex(written: string): Expression | undefined {
+        const value = written.trim();
+        const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*(1|1\.0*)\s*)?\)$/i.exec(
+            value,
+        );
+        if (rgb) {
+            const channels = rgb.slice(1, 4).map(Number);
+            if (channels.every(channel => channel <= 255)) {
+                return this.hex(`#${channels.map(c => c.toString(16).padStart(2, '0')).join('')}`);
+            }
+        }
         const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
         if (!match) return undefined;
         const digits = match[1].toLowerCase();
@@ -676,10 +691,13 @@ class Context {
         if (!slider) return [];
         const entries: Property[] = [];
 
+        // Desmos writes a bound nobody set as the empty string, which is no
+        // bound at all.
+        const given = (latex: string | undefined) => latex !== undefined && latex !== '';
         const bounded =
-            slider.min !== undefined ||
-            slider.max !== undefined ||
-            slider.step !== undefined ||
+            given(slider.min) ||
+            given(slider.max) ||
+            given(slider.step) ||
             slider.hardMin === true ||
             slider.hardMax === true;
         if (bounded) {
@@ -796,6 +814,11 @@ class Context {
 
         for (const column of table.columns ?? []) {
             const at = { id: column.id ?? table.id };
+            // A column with no header and no values - Desmos keeps the empty
+            // one a table is drawn with - holds nothing and draws nothing.
+            const empty = (latex: string | undefined) =>
+                (latex ?? '').replace(/\\ /g, '').trim() === '';
+            if (empty(column.latex) && (column.values ?? []).every(empty)) continue;
             const header = this.latex(column.latex ?? '', { ...at, property: 'column' }, pending);
             if (!header) continue;
 

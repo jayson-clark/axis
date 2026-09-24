@@ -389,7 +389,7 @@ describe('with and for', () => {
         [withB(imp('x', 'n'), ['n', 3]), 'xn\\operatorname{with}n=3'],
         [
             eq(call('f', 'x'), withB(imp('x', 'n'), ['n', call('length', 'a')])),
-            'f\\left(x\\right)=\\left(xn\\operatorname{with}n=\\operatorname{length}\\left(a\\right)\\right)',
+            'f\\left(x\\right)=xn\\operatorname{with}n=\\operatorname{length}\\left(a\\right)',
         ],
         [
             withB(eq(call('f', 'x'), imp('x', 'n')), ['n', 3]),
