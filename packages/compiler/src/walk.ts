@@ -56,7 +56,7 @@ export function childrenOf(node: Expression): Expression[] {
         case 'Index':
             return [node.target, node.index];
         case 'Member':
-            return [node.target];
+            return [node.target, ...(node.arguments ?? [])];
         case 'Action':
             return [node.target, node.value];
         case 'With':
@@ -160,7 +160,10 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
         }
         case 'Member': {
             const target = map(node.target);
-            return target === node.target ? node : { ...node, target };
+            const args = node.arguments && list(node.arguments);
+            return target === node.target && args === node.arguments
+                ? node
+                : { ...node, target, ...(args && { arguments: args }) };
         }
         case 'Action': {
             const target = map(node.target);

@@ -1,0 +1,55 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Geometry - constructions on the Desmos geometry calculator
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// segment, circle, intersection and the rest exist only on the geometry
+// calculator, which config { calculator: GEOMETRY } asks for. A construction
+// is a value like any other: it can be named, measured, and built on.
+
+config {
+    calculator: GEOMETRY
+}
+
+"Geometry"
+
+A = (-4, -2) @ color: RED, label: "A", showLabel
+B = (4, -1) @ color: RED, label: "B", showLabel
+C = (-1, 4) @ color: RED, label: "C", showLabel
+
+folder "Objects" {
+    "Segments, a line, a ray and a vector between the points."
+    AB = segment(A, B) @ color: BLUE
+    BC = segment(B, C) @ color: BLUE
+    CA = segment(C, A) @ color: BLUE
+    ray(A, C) @ color: BLUE, lineStyle: DASHED
+    v = vector(A, B) @ color: PURPLE, hidden
+}
+
+folder "Constructions" {
+    "The circle through the three points has its centre where two perpendicular bisectors cross."
+    M1 = midpoint(A, B) @ hidden
+    M2 = midpoint(B, C) @ hidden
+    O = intersection(perpendicular(AB, M1), perpendicular(BC, M2)) @{
+        color: GREEN
+        label: "O"
+        showLabel
+    }
+    c = circle(O, A) @ color: GREEN
+    "A glider slides along the circle; drag it."
+    P = glider(c, 0.2) @ color: ORANGE
+}
+
+folder "Measurements" {
+    r = radius(c) @ hidden
+    T = polygon(A, B, C) @ color: BLUE, fillOpacity: 0.1
+    a = area(T) @ hidden
+    p = perimeter(T) @ hidden
+    len = AB.length @ hidden
+    theta_A = angle(B, A, C) @ color: RED
+}
+
+folder "Transformations" {
+    "The triangle turned about O, and its mirror image in AB."
+    rotate(T, O, pi / 3) @ color: PURPLE, fillOpacity: 0.1
+    reflect(T, line(A, B)) @ color: ORANGE, fillOpacity: 0.1
+}

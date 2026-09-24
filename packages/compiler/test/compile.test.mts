@@ -296,6 +296,22 @@ describe('config', () => {
         assert.equal(off.state.graph?.complex, undefined);
     });
 
+    test('puts a geometry token’s definition in the hidden folder, first', () => {
+        const list = listOf(
+            'config { calculator: GEOMETRY }\nfolder "F" {\n    $1 = (0, 0)\n}\n$2(x) = reflect(x, line((0, 0), (0, 1)))\n$1.x',
+        );
+        assert.deepEqual(
+            list.map(item => [item.type, item.id, (item as { folderId?: string }).folderId]),
+            [
+                ['folder', '**dcg_geo_folder**', undefined],
+                ['expression', 'expr_2', '**dcg_geo_folder**'],
+                ['expression', 'expr_3', '**dcg_geo_folder**'],
+                ['folder', 'folder_1', undefined],
+                ['expression', 'expr_4', undefined],
+            ],
+        );
+    });
+
     test('takes `actions` as a boolean, or `auto`', () => {
         assert.equal(compileAxis('config { actions: true }').options.actions, true);
         assert.equal(compileAxis('config { actions: auto }').options.actions, 'auto');

@@ -1087,7 +1087,19 @@ class Parser {
                     return expression;
                 }
                 const name = this.parseIdentifier();
-                expression = { kind: 'Member', target: expression, name, span: this.span(start) };
+                // `D.cdf(1)`: a member called with arguments, as `cdf(D, 1)`
+                // would be (§5.4). A bracket after `.x` is read the same way,
+                // and the checker makes it the product it has always been.
+                const args = this.at('(')
+                    ? this.parseBracket(')', () => this.parseElements(')')).value
+                    : undefined;
+                expression = {
+                    kind: 'Member',
+                    target: expression,
+                    name,
+                    ...(args && { arguments: args }),
+                    span: this.span(start),
+                };
             } else if (this.at('!')) {
                 this.next();
                 expression = { kind: 'Factorial', operand: expression, span: this.span(start) };

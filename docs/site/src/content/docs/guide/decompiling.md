@@ -2,7 +2,7 @@
 title: Decompiling
 description: Reading a Desmos graph back into an Axis file.
 sidebar:
-  order: 9
+  order: 10
 ---
 
 The compiler turns a file into a graph. The decompiler runs the other way: it

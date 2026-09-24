@@ -409,9 +409,13 @@ export function lowerProgram(
             return;
         }
         const read = properties(metadata?.entries ?? [], 'expression');
+        // A token is defined in the geometry calculator's hidden folder or
+        // nowhere - Desmos refuses the definition anywhere else - so that is
+        // where one goes, whichever folder the file wrote it in.
+        const folder = definesToken(expression) ? GEOMETRY_FOLDER_ID : folderId;
         // Built before the id is recorded: reading a property may expand a
         // macro, and the origin has to know.
-        const built = buildExpression(written, folderId, read);
+        const built = buildExpression(written, folder, read);
         const id = record('expr', span);
         list.push(defined({ type: 'expression', id, ...built }) as DesmosExpressionItem);
     };
@@ -873,6 +877,16 @@ export function lowerProgram(
 
     lowerFile(program.entry, undefined, false);
 
+    // The hidden folder the geometry calculator keeps its constructions in,
+    // first in the list as it keeps it, and its members straight after it.
+    const constructions = list.filter(
+        item => item.type !== 'folder' && item.folderId === GEOMETRY_FOLDER_ID,
+    );
+    if (constructions.length > 0) {
+        const rest = list.filter(item => !constructions.includes(item));
+        list.splice(0, list.length, GEOMETRY_FOLDER, ...constructions, ...rest);
+    }
+
     const ticker = entryTicker ?? importedTicker;
     const config = new Map([...importedConfigs, ...entryConfigs].flatMap(layer => [...layer]));
     const { options, graph, flags } = splitConfig(config, ticker !== undefined);
@@ -1018,6 +1032,35 @@ function splitConfig(
 // ─────────────────────────────────────────────────────────────────────────────
 // Values
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** The id of the folder the geometry calculator keeps its constructions in. */
+export const GEOMETRY_FOLDER_ID = '**dcg_geo_folder**';
+
+/** That folder, as the geometry calculator writes it. */
+const GEOMETRY_FOLDER: DesmosExpression = {
+    type: 'folder',
+    id: GEOMETRY_FOLDER_ID,
+    title: 'geometry',
+    collapsed: true,
+    secret: true,
+};
+
+/**
+ * Whether a statement defines a geometry token: `$12 = …`, or a transformation
+ * the calculator made, `$13(x) = reflect(x, $12)`.
+ */
+function definesToken(expression: Expression): boolean {
+    if (
+        expression.kind !== 'Comparison' ||
+        expression.operators.length !== 1 ||
+        expression.operators[0] !== '='
+    ) {
+        return false;
+    }
+    const left = expression.operands[0];
+    const name = left.kind === 'Call' ? left.callee : left;
+    return name.kind === 'Identifier' && name.name.startsWith('$');
+}
 
 /** An image's `dragMode` as the flag Desmos keeps for it: dragged, or left off. */
 function imageDraggable(mode: string | undefined): true | undefined {

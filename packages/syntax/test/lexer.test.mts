@@ -257,6 +257,15 @@ describe('tokens', () => {
         );
     });
 
+    test('a geometry token is `$` and digits, and one name', () => {
+        assert.deepEqual(kinds('$12 + $3'), ['identifier', 'punctuation', 'identifier']);
+        assert.equal(lex('$12').tokens[0].text, '$12');
+        assert.deepEqual(
+            lex('$x').diagnostics.map(d => d.code),
+            ['unexpected-character'],
+        );
+    });
+
     test('a run of unknown characters is one error', () => {
         const { tokens, diagnostics } = lex('a $%& b');
         assert.deepEqual(kinds('a $%& b'), ['identifier', 'error', 'identifier']);

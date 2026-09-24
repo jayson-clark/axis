@@ -78,6 +78,7 @@ import {
 } from '@axis-dsl/syntax';
 import type { DecompilerDiagnosticCode } from './diagnostics';
 import { parseLatex, parseLatexStatement } from './latex/index';
+import { GEOMETRY_FOLDER_ID } from './lower';
 
 /** A graph to decompile: what {@link compileAxis} hands back, or a calculator's own state. */
 export interface DecompileInput {
@@ -130,14 +131,11 @@ export interface DecompileExpressionOptions {
 // Entry points
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * The folder a geometry calculator keeps its constructions in. It adds one,
- * hidden, to every graph, so it is the calculator's rather than the file's:
- * written into the file it would come back as a second one. Anything in it is
- * written at the top level, which is the best Axis can do until it has
- * geometry of its own.
- */
-const GEOMETRY_FOLDER_ID = '**dcg_geo_folder**';
+// The folder a geometry calculator keeps its constructions in is the
+// calculator's rather than the file's: it adds one, hidden, to every graph, and
+// written into the file it would come back as a second one. What is in it is
+// written at the top level - the `$12 = …` definitions of its tokens - and
+// compiled, those go back into it (lower.ts).
 
 /** Turn a graph back into the `.axis` source that builds it. */
 export function decompileAxis(input: DecompileInput, options: PrintOptions = {}): DecompileResult {

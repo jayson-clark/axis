@@ -489,7 +489,7 @@
                 },
                 {
                     "name": "support.function.geometry.axis",
-                    "match": "\\b(?:polygon|polygonGlider|polygonInteriorDirectedAngles|distance|midpoint)\\b"
+                    "match": "\\b(?:polygon|polygonGlider|polygonInteriorDirectedAngles|distance|midpoint|segment|line|ray|vector|circle|arc|glider|parallel|perpendicular|intersection|strictintersection|angle|directedangle|angles|directedangles|anglebisector|coterminal|supplement|center|radius|area|perimeter|start|end|vertices|segments|translate|rotate|dilate|reflect|triangle|sphere)\\b"
                 },
                 {
                     "name": "support.function.color.axis",
@@ -498,6 +498,14 @@
                 {
                     "name": "support.function.combinatorics.axis",
                     "match": "\\b(?:nCr|nPr|factorial)\\b"
+                },
+                {
+                    "name": "support.function.distribution.axis",
+                    "match": "\\b(?:normaldist|tdist|chisqdist|uniformdist|binomialdist|poissondist|geodist|pdf|cdf)\\b"
+                },
+                {
+                    "name": "support.function.inference.axis",
+                    "match": "\\b(?:ttest|ztest|zproptest|chisqtest|chisqgof|score|pleft|pright|dof|estimate|stderr|conf|null|lower|upper)\\b"
                 },
                 {
                     "name": "support.function.complex.axis",
@@ -526,6 +534,10 @@
                 {
                     "name": "variable.language.axis",
                     "match": "\\b(?:width|height|index|dt)\\b"
+                },
+                {
+                    "name": "variable.other.token.axis",
+                    "match": "\\$\\d+"
                 }
             ]
         },

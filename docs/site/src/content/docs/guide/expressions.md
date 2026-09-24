@@ -195,6 +195,31 @@ The
 [function reference](../../reference/functions/) lists every function Axis
 knows.
 
+## Calling a member
+
+A member can be called. `D.cdf(1)` is `cdf(D, 1)` written after the thing it
+is about, which is how Desmos writes a distribution's methods and a test's, and
+how it reads a list function with more arguments: `L.quantile(0.5)`.
+
+```axis
+D = normaldist(0, 1)
+y = D.pdf(x)
+p = D.cdf(-1, 1)
+xs = [3, 1, 4, 1, 5]
+q = xs.quantile(0.9)
+```
+
+A hypothesis test is read the same way: its members are its score, its
+p-values, its degrees of freedom, and a confidence interval at a level.
+
+```axis
+before = [12, 15, 11, 14]
+after = [14, 17, 13, 15]
+T = ttest(before, after)
+p = T.pleft
+lo = T.conf(0.95).lower
+```
+
 ## Complex numbers
 
 `config { allowComplex: true }` puts the graph in complex mode. There `i` is

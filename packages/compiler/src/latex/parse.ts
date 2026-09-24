@@ -138,7 +138,11 @@ function tokenize(latex: string): Token[] {
 
         const number = /^(?:\d+(?:\.\d+)?|\.\d+)/.exec(rest);
         if (number && !rest.startsWith('...')) {
-            push({ type: 'number', text: number[0], start, end: start + number[0].length });
+            // `3.` is 3 to Desmos, which keeps whatever was typed: a point
+            // with nothing after it, and no member name or range to start.
+            const bare = /^\d+\.(?![.\d]|[a-zA-Z]|\\operatorname)/.exec(rest);
+            const end = start + (bare ? bare[0].length : number[0].length);
+            push({ type: 'number', text: number[0], start, end });
             continue;
         }
 
@@ -551,7 +555,20 @@ class Parser {
             } else if (token.type === 'symbol' && token.text === '.') {
                 this.advance();
                 const name = this.memberName();
-                target = { kind: 'Member', target, name, span: this.span(start) };
+                // `D.\operatorname{cdf}\left(1\right)`: a member called, which
+                // is how Desmos writes a distribution's and a test's methods.
+                const next = this.peek();
+                const args =
+                    next.type === 'open' && next.delimiter === '('
+                        ? (this.advance(), this.elements('(', false))
+                        : undefined;
+                target = {
+                    kind: 'Member',
+                    target,
+                    name,
+                    ...(args && { arguments: args }),
+                    span: this.span(start),
+                };
             } else if (token.type === 'open' && token.delimiter === '[') {
                 // Brackets after anything index it; that is Desmos' reading,
                 // and the emitter never writes a list beside a value.
@@ -686,6 +703,24 @@ class Parser {
 
         if (name === 'sum' || name === 'prod' || name === 'int') {
             return this.bigOperator(name, start);
+        }
+
+        if (name === 'token') {
+            // `\token{12}`, a construction the geometry calculator named for
+            // itself, which Axis writes `$12`.
+            this.advance();
+            this.expect('group-open', "Expected '{' after '\\token'");
+            const digits = this.peek();
+            if (digits.type !== 'number' || !/^\d+$/.test(digits.text)) {
+                throw this.error("Expected the token's number");
+            }
+            this.advance();
+            this.expect('group-close', "Expected '}'");
+            return this.maybeCall({
+                kind: 'Identifier',
+                name: `$${digits.text}`,
+                span: this.span(start),
+            });
         }
 
         const constant = CONSTANT_FOR_COMMAND.get(latex);

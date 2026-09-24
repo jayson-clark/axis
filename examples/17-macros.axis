@@ -53,7 +53,7 @@ y = WAVE(1 + 2, 0) @ color: ORANGE, lineOpacity: 0.4
 // A macro is in scope for the whole file, wherever it is written and whatever
 // it is written above - so it belongs at the top level, outside every block. Its
 // body may be a whole equation, which then stands as a statement of its own.
-macro CIRCLE(radius) = x ^ 2 + y ^ 2 = radius ^ 2
+macro CIRCLE(size) = x ^ 2 + y ^ 2 = size ^ 2
 
 folder "Everywhere an expression goes" {
     // Inside a block is no different: the substitution happens first, and

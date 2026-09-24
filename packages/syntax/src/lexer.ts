@@ -146,6 +146,16 @@ export function lex(source: string): LexResult {
             continue;
         }
 
+        if (c === '$' && isDigit(source[at + 1] ?? '')) {
+            // `$114`: one of the names the geometry calculator gives a
+            // construction nobody named (§2.3). Digits only, since that is
+            // all Desmos ever writes in one.
+            let end = at + 1;
+            while (end < source.length && isDigit(source[end])) end++;
+            push('identifier', end);
+            continue;
+        }
+
         if (isDigit(c) || (c === '.' && isDigit(source[at + 1] ?? ''))) {
             push('number', scanNumber(source, at));
             continue;

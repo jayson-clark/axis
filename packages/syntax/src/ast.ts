@@ -411,11 +411,13 @@ export interface Index extends NodeBase {
     index: Expression;
 }
 
-/** `P.x`, `L.count` */
+/** `P.x`, `L.count`, and called: `D.cdf(1)`, `L.quantile(0.5)` */
 export interface Member extends NodeBase {
     kind: 'Member';
     target: Expression;
     name: Identifier;
+    /** The arguments of a member that is called; absent for one that is not. */
+    arguments?: Expression[];
 }
 
 /** `n!` */
