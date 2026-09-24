@@ -77,6 +77,9 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 - Decompiling reads a number with nothing after its point, `3.`, which Desmos
   accepts and keeps as typed, as the number it is rather than leaving the
   expression out.
+- The harness waits for Desmos to analyze every expression before it counts a
+  graph as settled. A big graph on a slow machine could go quiet before Desmos
+  had analyzed any of it, so every expression read as having no analysis.
 
 ## 2.3.0 - 2026-09-23
 
