@@ -10,6 +10,8 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+## 2.4.0 - 2026-09-24
+
 ### Added
 
 - `config { calculator: GEOMETRY }` and `calculator: GRAPHING_3D` draw a graph
