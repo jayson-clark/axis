@@ -74,7 +74,6 @@ function levelOf(node: Expression): number {
                 case '-':
                     return LEVEL.additive;
                 case '*':
-                case '×':
                 case 'implicit':
                     return LEVEL.product;
                 case '/':
@@ -95,8 +94,10 @@ function levelOf(node: Expression): number {
             // it - but not as the base of a power, where `dt^{2}` squares the
             // differential.
             return node.operator === 'int' ? LEVEL.fraction : LEVEL.prefix;
-        case 'Prime':
         case 'Call':
+            // `cross(a, b)` is written as the product `a\times b`.
+            return isCross(node) ? LEVEL.product : LEVEL.postfix;
+        case 'Prime':
         case 'Index':
         case 'Member':
         case 'Factorial':
@@ -120,9 +121,16 @@ function opensRight(node: Expression): boolean {
             return opensRight(node.operand);
         case 'Binary':
             return node.operator !== '^' && node.operator !== '/' && opensRight(node.right);
+        case 'Call':
+            return isCross(node) && opensRight(node.arguments[1]);
         default:
             return false;
     }
+}
+
+/** `cross(a, b)`, which Desmos has as the operator `\times`, not a function. */
+function isCross(node: Expression): node is Call {
+    return node.kind === 'Call' && node.callee.name === 'cross' && node.arguments.length === 2;
 }
 
 /** A sum, a product or an integral, written bare: the right side of a product. */
@@ -301,7 +309,7 @@ const COMPARISON = {
 } as const;
 
 function binary(
-    operator: '+' | '-' | '*' | '×' | '/' | '^' | 'implicit',
+    operator: '+' | '-' | '*' | '/' | '^' | 'implicit',
     left: Expression,
     right: Expression,
 ): string {
@@ -317,8 +325,6 @@ function binary(
         // brackets the whole of it.
         case '*':
             return join(join(factor(left), '\\cdot'), open(right) ?? at(right, LEVEL.prefix));
-        case '×':
-            return join(join(factor(left), '\\times'), open(right) ?? at(right, LEVEL.prefix));
         case 'implicit':
             return juxtapose(
                 factor(left),
@@ -418,6 +424,12 @@ function call({ callee, arguments: args }: Call): string {
 
     if (name === 'sqrt' && args.length === 1) {
         return `\\sqrt{${braced(args[0])}}`;
+    }
+    if (name === 'cross' && args.length === 2) {
+        // Desmos has no `cross` function: its cross product is `\times`, which
+        // is `\cdot`'s product for numbers and the cross product of 3D points.
+        const [left, right] = args;
+        return join(join(factor(left), '\\times'), open(right) ?? at(right, LEVEL.prefix));
     }
     if (name === 'log' && args.length === 2) {
         const [argument, base] = args;

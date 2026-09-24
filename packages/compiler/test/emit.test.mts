@@ -384,6 +384,14 @@ describe('actions', () => {
     ]);
 });
 
+describe('cross', () => {
+    cases([
+        [call('cross', 'u', 'v'), 'u\\times v'],
+        [pow(call('cross', 'u', 'v'), 2), '\\left(u\\times v\\right)^{2}'],
+        [member(call('cross', 'u', 'v'), 'z'), '\\left(u\\times v\\right).z'],
+    ]);
+});
+
 describe('with and for', () => {
     cases([
         [withB(imp('x', 'n'), ['n', 3]), 'xn\\operatorname{with}n=3'],

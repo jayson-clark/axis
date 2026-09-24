@@ -41,13 +41,13 @@ t = 1
 y = 3cos(t) x + 2pi
 ```
 
-`×` multiplies too, but between two 3D points it is the cross product, where
-`*` is the dot product - as `\times` and `\cdot` are in Desmos:
+Between two 3D points, `*` is the dot product, and `cross(u, v)` the cross
+product - Desmos' `\cdot` and `\times`:
 
 ```axis
 u = (1, 2, 3)
 v = (4, 5, 6)
-n = u × v
+n = cross(u, v)
 d = u * v
 ```
 

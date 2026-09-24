@@ -546,6 +546,15 @@ export const AXIS_MANIFEST = {
             category: 'math',
         },
         {
+            name: 'cross',
+            detail: 'The cross product of two 3D points; for two numbers, their product',
+            documentation:
+                "Desmos' `\\times`. `u * v` is the dot product of two 3D points, and `cross(u, v)` the vector at right angles to both.",
+            example: 'u = (1, 2, 3)\nv = (4, 5, 6)\nn = cross(u, v)\nd = u * v',
+            snippet: 'cross(${1:u}, ${2:v})',
+            category: 'math',
+        },
+        {
             name: 'erf',
             detail: 'Error function',
             documentation:

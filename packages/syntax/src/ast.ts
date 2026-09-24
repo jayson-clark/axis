@@ -341,11 +341,7 @@ export interface Unary extends NodeBase {
  */
 export interface Binary extends NodeBase {
     kind: 'Binary';
-    /**
-     * `×` is `\times`, which multiplies as `*` does but is the cross product
-     * of two 3D points, where `*` - `\cdot` - is their dot product.
-     */
-    operator: '+' | '-' | '*' | '×' | '/' | '^' | 'implicit';
+    operator: '+' | '-' | '*' | '/' | '^' | 'implicit';
     left: Expression;
     right: Expression;
 }

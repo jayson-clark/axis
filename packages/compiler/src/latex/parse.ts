@@ -499,14 +499,15 @@ class Parser {
 
         for (;;) {
             const token = this.peek();
-            let operator: '*' | '×' | '/' | 'implicit';
+            let operator: '*' | '/' | 'implicit' | 'cross';
             let written = true;
 
             if (token.type === 'command' && token.name === 'cdot') {
                 operator = '*';
             } else if (token.type === 'command' && token.name === 'times') {
-                // Not `\cdot`: between two 3D points it is the cross product.
-                operator = '×';
+                // Not `\cdot`: between two 3D points it is the cross product,
+                // which Axis writes `cross(a, b)`.
+                operator = 'cross';
             } else if (token.type === 'command' && token.name === 'div') {
                 operator = '/';
             } else if (token.type === 'symbol' && (token.text === '*' || token.text === '/')) {
@@ -526,7 +527,12 @@ class Parser {
                 this.advance();
             }
             const right = this.prefix();
-            left = { kind: 'Binary', operator, left, right, span: this.span(start) };
+            // As a call's arguments, the operands need no brackets of their own.
+            const bare = (node: Expression) => (node.kind === 'Paren' ? node.expression : node);
+            left =
+                operator === 'cross'
+                    ? this.call('cross', [bare(left), bare(right)], start, start)
+                    : { kind: 'Binary', operator, left, right, span: this.span(start) };
         }
     }
 

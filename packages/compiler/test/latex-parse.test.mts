@@ -89,6 +89,7 @@ describe('what Desmos writes', () => {
             // `\\times` multiplies numbers, and crosses 3D points.
             ['2\\times x', cross(2, 'x')],
             ['a\\times b\\cdot c', mul(cross('a', 'b'), 'c')],
+            ['\\left(a-b\\right)\\times\\left(c-d\\right)', cross(sub('a', 'b'), sub('c', 'd'))],
             ['2x', imp(2, 'x')],
             ['2\\pi', imp(2, 'pi')],
             // Each letter is a variable of its own.

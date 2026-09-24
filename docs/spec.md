@@ -62,7 +62,7 @@ read becomes an `error` token and a diagnostic.
 | `string`     | `"a \"b\" c"`                                                               | Escapes: `\"`, `\\`, `\n`. Unterminated at end of line is an error.                  |
 | `color`      | `#c74440`, `#fff`                                                           | `#` followed by exactly 3 or 6 hex digits. Any other `#` is an error.                |
 | keywords     | `folder table config import image ticker style macro as for with step soft` | Reserved: never identifiers. `min`/`max` are contextual (§4.4), not keywords.        |
-| punctuation  | `( ) [ ] { } , ; : . .. ... = < <= > >= + - * × / ^ ! ~ \| -> @ @{ '`       | `@{` is one token only with no space between. `'` is a prime, one to a token.        |
+| punctuation  | `( ) [ ] { } , ; : . .. ... = < <= > >= + - * / ^ ! ~ \| -> @ @{ '`         | `@{` is one token only with no space between. `'` is a prime, one to a token.        |
 | `newline`    |                                                                             |                                                                                      |
 | `error`      |                                                                             | Anything else.                                                                       |
 
@@ -369,7 +369,7 @@ Loosest first. Everything is left-associative unless noted.
 | 3     | `target -> value`                                                           | `Action`                                        |
 | 4     | `= < <= > >= ~`, chainable: `1 < x < 2`                                     | `Comparison`                                    |
 | 5     | `+ -`                                                                       | `Binary`                                        |
-| 6     | `* × /` **and implicit multiplication**                                     | `Binary` (`op: 'implicit'` for juxtaposition)   |
+| 6     | `* /` **and implicit multiplication**                                       | `Binary` (`op: 'implicit'` for juxtaposition)   |
 | 7     | prefix `-`, `+`; `d/dx`, whose operand is a whole product (§5.9)            | `Unary`, `Derivative`                           |
 | 8     | `^`, **right**-associative; the exponent may start with `-`                 | `Binary`                                        |
 | 9     | postfix: call `f(…)`, prime `f'(…)`, index `L[…]`, member `.x`, `!`         | `Call`, `Prime`, `Index`, `Member`, `Factorial` |
@@ -388,9 +388,10 @@ x^10                      → x^{10}
 2^3^2    = 2^(3^2)
 ```
 
-`×` is `\times`: it multiplies numbers and lists as `*` does, but between two
-3D points it is their cross product, where `*` - `\cdot` - is their dot
-product. So the two are kept apart, and a graph's `\times` reads back as `×`.
+`cross(u, v)` is Desmos' `\times`, which has no function of its own: it
+multiplies numbers and lists as `*` does, but between two 3D points it is their
+cross product, where `*` - `\cdot` - is their dot product. It is written
+`u\times v`, and a graph's `\times` reads back as `cross(…)`.
 
 Implicit multiplication is juxtaposition of two operands with nothing between
 them: `2x`, `2pi x`, `3cos(t)`, `(a)(b)`, `x y`. An operand that starts with a

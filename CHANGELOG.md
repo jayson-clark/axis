@@ -67,9 +67,10 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   anywhere but as a statement of its own, and the `name` value type, for a
   property that takes a name.
 
-- `×` is Desmos' `\times`: multiplication for numbers, and the cross product of
-  two 3D points, where `*` is their dot product. A graph's `\times` used to be
-  read as `*`, which turned every cross product into a dot product.
+- `cross(u, v)`, the cross product of two 3D points, where `u * v` is their dot
+  product. It is Desmos' `\times`, which has no function of its own. A graph's
+  `\times` used to be read as `*`, which turned every cross product into a dot
+  product.
 - A slice may leave an end off: `L[2...]`, `L[...3]`, `L[[2, 4...]]`, as Desmos
   allows in an index. Anywhere else a range still needs both ends, reported as
   `open-range` (#76).
