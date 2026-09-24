@@ -318,6 +318,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
         if (definition.kind === 'function') {
             for (const parameter of definition.parameters) {
                 checkSubscripts(parameter);
+                checkBindable(parameter, 'a parameter');
                 bound.add(parameter.name);
             }
         }
@@ -433,6 +434,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 // Desmos will not take as the variable, though a variable the
                 // file defines it shadows without a word.
                 checkSubscripts(node.variable);
+                checkBindable(node.variable, `the variable of a \`${node.operator}\``);
                 if (scope.bound.has(node.variable.name)) {
                     report(
                         'rebound-variable',
@@ -459,6 +461,10 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 const bound = new Set(scope.bound);
                 for (const binding of node.bindings) {
                     checkSubscripts(binding.name);
+                    checkBindable(
+                        binding.name,
+                        `a \`${node.kind === 'With' ? 'with' : 'for'}\` binding`,
+                    );
                     checkExpression(binding.value, scope);
                     bound.add(binding.name.name);
                 }
@@ -656,6 +662,22 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 'requires-complex-mode',
                 `\`${name}\` is only known in complex mode; turn it on with \`config { allowComplex: true }\`.`,
                 at.span,
+            );
+        }
+    };
+
+    /**
+     * `f(mean) = …`: a built-in's name bound to something else, which Desmos
+     * refuses for a parameter, a `with` or `for` binding and the variable of a
+     * sum alike - "'mean' is already defined". A macro's parameter is not
+     * checked, since it is substituted away before Desmos sees it.
+     */
+    const checkBindable = (name: Identifier, what: string): void => {
+        if (RESERVED_NAMES.has(name.name)) {
+            report(
+                'assign-to-builtin',
+                `\`${name.name}\` is built in, so it cannot be ${what}; give it another name.`,
+                name.span,
             );
         }
     };

@@ -166,6 +166,9 @@ export function lowerProgram(
     // A graph has one ticker, so the same bargain: an imported file may bring
     // one, and the entry file's replaces it rather than merging with it.
     let importedTicker: TickerState | undefined;
+    // The statements that define a geometry token, placed once the calculator
+    // the graph is for is known.
+    const tokens = new Set<DesmosExpressionItem>();
     let entryTicker: TickerState | undefined;
 
     // Ids are handed out in the order expressions reach the list, so the same
@@ -416,15 +419,13 @@ export function lowerProgram(
             return;
         }
         const read = properties(metadata?.entries ?? [], 'expression');
-        // A token is defined in the geometry calculator's hidden folder or
-        // nowhere - Desmos refuses the definition anywhere else - so that is
-        // where one goes, whichever folder the file wrote it in.
-        const folder = definesToken(expression) ? GEOMETRY_FOLDER_ID : folderId;
         // Built before the id is recorded: reading a property may expand a
         // macro, and the origin has to know.
-        const built = buildExpression(written, folder, read);
+        const built = buildExpression(written, folderId, read);
         const id = record('expr', span);
-        list.push(defined({ type: 'expression', id, ...built }) as DesmosExpressionItem);
+        const item = defined({ type: 'expression', id, ...built }) as DesmosExpressionItem;
+        list.push(item);
+        if (definesToken(expression)) tokens.add(item);
     };
 
     const lowerNote = (
@@ -909,19 +910,21 @@ export function lowerProgram(
 
     lowerFile(program.entry, undefined, false);
 
-    // The hidden folder the geometry calculator keeps its constructions in,
-    // first in the list as it keeps it, and its members straight after it.
-    const constructions = list.filter(
-        item => item.type !== 'folder' && item.folderId === GEOMETRY_FOLDER_ID,
-    );
-    if (constructions.length > 0) {
-        const rest = list.filter(item => !constructions.includes(item));
-        list.splice(0, list.length, GEOMETRY_FOLDER, ...constructions, ...rest);
-    }
-
     const ticker = entryTicker ?? importedTicker;
     const config = new Map([...importedConfigs, ...entryConfigs].flatMap(layer => [...layer]));
     const { options, graph, flags } = splitConfig(config, ticker !== undefined);
+
+    // A token is defined in the geometry calculator's hidden folder or
+    // nowhere - Desmos refuses the definition anywhere else - so on that
+    // calculator that is where one goes, whichever folder the file wrote it
+    // in: first in the list as the calculator keeps it, its members straight
+    // after it. Any other calculator has no such folder, and the checker has
+    // said so; the definitions stay where they were written.
+    if (tokens.size > 0 && graph.product === AXIS_CALCULATOR_PRODUCTS.GEOMETRY) {
+        const constructions = [...tokens].map(item => ({ ...item, folderId: GEOMETRY_FOLDER_ID }));
+        const rest = list.filter(item => !tokens.has(item as DesmosExpressionItem));
+        list.splice(0, list.length, GEOMETRY_FOLDER, ...constructions, ...rest);
+    }
 
     const state: GraphState = {
         version: 11,

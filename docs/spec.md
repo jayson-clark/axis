@@ -98,6 +98,8 @@ into Desmos' spelling:
 - an explicit subscript is braced: `x_1` → `x_{1}`, `x_12` → `x_{12}`
 - a Greek letter or constant from the manifest becomes its command: `theta` →
   `\theta`, and `theta2` → `\theta_{2}`
+- `pm` and `mp` are `\pm` and `\mp`, the two symbols Desmos lets a graph
+  name something with - on their own only, so `pmax` is `p_{max}`
 - a geometry token, `$` and digits, is `\token{…}`: `$12` → `\token{12}`. The
   geometry calculator names the constructions nobody named this way, and a
   token is a name like any other - defined once (`$12 = segment(A, B)`), used
@@ -691,45 +693,45 @@ The checker and the compiler report these codes. Every one is an error, and
 none of them stops the rest of the file compiling: a value that is wrong is
 left off, and a statement that cannot be written at all is left out.
 
-| Code                    | What                                                                             |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `unknown-function`      | a call on a name that is not a function (§5.3)                                   |
-| `assign-to-builtin`     | defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`   |
-| `theta-equation`        | `theta = …`, which Desmos will not graph - write `r = …` (§5.5)                  |
-| `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)   |
-| `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have          |
-| `statement-only`        | a chart or a regression `~` anywhere but as a statement of its own               |
-| `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
-| `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
-| `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |
-| `rebound-variable`      | a `sum`, `prod` or `int` variable already bound where it stands                  |
-| `unexpected-string`     | a string where a value belongs                                                   |
-| `unknown-property`      | a property no placement has                                                      |
-| `misplaced-property`    | a property this placement does not take, directly or through a style             |
-| `duplicate-property`    | a property given twice in one clause                                             |
-| `invalid-value`         | a value of the wrong type for its property (§4.2)                                |
-| `invalid-enum`          | an enum value the property does not list                                         |
-| `invalid-color`         | a colour that is not one (§4.3)                                                  |
-| `unexpected-range`      | a range for a property that takes none                                           |
-| `invalid-column`        | a table column that is an equation (`x = 5`)                                     |
-| `misplaced-config`      | `config` inside a folder                                                         |
-| `misplaced-ticker`      | `ticker` inside a folder                                                         |
-| `misplaced-style`       | `style` inside a folder                                                          |
-| `misplaced-macro`       | `macro` inside a folder                                                          |
-| `nested-folder`         | a folder inside a folder                                                         |
-| `duplicate-config`      | a second `config` in one file                                                    |
-| `duplicate-ticker`      | a second `ticker` in one file                                                    |
-| `duplicate-macro`       | a second macro of one name anywhere in the compilation                           |
-| `macro-collision`       | a macro named after a builtin, a function or a variable                          |
-| `macro-arity`           | a macro used with the wrong number of arguments, or with or without `()` wrongly |
-| `macro-recursion`       | a macro that expands into itself                                                 |
-| `duplicate-style`       | a second style of one name anywhere in the compilation                           |
-| `unknown-style`         | `use:` naming no style                                                           |
-| `style-cycle`           | a style that uses itself, reported at the `use:` that closes the loop            |
-| `unresolved-import`     | an import that cannot be read                                                    |
-| `import-cycle`          | an import that closes a cycle                                                    |
-| `unresolved-image`      | an image file that cannot be read                                                |
-| `invalid-image`         | an image path that is not a picture by its extension                             |
+| Code                    | What                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `unknown-function`      | a call on a name that is not a function (§5.3)                                                   |
+| `assign-to-builtin`     | defining or binding a function's name, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false` |
+| `theta-equation`        | `theta = …`, which Desmos will not graph - write `r = …` (§5.5)                                  |
+| `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)                   |
+| `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have                          |
+| `statement-only`        | a chart or a regression `~` anywhere but as a statement of its own                               |
+| `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                                    |
+| `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                                      |
+| `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                                       |
+| `rebound-variable`      | a `sum`, `prod` or `int` variable already bound where it stands                                  |
+| `unexpected-string`     | a string where a value belongs                                                                   |
+| `unknown-property`      | a property no placement has                                                                      |
+| `misplaced-property`    | a property this placement does not take, directly or through a style                             |
+| `duplicate-property`    | a property given twice in one clause                                                             |
+| `invalid-value`         | a value of the wrong type for its property (§4.2)                                                |
+| `invalid-enum`          | an enum value the property does not list                                                         |
+| `invalid-color`         | a colour that is not one (§4.3)                                                                  |
+| `unexpected-range`      | a range for a property that takes none                                                           |
+| `invalid-column`        | a table column that is an equation (`x = 5`)                                                     |
+| `misplaced-config`      | `config` inside a folder                                                                         |
+| `misplaced-ticker`      | `ticker` inside a folder                                                                         |
+| `misplaced-style`       | `style` inside a folder                                                                          |
+| `misplaced-macro`       | `macro` inside a folder                                                                          |
+| `nested-folder`         | a folder inside a folder                                                                         |
+| `duplicate-config`      | a second `config` in one file                                                                    |
+| `duplicate-ticker`      | a second `ticker` in one file                                                                    |
+| `duplicate-macro`       | a second macro of one name anywhere in the compilation                                           |
+| `macro-collision`       | a macro named after a builtin, a function or a variable                                          |
+| `macro-arity`           | a macro used with the wrong number of arguments, or with or without `()` wrongly                 |
+| `macro-recursion`       | a macro that expands into itself                                                                 |
+| `duplicate-style`       | a second style of one name anywhere in the compilation                                           |
+| `unknown-style`         | `use:` naming no style                                                                           |
+| `style-cycle`           | a style that uses itself, reported at the `use:` that closes the loop                            |
+| `unresolved-import`     | an import that cannot be read                                                                    |
+| `import-cycle`          | an import that closes a cycle                                                                    |
+| `unresolved-image`      | an image file that cannot be read                                                                |
+| `invalid-image`         | an image path that is not a picture by its extension                                             |
 
 A diagnostic about an imported file carries that file's `path`, and its span
 is into that file; one about the entry file carries none. A misplaced
@@ -884,7 +886,19 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **What a person typed is kept to what it means**: `\token{12}` is `$12`, and
   the token definitions in the geometry calculator's hidden folder are written
   at the top level, where compiling puts them back. A number with nothing
-  after its point, `3.`, is 3.
+  after its point, `3.`, is 3, and so is the `1.` of `1.y`, which is 1 times
+  `y`. Digits grouped with a space, `20\ 000`, are one number. `\pm` and `\mp`
+  are names, `pm` and `mp`. A colour typed with space round it, or as an opaque
+  `rgb(…)`, is its hex, and a table column with no header and no values is
+  left out, since it holds and draws nothing.
+- **Brackets that only group are dropped**: round all of a script,
+  `x^{\left(n\right)}`, or of a value with bindings, and a product with a
+  number on its right is written `*` - so decompiling what a decompiled file
+  compiles to gives back the same file.
+- **Random draws are the one thing not kept.** Desmos seeds each `random` and
+  `shuffle` partly from the id of the expression it is in, and a compiled
+  graph's ids are Axis's own (§9), so a graph read back and compiled draws
+  different numbers - the same kind of numbers, from the same seed.
 - **What Axis cannot write** is reported, never thrown. Latex `parseLatex`
   has no reading for (`\sum`, `\int`, …) leaves out the expression - or only
   the property, if that is where it is - and a `// unsupported: <latex>`

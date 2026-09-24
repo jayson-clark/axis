@@ -59,6 +59,16 @@ export const FUNCTION_FOR_COMMAND: ReadonlyMap<string, string> = new Map(
     ),
 );
 
+/**
+ * Symbols Desmos lets a graph use as a name, written by the command alone:
+ * `\pm=\left[-1,1\right]` defines a list called ±. Unlike a Greek letter
+ * they only ever stand alone, so `pmax` is still p with a subscript.
+ */
+export const SYMBOL_NAMES: ReadonlyMap<string, string> = new Map([
+    ['pm', '\\pm'],
+    ['mp', '\\mp'],
+]);
+
 /** `\pi` → `pi`, and every other constant with a command. */
 export const CONSTANT_FOR_COMMAND: ReadonlyMap<string, string> = new Map(
     [...AXIS_LATEX_FOR_CONSTANT].map(([name, latex]) => [latex, name] as const),
@@ -94,6 +104,10 @@ export function identifierLatex(name: string): string {
     }
     if (OPERATOR_NAMES.has(name)) {
         return `\\operatorname{${name}}`;
+    }
+    const symbol = SYMBOL_NAMES.get(name);
+    if (symbol) {
+        return symbol;
     }
     if (FUNCTION_NAMES.has(name)) {
         return getFunctionLatex(name);

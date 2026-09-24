@@ -84,6 +84,19 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   it on, so `sqrt(-1)` stayed undefined. A file that says `allowComplex: true`
   now draws in complex mode. The decompiler writes `allowComplex` only for a
   graph that is in complex mode.
+- A definition whose value has `with` bindings is written without brackets, as
+  Desmos writes it. In brackets a run of actions could read as a point (#78).
+- `1.y` in a graph's latex is read as 1 times `y`, as Desmos reads it, not as
+  a member of 1 (#79).
+- A function parameter, a `with` or `for` binding or a `sum` variable named
+  after a built-in is `assign-to-builtin`, since Desmos refuses each (#77).
+- Decompiling reads `\pm` and `\mp`, which Desmos treats as names, as `pm`
+  and `mp`; a colour with space round it or written `rgb(…)` as its hex; and
+  leaves out a table column with nothing in it, and a slider's empty bounds
+  (#82).
+- Decompiled source compiles to latex that decompiles to the same source: a
+  product with a number on its right is written `*`, and brackets that only
+  group a script or a `with` inside a `for` are dropped (#83).
 - Decompiling reads a number with nothing after its point, `3.`, which Desmos
   accepts and keeps as typed, as the number it is rather than leaving the
   expression out; and a number with its digits grouped, `20\ 000`, as twenty

@@ -98,6 +98,16 @@ describe('names', () => {
         reports("a = 2\ny = a'(x)", 'unknown-function');
     });
 
+    test('a built-in cannot be bound: a parameter, a binding, a sum’s variable', () => {
+        reports('f(mean) = mean + 1', 'assign-to-builtin');
+        reports('g(pi) = pi', 'assign-to-builtin');
+        reports('a = mean + 1 with mean = 2', 'assign-to-builtin');
+        reports('b = [radius for radius = [1, 2]]', 'assign-to-builtin');
+        reports('c = sum(total = 1..3, total)', 'assign-to-builtin');
+        clean('h(theta) = theta');
+        clean('macro SQ(mean) = mean ^ 2\na = SQ(3)');
+    });
+
     test('a name has one subscript', () => {
         reports('x_1_2 = 3', 'multiple-subscripts');
         reports('y = a_1_b + 1', 'multiple-subscripts');
