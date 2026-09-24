@@ -160,11 +160,16 @@ function emit(node: Expression): string {
             return `\\left[${listElements(node.elements)}\\right]`;
         case 'ListRange':
             return `${node.from ? at(node.from, LEVEL.additive) : ''}...${node.to ? at(node.to, LEVEL.additive) : ''}`;
-        case 'Piecewise':
+        case 'Piecewise': {
+            // The last entry's value may be a `with` bare: its bindings run to
+            // the closing brace, as Desmos writes it. Anywhere else a comma
+            // after it would be a binding's rather than the next branch's.
+            const last = node.otherwise ? -1 : node.branches.length - 1;
             return `\\left\\{${[
-                ...node.branches.map(branch),
-                ...(node.otherwise ? [at(node.otherwise, LEVEL.action)] : []),
+                ...node.branches.map((entry, index) => branch(entry, index === last)),
+                ...(node.otherwise ? [value(node.otherwise, true)] : []),
             ].join(',')}\\right\\}`;
+        }
         case 'Abs':
             return `\\left|${at(node.expression, LEVEL.action)}\\right|`;
         case 'Unary':
@@ -368,9 +373,14 @@ function listElements(nodes: readonly Expression[]): string {
     return elements(nodes);
 }
 
-function branch({ condition, value }: PiecewiseBranch): string {
+function branch({ condition, value: then }: PiecewiseBranch, last: boolean): string {
     const written = at(condition, LEVEL.comparison);
-    return value ? `${written}:${at(value, LEVEL.action)}` : written;
+    return then ? `${written}:${value(then, last)}` : written;
+}
+
+/** A piecewise entry's value: bare if it is a `with` that ends the piecewise. */
+function value(node: Expression, last: boolean): string {
+    return last && node.kind === 'With' ? emit(node) : at(node, LEVEL.action);
 }
 
 /**

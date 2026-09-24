@@ -104,6 +104,10 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   and `mp`; a colour with space round it or written `rgb(…)` as its hex; and
   leaves out a table column with nothing in it, and a slider's empty bounds
   (#82).
+- Decompiling reads `\mathbf{…}`, `\mathit{…}` and the other styling commands
+  as what they hold - an empty one as nothing - rather than leaving the
+  expression out, and a `with` ending a piecewise is written without brackets,
+  as Desmos writes it.
 - Decompiled source compiles to latex that decompiles to the same source: a
   product with a number on its right is written `*`, and brackets that only
   group a script or a `with` inside a `for` are dropped (#83).

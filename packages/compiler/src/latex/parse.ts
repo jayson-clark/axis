@@ -109,6 +109,13 @@ type Token = { start: number; end: number } & (
  */
 const SPACING = new Set([' ', ',', ':', ';', '!', 'space', 'quad', 'qquad']);
 
+/**
+ * Commands that only change how what they hold is drawn - `\mathbf{x}` is x
+ * in bold - and so are read as what they hold. Desmos keeps one somebody
+ * pasted in, often round nothing at all, and does the same.
+ */
+const STYLING = new Set(['mathbf', 'mathit', 'mathrm', 'mathsf', 'mathtt', 'boldsymbol']);
+
 const DELIMITERS: Record<string, { delimiter: Delimiter; open: boolean }> = {
     '(': { delimiter: '(', open: true },
     ')': { delimiter: '(', open: false },
@@ -121,6 +128,10 @@ const DELIMITERS: Record<string, { delimiter: Delimiter; open: boolean }> = {
 function tokenize(latex: string): Token[] {
     const tokens: Token[] = [];
     let index = 0;
+    // How deep in braces the lexer is, and the depths at which a styling
+    // command's closing brace is to be dropped along with its opening one.
+    let depth = 0;
+    const styled: number[] = [];
 
     const push = (token: Token) => {
         tokens.push(token);
@@ -197,6 +208,16 @@ function tokenize(latex: string): Token[] {
                 continue;
             }
 
+            if (STYLING.has(name)) {
+                while (latex[end] === ' ') end++;
+                if (latex[end] === '{') {
+                    styled.push(depth);
+                    depth++;
+                    index = end + 1;
+                    continue;
+                }
+            }
+
             if (name === 'left' || name === 'right') {
                 while (latex[end] === ' ') end++;
                 const delimiter = /^(?:\\[{}]|[()[\]|])/.exec(latex.slice(end));
@@ -249,10 +270,17 @@ function tokenize(latex: string): Token[] {
         }
 
         if (char === '{') {
+            depth++;
             push({ type: 'group-open', start, end: start + 1 });
             continue;
         }
         if (char === '}') {
+            depth--;
+            if (styled.length > 0 && styled[styled.length - 1] === depth) {
+                styled.pop();
+                index++;
+                continue;
+            }
             push({ type: 'group-close', start, end: start + 1 });
             continue;
         }
