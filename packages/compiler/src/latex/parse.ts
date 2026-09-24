@@ -151,8 +151,11 @@ function tokenize(latex: string): Token[] {
             // `3.` is 3 to Desmos, which keeps whatever was typed: a point
             // with no digit after it, and no range to start. That goes for a
             // letter after it too - `1.y` is 1 times y, not a member of 1,
-            // which Desmos says a number has none of.
-            const bare = /^\d+\.(?![.\d])/.exec(rest);
+            // which Desmos says a number has none of. But not for a digit
+            // that is a script of its own, `P_1.x`, whose point is the
+            // member's; nor before a member that is a function's name.
+            const script = /[_^]\s*$/.test(latex.slice(0, index));
+            const bare = script ? null : /^\d+\.(?![.\d]|\\operatorname)/.exec(rest);
             const end = start + (bare ? bare[0].length : number[0].length);
             push({ type: 'number', text: number[0], start, end });
             continue;

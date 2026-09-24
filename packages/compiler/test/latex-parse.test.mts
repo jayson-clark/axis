@@ -319,6 +319,8 @@ describe('a number with nothing after its point', () => {
         ['3.\\left(y+1\\right)', imp(3, paren(add('y', 1)))],
         ['1.y-1.2', sub(imp(1, 'y'), 1.2)],
         ['2.x', imp(2, 'x')],
+        ['P_1.x', member('P_1', 'x')],
+        ['P_1.\\operatorname{segments}\\left[3\\right]', index(member('P_1', 'segments'), 3)],
         ['\\pm=\\left[-1,1\\right]', eq('pm', list(neg(1), 1))],
         ['\\pm\\frac{\\pi}{4}', imp('pm', div('pi', 4))],
         ['20\\ 000', num(20000)],
