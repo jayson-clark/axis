@@ -140,6 +140,26 @@ const EXPRESSION: Record<string, PropertyCase> = {
         properties: ['label: "P"', 'labelOrientation: above'],
         expected: { labelOrientation: 'above' },
     },
+    labelAngle: {
+        statement: '(1, 2)',
+        properties: ['label: "P"', 'showLabel', 'labelAngle: pi / 4'],
+        expected: { labelAngle: '\\frac{\\pi}{4}' },
+    },
+    interactiveLabel: {
+        statement: '(1, 2)',
+        properties: ['label: "P"', 'showLabel', 'interactiveLabel'],
+        expected: { interactiveLabel: true },
+    },
+    editableLabelMode: {
+        statement: '(1, 2)',
+        properties: ['label: "P"', 'showLabel', 'editableLabelMode: TEXT'],
+        expected: { editableLabelMode: 'TEXT' },
+    },
+    displayEvaluationAsFraction: {
+        statement: 'a = 1 / 3',
+        properties: ['displayEvaluationAsFraction'],
+        expected: { displayEvaluationAsFraction: true },
+    },
     pointOutline: {
         statement: '(1, 2)',
         properties: ['pointOutline'],

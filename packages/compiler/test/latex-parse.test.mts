@@ -282,6 +282,18 @@ describe('what Desmos writes', () => {
     });
 });
 
+describe('the other spellings Desmos accepts for a function', () => {
+    cases([
+        ['\\operatorname{arsinh}\\left(x\\right)', call('arcsinh', 'x')],
+        ['\\operatorname{arcoth}\\left(x\\right)', call('arccoth', 'x')],
+        ['\\operatorname{inverseCdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],
+        ['\\operatorname{inversecdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],
+        ['\\operatorname{TScore}\\left(L,m\\right)', call('tscore', 'L', 'm')],
+        ['\\arg\\left(z\\right)', call('arg', 'z')],
+        ['\\operatorname{arg}\\left(z\\right)', call('arg', 'z')],
+    ]);
+});
+
 describe("a statement's =", () => {
     // Read as a row of the expression list, where the `=` takes everything
     // after it - which is where this differs from `parseLatex`.

@@ -25,6 +25,25 @@ folder "Spread" {
     dev = mad(data) @ hidden
 }
 
+folder "Where a value falls" {
+    "The quantile a fraction of the way through the list, and a quartile."
+    q9 = quantile(data, 0.9) @ hidden
+    q1 = quartile(data, 1) @ hidden
+    "How far the mean is from 4, in standard errors."
+    t = tscore(data, 4) @ hidden
+    "Shown as the fraction it is."
+    third = 1 / 3 @ displayEvaluationAsFraction
+}
+
+folder "Two lists" {
+    "A second list, paired with the first."
+    other = [1, 3, 2, 5, 4, 6, 8, 9] @ hidden
+    r = corr(data, other) @ hidden
+    rho = spearman(data, other) @ hidden
+    c = cov(data, other) @ hidden
+    cp = covp(data, other) @ hidden
+}
+
 folder "Seeing the data" {
     "The samples along a line."
     (data, 0) @ color: BLUE, pointSize: 14

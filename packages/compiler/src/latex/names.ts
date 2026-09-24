@@ -32,6 +32,23 @@ export const FUNCTION_NAMES: ReadonlySet<string> = new Set(AXIS_FUNCTION_NAMES);
  */
 export const OPERATOR_NAMES: ReadonlySet<string> = new Set([...AXIS_OPERATOR_NAMES, 'dt']);
 
+/**
+ * Other spellings Desmos accepts for a built-in, and the name Axis has for it.
+ * A graph typed on desmos.com may arrive with any of them; Axis source has one
+ * name for each function, so they are read as that and never written.
+ */
+export const FUNCTION_ALIASES: ReadonlyMap<string, string> = new Map([
+    ['arsinh', 'arcsinh'],
+    ['arcosh', 'arccosh'],
+    ['artanh', 'arctanh'],
+    ['arcsch', 'arccsch'],
+    ['arsech', 'arcsech'],
+    ['arcoth', 'arccoth'],
+    ['inverseCdf', 'quantile'],
+    ['inversecdf', 'quantile'],
+    ['TScore', 'tscore'],
+]);
+
 /** `\sin` → `sin`, for the functions that are latex commands of their own. */
 export const FUNCTION_FOR_COMMAND: ReadonlyMap<string, string> = new Map(
     AXIS_FUNCTION_NAMES.map(name => [getFunctionLatex(name), name] as const).filter(([latex]) =>

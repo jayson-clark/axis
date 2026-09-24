@@ -63,6 +63,7 @@ const CATEGORY_TITLES = {
     statistics: 'Statistics',
     list: 'Lists',
     combinatorics: 'Combinatorics',
+    complex: 'Complex numbers',
     geometry: 'Geometry',
     color: 'Colour',
     audio: 'Sound',

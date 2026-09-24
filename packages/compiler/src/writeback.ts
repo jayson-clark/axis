@@ -273,6 +273,12 @@ function configValue(snapshot: GraphSnapshot, name: string): unknown {
     }
     if (GRAPH.has(name)) return graph?.[name];
     if (name === 'calculator') return graph?.product;
+    // Allowed and switched on are one setting to a file, so switching complex
+    // mode off in the graph's own settings is `allowComplex` changing.
+    if (name === 'allowComplex') {
+        const options = snapshot.options as Record<string, unknown> | undefined;
+        return options?.allowComplex === true && graph?.complex === true;
+    }
     if (STATE_FLAGS.has(name)) return snapshot.state[name];
     return (snapshot.options as Record<string, unknown> | undefined)?.[name];
 }

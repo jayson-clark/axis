@@ -13,7 +13,7 @@
 
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { AXIS_MANIFEST, parseExpression } from '@axis-dsl/syntax';
+import { AXIS_COMPLEX_FUNCTION_NAMES, AXIS_MANIFEST, parseExpression } from '@axis-dsl/syntax';
 import { compileAxis, emitLatex } from '@axis-dsl/compiler';
 import type { AxisCalculator, InspectedExpression } from '../dist/index.js';
 import { skip, useCalculator } from './support.mts';
@@ -60,6 +60,12 @@ const CALLS: Record<string, string> = {
     csch: 'csch(0.5)',
     sech: 'sech(0.5)',
     coth: 'coth(0.5)',
+    arcsinh: 'arcsinh(0.5)',
+    arccosh: 'arccosh(2)',
+    arctanh: 'arctanh(0.5)',
+    arccsch: 'arccsch(0.5)',
+    arcsech: 'arcsech(0.5)',
+    arccoth: 'arccoth(2)',
 
     // math
     sqrt: 'sqrt(4)',
@@ -79,6 +85,7 @@ const CALLS: Record<string, string> = {
     mod: 'mod(7, 3)',
     gcd: 'gcd(4, 6)',
     lcm: 'lcm(4, 6)',
+    erf: 'erf(1)',
 
     // statistics - over a list
     total: 'total([1, 2, 3])',
@@ -93,6 +100,13 @@ const CALLS: Record<string, string> = {
     mad: 'mad([1, 2, 3])',
     var: 'var([1, 2, 3])',
     varp: 'varp([1, 2, 3])',
+    quantile: 'quantile([1, 2, 3, 4], 0.5)',
+    quartile: 'quartile([1, 2, 3, 4], 1)',
+    cov: 'cov([1, 2, 3], [1, 2, 4])',
+    covp: 'covp([1, 2, 3], [1, 2, 4])',
+    corr: 'corr([1, 2, 3], [1, 2, 4])',
+    spearman: 'spearman([1, 2, 3], [1, 2, 4])',
+    tscore: 'tscore([1, 2, 3], 1)',
     discretedist: 'discretedist([1, 2, 3], [0.2, 0.3, 0.5])',
     random: 'random()',
 
@@ -123,6 +137,12 @@ const CALLS: Record<string, string> = {
     nPr: 'nPr(5, 2)',
     factorial: 'factorial(5)',
 
+    // complex - only in complex mode, which the graph they are drawn in is in
+    real: 'real(3 + 4i)',
+    imag: 'imag(3 + 4i)',
+    conj: 'conj(3 + 4i)',
+    arg: 'arg(3 + 4i)',
+
     // audio - a frequency in hertz and a volume of 0 to 1. Nothing is heard in
     // a headless browser, but Desmos still says whether it knows the name.
     tone: 'tone(440, 0.5)',
@@ -151,6 +171,13 @@ const VALUES: Record<string, number> = {
     nPr: 20,
     factorial: 120,
     distance: 5,
+    quantile: 2.5,
+    quartile: 1.5,
+    cov: 1.5,
+    covp: 1,
+    spearman: 1,
+    real: 3,
+    imag: 4,
 };
 
 /**
@@ -192,10 +219,24 @@ describe('every function the language offers', { skip }, () => {
     // interact, and 70 loads would be a minute of Chromium for no more signal.
     // The calls are written bare, with nothing assigned to them, because that
     // is the form Desmos reports an unknown name in. Each is its own statement,
-    // so the list is in the manifest's order.
+    // so the list is in the manifest's order. A function known only in
+    // complex mode has a graph of its own, in complex mode: turned on for
+    // everything, it makes `sqrt(4)` the complex number 2 + 0i.
     before(async () => {
-        await loadClean(calculator(), names.map(name => CALLS[name]).join('\n'));
-        inspected = await calculator().inspectExpressions();
+        const complex = names.filter(name => AXIS_COMPLEX_FUNCTION_NAMES.has(name));
+        const real = names.filter(name => !AXIS_COMPLEX_FUNCTION_NAMES.has(name));
+        await loadClean(calculator(), real.map(name => CALLS[name]).join('\n'));
+        const reals = await calculator().inspectExpressions();
+        await loadClean(
+            calculator(),
+            ['config { allowComplex: true }', ...complex.map(name => CALLS[name])].join('\n'),
+        );
+        const complexes = await calculator().inspectExpressions();
+        inspected = names.map(name =>
+            AXIS_COMPLEX_FUNCTION_NAMES.has(name)
+                ? complexes[complex.indexOf(name)]
+                : reals[real.indexOf(name)],
+        );
     });
 
     test('every function in the manifest has a call to test it with', () => {
@@ -244,6 +285,17 @@ describe('every function the language offers', { skip }, () => {
             ['unknown-function'],
         );
         assert.equal(expression.latex, 'n_{otAFunction}\\left(1\\right)');
+        assert.equal(expression.analysis?.isError, true);
+    });
+
+    test('a complex-mode function is an error outside complex mode, to Desmos and to Axis', async () => {
+        const { diagnostics } = await calculator().load('a = real(3 + 4i)');
+        const [expression] = await calculator().inspectExpressions();
+
+        assert.deepEqual(
+            diagnostics.map(diagnostic => diagnostic.code),
+            ['requires-complex-mode'],
+        );
         assert.equal(expression.analysis?.isError, true);
     });
 

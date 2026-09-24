@@ -194,3 +194,25 @@ most suggests defining one of them; nothing tells you the function is misspelt.
 The
 [function reference](../../reference/functions/) lists every function Axis
 knows.
+
+## Complex numbers
+
+`config { allowComplex: true }` puts the graph in complex mode. There `i` is
+the imaginary unit, a complex number is drawn as the point it is on the plane,
+and `real`, `imag`, `conj` and `arg` read it apart - as calls, or written after
+it as members.
+
+```axis
+config { allowComplex: true }
+z = 3 + 4i
+w = conj(z)
+a = z.real
+m = arg(z)
+```
+
+Outside complex mode Desmos rejects those four, so the compiler reports them
+before it does:
+
+```axis error="requires-complex-mode"
+a = real(3 + 4i)
+```

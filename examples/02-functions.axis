@@ -24,6 +24,8 @@ folder "Trigonometry" {
     y = tan(x) @ color: GREEN, lineOpacity: 0.5
     y = arctan(x) @ color: PURPLE, lineStyle: DASHED
     y = tanh(x) @ color: ORANGE
+    "The inverse hyperbolics: arcsinh undoes sinh."
+    y = arcsinh(x) @ color: ORANGE, lineStyle: DASHED
 }
 
 folder "Powers and roots" {
@@ -53,6 +55,8 @@ folder "Rounding and sign" {
     y = round(x) @ color: GREEN
     y = sign(x) @ color: PURPLE
     y = abs(x) @ color: ORANGE
+    "The error function, which has no closed form."
+    y = erf(x) @ color: RED, lineStyle: DASHED
 }
 
 folder "Number theory" {

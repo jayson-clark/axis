@@ -504,7 +504,13 @@ class Context {
             ...this.flags(item, ['showLabel']),
             ...this.latexProperties(item, ['labelSize'], at, pending),
             ...this.enums(item, 'expression', ['labelOrientation'], at, pending),
-            ...this.flags(item, ['suppressTextOutline', 'pointOutline']),
+            ...this.latexProperties(item, ['labelAngle'], at, pending),
+            ...this.flags(item, ['suppressTextOutline', 'pointOutline', 'interactiveLabel']),
+            // `NONE` is the default, which a calculator may still hand back.
+            ...(item.editableLabelMode !== 'NONE'
+                ? this.enums(item, 'expression', ['editableLabelMode'], at, pending)
+                : []),
+            ...this.flags(item, ['displayEvaluationAsFraction']),
             ...this.strings(item, ['description']),
             ...this.domains(item, at, pending),
             ...this.clickable(item.clickableInfo, at, pending),
@@ -1123,6 +1129,15 @@ function settingsStatement({ state, options }: DecompileInput): ConfigStatement 
     }
     for (const [key, value] of Object.entries(options ?? {})) {
         settings.set(key, value);
+    }
+    // `allowComplex: true` is a graph in complex mode, which is switched on in
+    // the graph rather than the options. A calculator's own options allow it
+    // whether or not it is on - that is Desmos' default - so the option alone
+    // says nothing, and a graph in complex mode says it even with no options.
+    if (graph.complex === true) {
+        settings.set('allowComplex', true);
+    } else if (settings.get('allowComplex') === true) {
+        settings.delete('allowComplex');
     }
 
     for (const [key, value] of Object.entries({ ...AXIS_DEFAULT_CONFIG, ...AXIS_DEFAULT_STATE })) {

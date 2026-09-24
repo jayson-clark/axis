@@ -30,7 +30,13 @@ import type {
     PiecewiseBranch,
     Span,
 } from '@axis-dsl/syntax';
-import { CONSTANT_FOR_COMMAND, FUNCTION_FOR_COMMAND, FUNCTION_NAMES, nameFromLatex } from './names';
+import {
+    CONSTANT_FOR_COMMAND,
+    FUNCTION_ALIASES,
+    FUNCTION_FOR_COMMAND,
+    FUNCTION_NAMES,
+    nameFromLatex,
+} from './names';
 
 /** Latex this parser has no reading for, and where in it the trouble is. */
 export class LatexParseError extends Error {
@@ -569,7 +575,11 @@ class Parser {
         }
         if (token.type === 'operatorname') {
             this.advance();
-            return { kind: 'Identifier', name: token.name, span: this.span(token.start) };
+            return {
+                kind: 'Identifier',
+                name: FUNCTION_ALIASES.get(token.name) ?? token.name,
+                span: this.span(token.start),
+            };
         }
         if (token.type === 'command' && FUNCTION_FOR_COMMAND.has(`\\${token.name}`)) {
             this.advance();
@@ -596,9 +606,10 @@ class Parser {
                 return this.maybeCall(this.identifier());
 
             case 'operatorname': {
-                if (FUNCTION_NAMES.has(token.name)) {
+                const builtin = FUNCTION_ALIASES.get(token.name) ?? token.name;
+                if (FUNCTION_NAMES.has(builtin)) {
                     this.advance();
-                    return this.builtin(token.name, token.start);
+                    return this.builtin(builtin, token.start);
                 }
                 if (token.name === 'with' || token.name === 'for') {
                     throw this.error(`'${token.name}' with nothing in front of it`);

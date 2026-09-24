@@ -130,8 +130,13 @@ polygon((-6, -1), (-3, -1), (-4, 2)) @ color: RED, fill, lines: false
 
 `label` is the text, and `showLabel` puts it on the graph. `labelOrientation`
 places it around the point - `above`, `below`, `left`, `right`, `above_left`
-and so on - and `labelSize` scales it. `description` is what a screen reader
-announces for it.
+and so on - `labelSize` scales it, and `labelAngle` turns it. `description` is
+what a screen reader announces for it.
+
+`interactiveLabel` keeps the label out of sight until the point is hovered or
+clicked, and `editableLabelMode: MATH` or `TEXT` lets the viewer type a new
+one into the graph. Under a value in the expression list,
+`displayEvaluationAsFraction` shows it as a fraction.
 
 ```axis
 (0, 0) @ color: BLACK, label: "Origin", showLabel
@@ -143,6 +148,9 @@ announces for it.
     labelSize: 2
     description: "A point with a larger label"
 }
+(-3, 3) @ label: "Tilted", showLabel, labelAngle: pi / 6
+(-3, -3) @ label: "Hover me", showLabel, interactiveLabel
+a = 1 / 3 @ displayEvaluationAsFraction
 ```
 
 ## Hiding things

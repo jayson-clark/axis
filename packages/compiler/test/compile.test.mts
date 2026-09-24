@@ -286,6 +286,16 @@ describe('config', () => {
         assert.equal(options.trace, true);
     });
 
+    test('turns complex mode on in the graph for `allowComplex`, which only permits it', () => {
+        const on = compileAxis('config { allowComplex: true }');
+        assert.equal(on.options.allowComplex, true);
+        assert.equal(on.state.graph?.complex, true);
+
+        const off = compileAxis('config { allowComplex: false }');
+        assert.equal(off.options.allowComplex, false);
+        assert.equal(off.state.graph?.complex, undefined);
+    });
+
     test('takes `actions` as a boolean, or `auto`', () => {
         assert.equal(compileAxis('config { actions: true }').options.actions, true);
         assert.equal(compileAxis('config { actions: auto }').options.actions, 'auto');

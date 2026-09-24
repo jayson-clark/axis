@@ -734,6 +734,12 @@ export function lowerProgram(
             showLabel: read.boolean('showLabel'),
             labelSize: read.latex('labelSize'),
             labelOrientation: read.enum('labelOrientation'),
+            labelAngle: read.latex('labelAngle'),
+            interactiveLabel: read.boolean('interactiveLabel'),
+            editableLabelMode: read.enum(
+                'editableLabelMode',
+            ) as DesmosExpressionItem['editableLabelMode'],
+            displayEvaluationAsFraction: read.boolean('displayEvaluationAsFraction'),
             suppressTextOutline: read.boolean('suppressTextOutline'),
             pointOutline: read.boolean('pointOutline'),
             description: read.string('description'),
@@ -982,6 +988,12 @@ function splitConfig(
             viewport[key] = value as number;
         } else if ((AXIS_GRAPH_PROPERTY_NAMES as readonly string[]).includes(key)) {
             graph[key] = value;
+        } else if (key === 'allowComplex') {
+            // The option only permits complex mode; the graph turns it on. A
+            // file that allows it wants it, so both are written - otherwise
+            // `sqrt(-1)` is still undefined and `real(z)` still an error.
+            options[key] = value;
+            if (value === true) graph.complex = true;
         } else if (key === 'calculator') {
             // Which calculator the graph is for travels in the state, so every
             // host learns it from the one thing it is handed anyway.
