@@ -499,11 +499,14 @@ class Parser {
 
         for (;;) {
             const token = this.peek();
-            let operator: '*' | '/' | 'implicit';
+            let operator: '*' | '×' | '/' | 'implicit';
             let written = true;
 
-            if (token.type === 'command' && (token.name === 'cdot' || token.name === 'times')) {
+            if (token.type === 'command' && token.name === 'cdot') {
                 operator = '*';
+            } else if (token.type === 'command' && token.name === 'times') {
+                // Not `\cdot`: between two 3D points it is the cross product.
+                operator = '×';
             } else if (token.type === 'command' && token.name === 'div') {
                 operator = '/';
             } else if (token.type === 'symbol' && (token.text === '*' || token.text === '/')) {

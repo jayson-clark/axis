@@ -74,6 +74,7 @@ function levelOf(node: Expression): number {
                 case '-':
                     return LEVEL.additive;
                 case '*':
+                case '×':
                 case 'implicit':
                     return LEVEL.product;
                 case '/':
@@ -295,7 +296,7 @@ const COMPARISON = {
 } as const;
 
 function binary(
-    operator: '+' | '-' | '*' | '/' | '^' | 'implicit',
+    operator: '+' | '-' | '*' | '×' | '/' | '^' | 'implicit',
     left: Expression,
     right: Expression,
 ): string {
@@ -307,6 +308,8 @@ function binary(
             return join(at(left, LEVEL.additive) + operator, at(right, LEVEL.product));
         case '*':
             return join(join(factor(left), '\\cdot'), at(right, LEVEL.prefix));
+        case '×':
+            return join(join(factor(left), '\\times'), at(right, LEVEL.prefix));
         case 'implicit':
             return juxtapose(
                 factor(left),

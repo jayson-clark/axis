@@ -471,6 +471,21 @@ describe('every function the language offers', { skip }, () => {
         assert.equal(regression.analysis?.isError, true);
     });
 
+    test('× is the cross product of two 3D points, and * their dot product', async () => {
+        await loadClean(
+            calculator(),
+            'u = (1, 2, 3)\nv = (4, 5, 6)\nc = (u × v).z\nd = u * v\nm = 3 × 4',
+        );
+        const values = (await calculator().inspectExpressions()).map(
+            expression =>
+                (expression.analysis?.evaluation as { value?: unknown } | undefined)?.value,
+        );
+
+        assert.equal(values[2], 1 * 5 - 2 * 4);
+        assert.equal(values[3], 1 * 4 + 2 * 5 + 3 * 6);
+        assert.equal(values[4], 12);
+    });
+
     test('every colour function colours a curve', async () => {
         const colours = AXIS_MANIFEST.functions.filter(entry => entry.category === 'color');
         await loadClean(

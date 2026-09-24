@@ -67,6 +67,9 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   anywhere but as a statement of its own, and the `name` value type, for a
   property that takes a name.
 
+- `×` is Desmos' `\times`: multiplication for numbers, and the cross product of
+  two 3D points, where `*` is their dot product. A graph's `\times` used to be
+  read as `*`, which turned every cross product into a dot product.
 - A slice may leave an end off: `L[2...]`, `L[...3]`, `L[[2, 4...]]`, as Desmos
   allows in an index. Anywhere else a range still needs both ends, reported as
   `open-range` (#76).
@@ -108,7 +111,8 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 - Decompiling reads more of what real graphs hold: a curve over an interval of
   its own parameter, `(…) for 0 < a < 2`, as the same curve in `t` over that
   domain (they draw identically); `\pm` bound by a `for`; a power of a member,
-  `L^{2}.total^{-.5}`; and a table cell holding only a space as blank.
+  `L^{2}.total^{-.5}`; a table cell holding only a space as blank; and `gcf`,
+  Desmos' other name for `gcd`.
 - Decompiled source compiles to latex that decompiles to the same source: a
   product with a number on its right is written `*`, and brackets that only
   group a script or a `with` inside a `for` are dropped (#83).

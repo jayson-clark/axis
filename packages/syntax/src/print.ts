@@ -685,6 +685,7 @@ class Printer {
                     this.expression(right, 6, inner),
                 ];
             case '*':
+            case '×':
             case '/':
                 return [
                     opensRight(left) ? this.parenthesized(left) : this.expression(left, 6, context),

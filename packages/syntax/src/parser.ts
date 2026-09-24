@@ -929,8 +929,8 @@ class Parser {
     private parseMultiplicative(): ast.Expression {
         let left = this.parseUnary();
         for (;;) {
-            if (this.at('*') || this.at('/')) {
-                const operator = this.next().text as '*' | '/';
+            if (this.at('*') || this.at('/') || this.at('×')) {
+                const operator = this.next().text as '*' | '/' | '×';
                 const right = this.parseOperand(() => this.parseUnary());
                 left = { kind: 'Binary', operator, left, right, span: this.span(left.span.start) };
             } else if (this.canStartImplicitOperand()) {

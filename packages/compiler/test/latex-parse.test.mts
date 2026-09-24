@@ -30,6 +30,7 @@ import {
     index,
     list,
     member,
+    cross,
     method,
     mul,
     neg,
@@ -85,7 +86,9 @@ describe('what Desmos writes', () => {
     describe('products and fractions', () => {
         cases([
             ['2\\cdot x', mul(2, 'x')],
-            ['2\\times x', mul(2, 'x')],
+            // `\\times` multiplies numbers, and crosses 3D points.
+            ['2\\times x', cross(2, 'x')],
+            ['a\\times b\\cdot c', mul(cross('a', 'b'), 'c')],
             ['2x', imp(2, 'x')],
             ['2\\pi', imp(2, 'pi')],
             // Each letter is a variable of its own.
@@ -350,6 +353,7 @@ describe('the other spellings Desmos accepts for a function', () => {
         ['\\operatorname{inverseCdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],
         ['\\operatorname{inversecdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],
         ['\\operatorname{TScore}\\left(L,m\\right)', call('tscore', 'L', 'm')],
+        ['\\operatorname{gcf}\\left(a,b\\right)', call('gcd', 'a', 'b')],
         ['\\arg\\left(z\\right)', call('arg', 'z')],
         ['\\operatorname{arg}\\left(z\\right)', call('arg', 'z')],
     ]);

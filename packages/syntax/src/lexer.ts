@@ -59,6 +59,7 @@ const PUNCTUATION = [
     '@',
     "'",
     '~',
+    '×',
 ] as const;
 
 const isDigit = (c: string) => c >= '0' && c <= '9';

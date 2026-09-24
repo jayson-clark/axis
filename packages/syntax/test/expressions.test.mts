@@ -117,6 +117,7 @@ describe('precedence (spec §5.1)', () => {
         assert.equal(expr('L.count'), '(. L count)');
         assert.equal(expr('D.cdf(-1, 1)'), '(. D cdf (- 1) 1)');
         assert.equal(expr('ys ~ m xs + b'), '(~ ys (+ (implicit m xs) b))');
+        assert.equal(expr('a × b * c'), '(* (× a b) c)');
         assert.equal(expr('T.conf(0.95).upper'), '(. (. T conf 0.95) upper)');
         assert.equal(expr('$12.length'), '(. $12 length)');
         assert.equal(expr('n!'), '(! n)');

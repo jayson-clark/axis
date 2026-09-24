@@ -105,7 +105,7 @@ export const pos = (operand: Operand): Expression => ({
     span: SPAN,
 });
 
-type BinaryOperator = '+' | '-' | '*' | '/' | '^' | 'implicit';
+type BinaryOperator = '+' | '-' | '*' | '×' | '/' | '^' | 'implicit';
 
 export const binary = (operator: BinaryOperator, left: Operand, right: Operand): Expression => ({
     kind: 'Binary',
@@ -117,6 +117,7 @@ export const binary = (operator: BinaryOperator, left: Operand, right: Operand):
 export const add = (a: Operand, b: Operand) => binary('+', a, b);
 export const sub = (a: Operand, b: Operand) => binary('-', a, b);
 export const mul = (a: Operand, b: Operand) => binary('*', a, b);
+export const cross = (a: Operand, b: Operand) => binary('×', a, b);
 export const div = (a: Operand, b: Operand) => binary('/', a, b);
 export const pow = (a: Operand, b: Operand) => binary('^', a, b);
 

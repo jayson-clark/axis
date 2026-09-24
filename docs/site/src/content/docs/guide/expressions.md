@@ -41,6 +41,16 @@ t = 1
 y = 3cos(t) x + 2pi
 ```
 
+`×` multiplies too, but between two 3D points it is the cross product, where
+`*` is the dot product - as `\times` and `\cdot` are in Desmos:
+
+```axis
+u = (1, 2, 3)
+v = (4, 5, 6)
+n = u × v
+d = u * v
+```
+
 An operand that starts with a sign is never juxtaposed, so `a -b` is a
 subtraction, and a `[` straight after an operand indexes it rather than
 multiplying it.

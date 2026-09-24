@@ -565,7 +565,7 @@
                 },
                 {
                     "name": "keyword.operator.arithmetic.axis",
-                    "match": "[-+*/^]"
+                    "match": "[-+*/^×]"
                 },
                 {
                     "name": "keyword.operator.factorial.axis",
