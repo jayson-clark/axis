@@ -108,6 +108,12 @@ const CALLS: Record<string, string> = {
     spearman: 'spearman([1, 2, 3], [1, 2, 4])',
     tscore: 'tscore([1, 2, 3], 1)',
 
+    // charts - statements of their own
+    histogram: 'histogram([1, 2, 2, 3, 5], 1)',
+    dotplot: 'dotplot([1, 2, 2, 3, 5])',
+    boxplot: 'boxplot([1, 2, 2, 3, 5])',
+    stats: 'stats([1, 2, 2, 3, 5])',
+
     // distributions - drawn on their own, evaluated with their members
     normaldist: 'normaldist(0, 1)',
     tdist: 'tdist(3)',
@@ -329,9 +335,10 @@ describe('every function the language offers', { skip }, () => {
             // Not being an error is not enough: an unknown name is not one
             // either. A call Desmos knows comes to a value or draws something -
             // except a colour or a tone, whose value the analysis does not
-            // report; those are proved by use below.
+            // report, and `stats`, which is a row of the expression list; those
+            // are proved by use below.
             const category = AXIS_MANIFEST.functions.find(entry => entry.name === name)?.category;
-            if (category !== 'color' && category !== 'audio') {
+            if (category !== 'color' && category !== 'audio' && name !== 'stats') {
                 assert.ok(
                     analysis?.evaluation !== undefined || analysis?.isGraphable,
                     `${expression.latex} neither evaluates nor graphs`,
@@ -430,6 +437,38 @@ describe('every function the language offers', { skip }, () => {
             expression => expression.latex === 'm=\\token{2}.\\operatorname{length}',
         );
         assert.equal((length?.analysis?.evaluation as { value: number }).value, Math.hypot(4, 1));
+    });
+
+    test('a regression fits its parameters, and keeps its residuals where it was told', async () => {
+        await loadClean(
+            calculator(),
+            'xs = [1, 2, 3, 4]\nys = [2, 4, 6, 8]\nys ~ m xs + b @ residuals: r1\nsq = total(r1 ^ 2)',
+        );
+        const [, , regression, squares] = await calculator().inspectExpressions();
+        const fitted = (regression as unknown as { regressionParameters?: Record<string, number> })
+            .regressionParameters;
+        const state = (await calculator().getState()).expressions?.list ?? [];
+        const parameters = (state[2] as { regressionParameters?: Record<string, number> })
+            .regressionParameters;
+
+        assert.equal(regression.analysis?.isError, false);
+        assert.ok(Math.abs((parameters ?? fitted)!.m - 2) < 1e-9);
+        assert.ok(Math.abs((parameters ?? fitted)!.b) < 1e-9);
+        assert.ok(Math.abs((squares.analysis?.evaluation as { value: number }).value) < 1e-9);
+    });
+
+    test('a chart or a regression anywhere but a statement is an error, to Desmos and to Axis', async () => {
+        const { diagnostics } = await calculator().load(
+            'L = [1, 2, 3]\nH = histogram(L)\na = 1 + (L ~ c L)',
+        );
+        const [, chart, regression] = await calculator().inspectExpressions();
+
+        assert.deepEqual(
+            diagnostics.map(diagnostic => diagnostic.code),
+            ['statement-only', 'statement-only'],
+        );
+        assert.equal(chart.analysis?.isError, true);
+        assert.equal(regression.analysis?.isError, true);
     });
 
     test('every colour function colours a curve', async () => {

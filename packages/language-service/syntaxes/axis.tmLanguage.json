@@ -508,6 +508,10 @@
                     "match": "\\b(?:ttest|ztest|zproptest|chisqtest|chisqgof|score|pleft|pright|dof|estimate|stderr|conf|null|lower|upper)\\b"
                 },
                 {
+                    "name": "support.function.chart.axis",
+                    "match": "\\b(?:histogram|dotplot|boxplot|stats)\\b"
+                },
+                {
                     "name": "support.function.complex.axis",
                     "match": "\\b(?:real|imag|conj|arg)\\b"
                 },

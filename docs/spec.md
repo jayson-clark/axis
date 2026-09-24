@@ -234,6 +234,7 @@ Every property has a `valueType` in the manifest, and the checker enforces it:
 | `range`      | §4.4                                     | the Desmos bounds object            |
 | `action`     | an action or action run                  | latex                               |
 | `style`      | a style name                             | resolved away (§4.5)                |
+| `name`       | the name of a variable                   | latex (`residuals: e1` is `e_{1}`)  |
 
 `number` is for what Desmos holds as a JSON number rather than latex: most
 `config` numbers, and a slider's `playDirection` and `animationPeriod`.
@@ -241,7 +242,9 @@ Every property has a `valueType` in the manifest, and the checker enforces it:
 **Enums are case-insensitive.** The manifest lists each value as Desmos spells
 it - `NONE`, `DASHED`, `LOOP_FORWARD`, but `above` and `linear` - and a value
 written in any case is lowered to that spelling: `dragMode: none` is `NONE`,
-`labelOrientation: ABOVE` is `above`.
+`labelOrientation: ABOVE` is `above`. `histogramMode: count` is the one value
+Desmos spells as nothing at all; it is its default, and written as leaving the
+mode off.
 
 ### 4.3 Colours
 
@@ -361,7 +364,7 @@ Loosest first. Everything is left-associative unless noted.
 | 1     | `body with a = 1, b = 2`, `body for i = L, j = M`                           | `With`, `For`                                   |
 | 2     | action run `a -> 1, b -> 2` (statement values and `action` properties only) | `Sequence`                                      |
 | 3     | `target -> value`                                                           | `Action`                                        |
-| 4     | `= < <= > >=`, chainable: `1 < x < 2`                                       | `Comparison`                                    |
+| 4     | `= < <= > >= ~`, chainable: `1 < x < 2`                                     | `Comparison`                                    |
 | 5     | `+ -`                                                                       | `Binary`                                        |
 | 6     | `* /` **and implicit multiplication**                                       | `Binary` (`op: 'implicit'` for juxtaposition)   |
 | 7     | prefix `-`, `+`; `d/dx`, whose operand is a whole product (§5.9)            | `Unary`, `Derivative`                           |
@@ -494,7 +497,24 @@ lo = T.conf(0.95).lower
 `theta` and never the reverse, in a polar graph or a cartesian one, so the curve
 is written `r = …`.
 
-The same goes for regression `~`, which v2 does not yet support.
+`lhs ~ model` is a regression: Desmos fits the model's free names - its
+parameters - so that it matches `lhs` as closely as it can, and defines each of
+them for the rest of the graph. It is `\sim` in latex. `residuals: e1` names the
+list the differences are kept in, which Desmos otherwise names `e_1`, `e_2` and
+up; `logMode` fits in log space. The fitted values are Desmos' to work out: they
+are no part of the file, the decompiler does not write them, and write-back
+does not count a refit as a change.
+
+```axis
+xs = [1, 2, 3, 4]
+ys = [2.1, 3.9, 6.2, 7.8]
+ys ~ m xs + b @ residuals: e1
+```
+
+A regression is a statement of its own, and so is a chart - `histogram`,
+`dotplot`, `boxplot`, `stats` (§4, and the charts' properties in the
+manifest). Assigned, nested in an expression, or chained, either is
+`statement-only`: Desmos draws neither anywhere else.
 
 ### 5.6 Actions
 
@@ -678,6 +698,7 @@ left off, and a statement that cannot be written at all is left out.
 | `theta-equation`        | `theta = …`, which Desmos will not graph - write `r = …` (§5.5)                  |
 | `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)   |
 | `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have          |
+| `statement-only`        | a chart or a regression `~` anywhere but as a statement of its own               |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |
@@ -856,6 +877,10 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   `arcsch`, `arsech`, `arcoth` alike; `inverseCdf` and `inversecdf` as
   `quantile`; `TScore` as `tscore`; and `ittest`, the old name of the
   two-sample test, as `ttest`.
+- **Regressions and charts**: a regression's `residualVariable` is
+  `residuals`, `isLogModeRegression` is `logMode`, and its
+  `regressionParameters` - the fit - is not written. A chart's `vizProps` are
+  written as properties of their own, each left out at Desmos' default.
 - **What a person typed is kept to what it means**: `\token{12}` is `$12`, and
   the token definitions in the geometry calculator's hidden folder are written
   at the top level, where compiling puts them back. A number with nothing

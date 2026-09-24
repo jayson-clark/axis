@@ -126,6 +126,17 @@ describe('writing a live graph back', { skip }, () => {
         assert.deepEqual(await calculator().getErrors(), []);
     }
 
+    test('changing the data a regression fits rewrites the data, not the regression', async () => {
+        // Desmos refits and names the residuals itself, neither of which is
+        // anything the file said.
+        const opened = await load('xs = [1, 2, 3]\nys = [2, 4, 6]\nys ~ m xs + b');
+        const ys = opened.compiled.state.expressions!.list![1];
+        await setExpression({ ...(ys as unknown as Item), latex: 'y_{s}=\\left[2,4,7\\right]' });
+
+        const { written } = await write(opened);
+        assert.equal(written, 'xs = [1, 2, 3]\nys = [2, 4, 7]\nys ~ m xs + b');
+    });
+
     test('a dragged point is written back, and nothing else', async () => {
         const opened = await load(
             [

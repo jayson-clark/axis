@@ -56,6 +56,16 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   hidden folder, where Desmos accepts it, so a graph built on the geometry
   calculator decompiles to a file that builds it again.
 - `examples/21-geometry.axis`, and a Geometry page in the guide.
+- Regressions (#70): `ys ~ m xs + b` fits a model's parameters to data, with
+  `residuals: e1` naming the list its residuals go in and `logMode` fitting in
+  log space. The decompiler reads a graph's regressions back, and write-back
+  does not count Desmos refitting one as a change to the file.
+- Charts (#66): `histogram`, `dotplot`, `boxplot` and `stats`, with the
+  properties `binAlignment`, `histogramMode`, `dotplotXMode`, `alignedAxis`,
+  `axisOffset`, `breadth` and `showBoxplotOutliers`.
+- The `statement-only` diagnostic, for a chart or a regression written
+  anywhere but as a statement of its own, and the `name` value type, for a
+  property that takes a name.
 
 ### Changed
 
@@ -76,7 +86,8 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   graph that is in complex mode.
 - Decompiling reads a number with nothing after its point, `3.`, which Desmos
   accepts and keeps as typed, as the number it is rather than leaving the
-  expression out.
+  expression out; and a number with its digits grouped, `20\ 000`, as twenty
+  thousand rather than 20 times 0.
 - The harness waits for Desmos to analyze every expression before it counts a
   graph as settled. A big graph on a slow machine could go quiet before Desmos
   had analyzed any of it, so every expression read as having no analysis.

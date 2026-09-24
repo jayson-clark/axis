@@ -35,6 +35,7 @@ import type {
     GraphStateFlags,
     Note,
     SliderState,
+    VizProps,
     Table,
     TableColumn as DesmosTableColumn,
     TickerState,
@@ -272,6 +273,12 @@ export function lowerProgram(
             string(name: string): string | undefined {
                 const node = value(name);
                 return node?.kind === 'String' ? node.value : undefined;
+            },
+
+            /** A name, as latex: `residuals: e1` is `e_{1}`. */
+            name(name: string): string | undefined {
+                const node = value(name);
+                return node?.kind === 'Identifier' ? latex(node) : undefined;
             },
 
             number(name: string): number | undefined {
@@ -744,6 +751,9 @@ export function lowerProgram(
                 'editableLabelMode',
             ) as DesmosExpressionItem['editableLabelMode'],
             displayEvaluationAsFraction: read.boolean('displayEvaluationAsFraction'),
+            residualVariable: read.name('residuals'),
+            isLogModeRegression: read.boolean('logMode'),
+            vizProps: buildVizProps(read),
             suppressTextOutline: read.boolean('suppressTextOutline'),
             pointOutline: read.boolean('pointOutline'),
             description: read.string('description'),
@@ -751,6 +761,28 @@ export function lowerProgram(
             clickableInfo: buildClickableInfo(read),
         });
         return expression;
+    };
+
+    /**
+     * A chart's settings, which Desmos keeps together under `vizProps` rather
+     * than beside the rest - or nothing, for an expression with none.
+     */
+    const buildVizProps = (read: Reader): VizProps | undefined => {
+        const mode = read.enum('histogramMode');
+        const props: VizProps = defined({
+            breadth: read.latex('breadth'),
+            axisOffset: read.latex('axisOffset'),
+            alignedAxis: read.enum('alignedAxis') as VizProps['alignedAxis'],
+            showBoxplotOutliers: read.boolean('showBoxplotOutliers'),
+            binAlignment: read.enum('binAlignment') as VizProps['binAlignment'],
+            dotplotXMode: read.enum('dotplotXMode') as VizProps['dotplotXMode'],
+            // A count is Desmos' default, which it spells as no mode at all.
+            histogramMode:
+                mode === undefined || mode === 'count'
+                    ? undefined
+                    : (mode as VizProps['histogramMode']),
+        });
+        return Object.keys(props).length > 0 ? props : undefined;
     };
 
     /**

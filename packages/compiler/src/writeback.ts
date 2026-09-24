@@ -208,7 +208,7 @@ export function diffGraphs(before: GraphSnapshot, after: GraphSnapshot): GraphCh
         const previous = was.get(id);
         if (!previous) {
             changes.push({ kind: 'added', id, after: expression });
-        } else if (!same(previous, expression)) {
+        } else if (!same(authored(previous), authored(expression))) {
             changes.push({ kind: 'changed', id, before: previous, after: expression });
         }
     }
@@ -1045,8 +1045,23 @@ function problems(before: readonly Diagnostic[], after: readonly Diagnostic[]): 
 }
 
 /** The keys of an item that differ between two readings of it. */
+/**
+ * The keys Desmos works out for itself rather than keeping what somebody set:
+ * a regression's fitted parameters, which change whenever its data does.
+ */
+const DERIVED_KEYS: readonly string[] = ['regressionParameters'];
+
+/** An item without what Desmos works out, which is all a change is made of. */
+function authored(expression: DesmosExpression): DesmosExpression {
+    const item = expression as unknown as Item;
+    if (!DERIVED_KEYS.some(key => key in item)) return expression;
+    const rest = { ...item };
+    for (const key of DERIVED_KEYS) delete rest[key];
+    return rest as unknown as DesmosExpression;
+}
+
 function changedKeys(was: DesmosExpression, now: DesmosExpression): string[] {
-    const [a, b] = [was as unknown as Item, now as unknown as Item];
+    const [a, b] = [authored(was) as unknown as Item, authored(now) as unknown as Item];
     return [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(
         key => !same(a[key], b[key]),
     );

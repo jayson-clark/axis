@@ -74,6 +74,15 @@ folder "Seeing the data" {
     y = exp(-0.5 * ((x - avg) / s) ^ 2) @ color: GREEN, lineWidth: 3
 }
 
+folder "Charts" {
+    "A histogram of the data in bins of width 2, a dot plot over it, and a box plot above both."
+    histogram(data, 2) @ color: BLUE, binAlignment: left
+    dotplot(data) @ color: PURPLE
+    boxplot(data) @ color: GREEN, axisOffset: 8, breadth: 1.5
+    "The same numbers, as a row of summary statistics."
+    stats(data)
+}
+
 folder "Combinatorics" {
     "Choose, permute, factorial."
     ways = nCr(5, 2) @ hidden

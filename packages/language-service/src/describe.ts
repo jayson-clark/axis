@@ -128,6 +128,7 @@ const VALUE_TYPE_TEXT: Readonly<Record<PropertyDefinition['valueType'], string>>
     range: 'a range, `lo..hi step s soft`',
     action: 'an action, or a run of them',
     style: 'the name of a style',
+    name: 'a name',
 };
 
 const PLACEMENT_TEXT: Readonly<Record<PropertyPlacement, string>> = {

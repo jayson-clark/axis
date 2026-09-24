@@ -181,6 +181,14 @@ export interface Expression {
     editableLabelMode?: 'NONE' | 'MATH' | 'TEXT';
     /** Show the value under the expression as a fraction. */
     displayEvaluationAsFraction?: boolean;
+    /** Latex for the list a regression's residuals are kept in: `e_{1}`. */
+    residualVariable?: string;
+    /** The fitted values of a regression's parameters, which Desmos writes. */
+    regressionParameters?: Record<string, number>;
+    /** Fit a regression in log space. */
+    isLogModeRegression?: boolean;
+    /** How a histogram, a dot plot or a box plot is drawn. */
+    vizProps?: VizProps;
     /** Drop the outline Desmos draws behind a label. */
     suppressTextOutline?: boolean;
     /** Draw a ring around each point, in the graph's background colour. */
@@ -284,3 +292,21 @@ export interface GraphImage {
 export type ExpressionState = Expression | Table | Note | Folder | GraphImage;
 
 export type DesmosExpression = ExpressionState;
+
+/** A chart's settings, every one optional, with Desmos' defaults in brackets. */
+export interface VizProps {
+    /** Latex for how thick a box plot is, across the axis it runs along. */
+    breadth?: string;
+    /** Latex for how far from its axis a box plot is drawn. */
+    axisOffset?: string;
+    /** The axis a box plot is drawn along [x]. */
+    alignedAxis?: 'x' | 'y';
+    /** Draw a box plot's outliers as dots [true]. */
+    showBoxplotOutliers?: boolean;
+    /** Where the bins of a histogram or a dot plot start [center]. */
+    binAlignment?: 'center' | 'left';
+    /** Stack a dot plot's dots at their values or at their bins [exact]. */
+    dotplotXMode?: 'exact' | 'bin';
+    /** What a histogram's bars measure: a count is `''` [''] */
+    histogramMode?: '' | 'relative' | 'density';
+}

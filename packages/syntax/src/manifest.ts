@@ -43,6 +43,7 @@ export interface FunctionDefinition {
         | 'complex'
         | 'distribution'
         | 'inference'
+        | 'chart'
         | 'geometry'
         | 'audio';
     /**
@@ -119,6 +120,8 @@ export interface ConstantDefinition {
  * - `range`: `lo..hi step s soft` (§4.4)
  * - `action`: an action or an action run
  * - `style`: the name of a `style`
+ * - `name`: the name of a variable, such as the list a regression's residuals
+ *   go in
  */
 export type PropertyValueType =
     | 'expression'
@@ -129,7 +132,8 @@ export type PropertyValueType =
     | 'color'
     | 'range'
     | 'action'
-    | 'style';
+    | 'style'
+    | 'name';
 
 /**
  * Where a property may be written (spec §4.6): trailing an expression, after
@@ -880,6 +884,44 @@ export const AXIS_MANIFEST = {
             example: 'L = [12, 15, 11, 14]\nT = ttest(L)\nhi = T.conf(0.95).upper',
             snippet: 'upper(${1:interval})',
             category: 'inference',
+        },
+
+        // Charts - statements of their own, set up with their properties
+        {
+            name: 'histogram',
+            detail: 'Histogram of a list, with an optional bin width',
+            documentation:
+                'A statement of its own: it draws the chart, and cannot be assigned or used in an expression. `binAlignment` and `histogramMode` set it up.',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nhistogram(L, 2) @ binAlignment: left',
+            snippet: 'histogram(${1:list}, ${2:width})',
+            category: 'chart',
+        },
+        {
+            name: 'dotplot',
+            detail: 'Dot plot of a list, with an optional bin width',
+            documentation:
+                'A statement of its own: it draws the chart, and cannot be assigned or used in an expression. `dotplotXMode` says whether a dot stands at its value or its bin.',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\ndotplot(L) @ dotplotXMode: bin',
+            snippet: 'dotplot(${1:list})',
+            category: 'chart',
+        },
+        {
+            name: 'boxplot',
+            detail: 'Box-and-whisker plot of a list',
+            documentation:
+                'A statement of its own: it draws the chart, and cannot be assigned or used in an expression. `axisOffset` and `breadth` place and size it; `showBoxplotOutliers: false` draws the whiskers to the extremes.',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nboxplot(L) @ axisOffset: 2, breadth: 1',
+            snippet: 'boxplot(${1:list})',
+            category: 'chart',
+        },
+        {
+            name: 'stats',
+            detail: 'A row of summary statistics for a list: min, quartiles, max',
+            documentation:
+                'A statement of its own, shown in the expression list; it cannot be assigned or used in an expression.',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nstats(L)',
+            snippet: 'stats(${1:list})',
+            category: 'chart',
         },
         {
             name: 'discretedist',
@@ -1747,6 +1789,92 @@ export const AXIS_MANIFEST = {
             detail: "Show the expression's value as a fraction [default: false]",
             example: 'a = 1 / 3 @ displayEvaluationAsFraction',
             snippet: 'displayEvaluationAsFraction',
+            valueType: 'boolean',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'residuals',
+            detail: "The list a regression's residuals are kept in",
+            documentation:
+                'A name, such as `e1`. Desmos names one for every regression that does not say, `e_1` and up.',
+            example:
+                'xs = [1, 2, 3, 4]\nys = [2.1, 3.9, 6.2, 7.8]\nys ~ m xs + b @ residuals: e1\ntotal(e1 ^ 2)',
+            snippet: 'residuals: ${1:e1}',
+            valueType: 'name',
+            appliesTo: ['expression'],
+        },
+        {
+            name: 'logMode',
+            detail: 'Fit a regression in log space [default: false]',
+            documentation:
+                'For an exponential or a power model: the fit minimises the error in the logarithms, which is often what the data calls for. `config { forceLogModeRegressions }` does it for every regression.',
+            example: 'xs = [1, 2, 3, 4]\nys = [2, 4.1, 7.9, 16.2]\nys ~ a b ^ xs @ logMode',
+            snippet: 'logMode',
+            valueType: 'boolean',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'binAlignment',
+            detail: "Where a histogram's or a dot plot's bins start [default: center]",
+            documentation:
+                '`center` puts a bin around each multiple of the width; `left` starts one at each.',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nhistogram(L, 2) @ binAlignment: left',
+            snippet: 'binAlignment: ${1|center,left|}',
+            valueType: 'enum',
+            values: ['center', 'left'],
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'histogramMode',
+            detail: "What a histogram's bars measure [default: count]",
+            documentation:
+                '`count` is how many values fall in each bin, `relative` the fraction of them, and `density` the fraction per unit of width, so the bars have area 1.',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nhistogram(L, 2) @ histogramMode: density',
+            snippet: 'histogramMode: ${1|count,relative,density|}',
+            valueType: 'enum',
+            values: ['count', 'relative', 'density'],
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'dotplotXMode',
+            detail: 'Whether a dot plot stacks a dot at its value or at its bin [default: exact]',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\ndotplot(L, 2) @ dotplotXMode: bin',
+            snippet: 'dotplotXMode: ${1|exact,bin|}',
+            valueType: 'enum',
+            values: ['exact', 'bin'],
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'alignedAxis',
+            detail: 'The axis a box plot is drawn along [default: x]',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nboxplot(L) @ alignedAxis: y',
+            snippet: 'alignedAxis: ${1|x,y|}',
+            valueType: 'enum',
+            values: ['x', 'y'],
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'axisOffset',
+            detail: 'How far from its axis a box plot is drawn',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nboxplot(L) @ axisOffset: 2',
+            snippet: 'axisOffset: ${1:1}',
+            valueType: 'expression',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'breadth',
+            detail: 'How thick a box plot is, across the axis it runs along [default: 1]',
+            example: 'L = [3, 5, 5, 6, 8, 9, 9, 9, 12]\nboxplot(L) @ breadth: 0.5',
+            snippet: 'breadth: ${1:1}',
+            valueType: 'expression',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'showBoxplotOutliers',
+            detail: "Draw a box plot's outliers as dots beyond its whiskers [default: true]",
+            documentation: 'Off, the whiskers run to the least and greatest values.',
+            example: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]\nboxplot(L) @ showBoxplotOutliers: false',
+            snippet: 'showBoxplotOutliers: ${1|true,false|}',
             valueType: 'boolean',
             appliesTo: ['expression', 'style'],
         },

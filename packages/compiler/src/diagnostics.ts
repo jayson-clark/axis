@@ -37,6 +37,10 @@ export const COMPILER_DIAGNOSTICS = {
         summary: 'a function or a `$` token the calculator the graph is for does not have',
         example: 'A = (0, 0)\nB = (4, 1)\ns = segment(A, B)',
     },
+    'statement-only': {
+        summary: 'a chart or a regression `~` anywhere but as a statement of its own',
+        example: 'L = [1, 2, 3]\nH = histogram(L)',
+    },
     'multiple-subscripts': {
         summary: 'a name in an expression with more than one `_` part (`x_1_2`)',
         example: 'a = x_1_2',

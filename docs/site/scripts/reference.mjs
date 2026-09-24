@@ -66,6 +66,7 @@ const CATEGORY_TITLES = {
     complex: 'Complex numbers',
     distribution: 'Distributions',
     inference: 'Hypothesis tests',
+    chart: 'Charts',
     geometry: 'Geometry',
     color: 'Colour',
     audio: 'Sound',

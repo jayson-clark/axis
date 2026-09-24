@@ -148,6 +148,21 @@ const PROPERTY_CASES: Record<string, string[]> = {
         '(0, 0) @ label: "a", showLabel, editableLabelMode: TEXT',
     ],
     displayEvaluationAsFraction: ['a = 1 / 3 @ displayEvaluationAsFraction'],
+    residuals: ['ys ~ m xs + b @ residuals: e1'],
+    logMode: ['ys ~ a b ^ xs @ logMode', 'ys ~ a b ^ xs @ logMode: false'],
+    binAlignment: ['histogram([1, 2, 3], 1) @ binAlignment: left'],
+    histogramMode: [
+        'histogram([1, 2, 3], 1) @ histogramMode: density',
+        'histogram([1, 2, 3], 1) @ histogramMode: relative',
+    ],
+    dotplotXMode: ['dotplot([1, 2, 3]) @ dotplotXMode: bin'],
+    alignedAxis: ['boxplot([1, 2, 3]) @ alignedAxis: y'],
+    axisOffset: [
+        'boxplot([1, 2, 3]) @ axisOffset: 2',
+        'a = 1\nboxplot([1, 2, 3]) @ axisOffset: a + 1',
+    ],
+    breadth: ['boxplot([1, 2, 3]) @ breadth: 0.5'],
+    showBoxplotOutliers: ['boxplot([1, 2, 3]) @ showBoxplotOutliers: false'],
     pointOutline: ['(0, 0) @ pointOutline'],
     dragMode: ['a = 0\n(a, 0) @ dragMode: X', 'image "https://example.com/a.png" @ dragMode: XY'],
     playing: ['a = 0 @ playing', 'a = 0 @ playing: false', 'n = 0\nticker n -> n + 1 @ playing'],
@@ -710,6 +725,37 @@ describe('config', () => {
         assert.equal(roundTrip(source), source);
     });
 
+    test('leaves out what Desmos works out for a regression, and a chart setting at its default', () => {
+        assert.equal(
+            fromState(
+                items(
+                    {
+                        type: 'expression',
+                        id: '1',
+                        latex: 'y_{s}\\sim mx_{s}+b',
+                        residualVariable: 'e_{1}',
+                        regressionParameters: { m: 2, b: 0 },
+                    },
+                    {
+                        type: 'expression',
+                        id: '2',
+                        latex: '\\operatorname{histogram}\\left(L\\right)',
+                        vizProps: {
+                            breadth: '',
+                            axisOffset: '',
+                            alignedAxis: 'x',
+                            showBoxplotOutliers: true,
+                            binAlignment: 'center',
+                            dotplotXMode: 'exact',
+                            histogramMode: '',
+                        },
+                    },
+                ),
+            ),
+            'ys ~ m xs + b @ residuals: e_1\nhistogram(L)\n',
+        );
+    });
+
     test('writes a member called as one', () => {
         const source =
             'D = normaldist(0, 1)\np = D.cdf(-1, 1)\nhi = ttest([1, 2, 3]).conf(0.95).upper\n';
@@ -766,13 +812,13 @@ describe('what Axis cannot write', () => {
                 includeFunctionParametersInRandomSeed: true,
                 ...items(
                     { type: 'expression', id: 'a', latex: 'y=x' },
-                    { type: 'expression', id: 'b', latex: 'y_{1}\\sim mx_{1}+b' },
+                    { type: 'expression', id: 'b', latex: 'L\\left[2...\\right]' },
                     { type: 'expression', id: 'c', latex: 'y=2x' },
                 ),
             },
         });
 
-        assert.equal(source, 'y = x\n// unsupported: y_{1}\\sim mx_{1}+b\ny = 2x\n');
+        assert.equal(source, 'y = x\n// unsupported: L\\left[2...\\right]\ny = 2x\n');
         assert.equal(diagnostics.length, 1);
         const [diagnostic] = diagnostics;
         assert.equal(diagnostic.code, 'unsupported-latex');
@@ -780,7 +826,7 @@ describe('what Axis cannot write', () => {
         assert.match(diagnostic.message, /Expression b/);
         assert.equal(
             source.slice(diagnostic.span.start, diagnostic.span.end),
-            '// unsupported: y_{1}\\sim mx_{1}+b',
+            '// unsupported: L\\left[2...\\right]',
         );
         assertWellFormed(source);
         assert.equal(listOf(source).length, 2);
@@ -981,7 +1027,7 @@ describe('decompileExpression, decompileSettings and decompileTicker', () => {
         const { statement, diagnostics } = decompileExpression({
             type: 'expression',
             id: 'e',
-            latex: 'y_{1}\\sim mx_{1}+b',
+            latex: 'L\\left[2...\\right]',
         });
         assert.equal(statement, null);
         assert.deepEqual(

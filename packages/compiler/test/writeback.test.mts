@@ -316,12 +316,22 @@ describe('writing one statement back', () => {
         const opened = open('y = x');
         const live = item(opened.after, 'expr_1');
         live.latex = 'y=2x';
-        live.residualVariable = 'e_1';
+        live.interactiveColor = 'red';
 
         const { source, skipped } = write(opened);
         assert.equal(source, 'y = 2x');
         assert.equal(skipped.length, 1);
-        assert.match(skipped[0].reason, /`residualVariable`/);
+        assert.match(skipped[0].reason, /`interactiveColor`/);
+    });
+
+    test('is not a regression refitting to new data, which Desmos does itself', () => {
+        const opened = open('xs = [1, 2, 3]\nys = [2, 4, 6]\nys ~ m xs + b');
+        item(opened.after, 'expr_2').latex = 'y_{s}=\\left[2,4,7\\right]';
+        item(opened.after, 'expr_3').regressionParameters = { m: 2.5, b: -0.67 };
+
+        const { source, skipped } = write(opened);
+        assert.deepEqual(skipped, []);
+        assert.equal(source, 'xs = [1, 2, 3]\nys = [2, 4, 7]\nys ~ m xs + b');
     });
 });
 

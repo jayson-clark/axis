@@ -82,7 +82,7 @@ interface Context {
     inAbs: boolean;
 }
 
-const COMPARISON_OPERATORS: ReadonlySet<string> = new Set(['=', '<', '<=', '>', '>=']);
+const COMPARISON_OPERATORS: ReadonlySet<string> = new Set(['=', '<', '<=', '>', '>=', '~']);
 const OPENERS: ReadonlySet<string> = new Set(['(', '[', '{', '@{']);
 const MATCHING_OPENERS: Readonly<Record<string, readonly string[]>> = {
     ')': ['('],

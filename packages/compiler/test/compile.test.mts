@@ -312,6 +312,22 @@ describe('config', () => {
         );
     });
 
+    test('gathers a chart’s settings into its vizProps, and a count is no mode at all', () => {
+        const [histogram, boxplot] = listOf(
+            'histogram([1, 2], 1) @ binAlignment: left, histogramMode: count\nboxplot([1, 2]) @ axisOffset: 2, showBoxplotOutliers: false',
+        ) as Expression[];
+        assert.deepEqual(histogram.vizProps, { binAlignment: 'left' });
+        assert.deepEqual(boxplot.vizProps, { axisOffset: '2', showBoxplotOutliers: false });
+        assert.equal((listOf('y = x')[0] as Expression).vizProps, undefined);
+    });
+
+    test('writes a regression as `\\sim`, with its residuals and log mode', () => {
+        const [regression] = listOf('ys ~ m xs + b @ residuals: e1, logMode') as Expression[];
+        assert.equal(regression.latex, 'y_{s}\\sim mx_{s}+b');
+        assert.equal(regression.residualVariable, 'e_{1}');
+        assert.equal(regression.isLogModeRegression, true);
+    });
+
     test('takes `actions` as a boolean, or `auto`', () => {
         assert.equal(compileAxis('config { actions: true }').options.actions, true);
         assert.equal(compileAxis('config { actions: auto }').options.actions, 'auto');
