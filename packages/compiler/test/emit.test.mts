@@ -431,7 +431,7 @@ describe('calculus', () => {
         // And it takes a factor after it, so one that is not its own is kept out.
         [mul(sum('n', 1, 3, 'n'), 2), '\\left(\\sum_{n=1}^{3}n\\right)\\cdot2'],
         [imp(sum('n', 1, 3, 'n'), 'x'), '\\left(\\sum_{n=1}^{3}n\\right)x'],
-        [imp(imp(2, sum('n', 1, 3, 'n')), 'x'), '\\left(2\\left(\\sum_{n=1}^{3}n\\right)\\right)x'],
+        [imp(imp(2, sum('n', 1, 3, 'n')), 'x'), '\\left(2\\sum_{n=1}^{3}n\\right)x'],
         [mul(neg(sum('n', 1, 3, 'n')), 2), '\\left(-\\sum_{n=1}^{3}n\\right)\\cdot2'],
         [pow(sum('n', 1, 3, 'n'), 2), '\\left(\\sum_{n=1}^{3}n\\right)^{2}'],
         [mul(2, sum('n', 1, 3, 'n')), '2\\cdot\\sum_{n=1}^{3}n'],

@@ -125,6 +125,11 @@ function opensRight(node: Expression): boolean {
     }
 }
 
+/** A sum, a product or an integral, written bare: the right side of a product. */
+function open(node: Expression): string | undefined {
+    return node.kind === 'BigOperator' ? emit(node) : undefined;
+}
+
 /** The left side of a product: `at(node, LEVEL.product)`, or bracketed if it opens right. */
 function factor(node: Expression): string {
     return opensRight(node) ? `\\left(${emit(node)}\\right)` : at(node, LEVEL.product);
@@ -220,7 +225,7 @@ function emit(node: Expression): string {
             ) {
                 return `${at(node.target, LEVEL.postfix)}\\left[${listElements(node.index.elements)}\\right]`;
             }
-            return `${at(node.target, LEVEL.postfix)}\\left[${at(node.index, LEVEL.action)}\\right]`;
+            return `${at(node.target, LEVEL.postfix)}\\left[${elements([node.index])}\\right]`;
         case 'Member':
             return node.arguments
                 ? `${member(node.target)}.${memberLatex(node.name.name)}\\left(${elements(node.arguments)}\\right)`
@@ -306,16 +311,20 @@ function binary(
         case '+':
         case '-':
             return join(at(left, LEVEL.additive) + operator, at(right, LEVEL.product));
+        // A sum, a product or an integral on the right is written bare, as
+        // Desmos writes `0.6\sum_{n=1}^{3}n`: its body is the product after
+        // it, and if anything is multiplied on after this product, `factor`
+        // brackets the whole of it.
         case '*':
-            return join(join(factor(left), '\\cdot'), at(right, LEVEL.prefix));
+            return join(join(factor(left), '\\cdot'), open(right) ?? at(right, LEVEL.prefix));
         case '×':
-            return join(join(factor(left), '\\times'), at(right, LEVEL.prefix));
+            return join(join(factor(left), '\\times'), open(right) ?? at(right, LEVEL.prefix));
         case 'implicit':
             return juxtapose(
                 factor(left),
                 // A negation has to be bracketed here, where `*` did not: with
                 // nothing in front of it, `2-x` is a subtraction.
-                at(right, LEVEL.fraction),
+                open(right) ?? at(right, LEVEL.fraction),
             );
         case '/':
             // The braces are the grouping, so the operands are never bracketed
@@ -359,20 +368,18 @@ function join(left: string, right: string): string {
 
 /** Comma-separated values - a point, a call's arguments. */
 function elements(nodes: readonly Expression[]): string {
-    return nodes.map(node => at(node, LEVEL.action)).join(',');
-}
-
-/**
- * A list's elements. A comprehension is a list holding a lone `for`, and it
- * is written bare - its bindings run to the closing bracket, which is where
- * the list ends anyway. Anywhere else a `with` or `for` is bracketed, since its
- * bindings would take the commas after it.
- */
-function listElements(nodes: readonly Expression[]): string {
+    // A lone `with` or `for` - `\operatorname{total}\left(L\left[i\right]\operatorname{for}i=N\right)` -
+    // is written bare: its bindings run to the closing bracket, which is where
+    // the elements end anyway. Among others, its bindings would take theirs.
     const [only] = nodes;
     if (nodes.length === 1 && (only.kind === 'For' || only.kind === 'With')) {
         return emit(only);
     }
+    return nodes.map(node => at(node, LEVEL.action)).join(',');
+}
+
+/** A list's elements, a comprehension among them: a list holding a lone `for`. */
+function listElements(nodes: readonly Expression[]): string {
     return elements(nodes);
 }
 

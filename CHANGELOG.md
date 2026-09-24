@@ -107,7 +107,9 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   and `mp`; a colour with space round it or written `rgb(…)` as its hex; and
   leaves out a table column with nothing in it, and a slider's empty bounds
   (#82).
-- A `with` ending a piecewise is written without brackets, as Desmos writes it.
+- A `with` ending a piecewise, a lone `with` or `for` as a call's argument or
+  an index, and a `sum`, `prod` or `int` on the right of a product are written
+  without brackets, as Desmos writes them.
 - Decompiling reads more of what real graphs hold: a curve over an interval of
   its own parameter, `(…) for 0 < a < 2`, as the same curve in `t` over that
   domain (they draw identically); `\pm` bound by a `for`; a power of a member,
