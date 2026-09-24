@@ -42,6 +42,14 @@ export const COMPILER_DIAGNOSTICS = {
         summary: 'a chart or a regression `~` anywhere but as a statement of its own',
         example: 'L = [1, 2, 3]\nH = histogram(L)',
     },
+    'misplaced-blank': {
+        summary: "an empty slot, `[4, , 6]`, anywhere but a table column's values",
+        example: 'L = [1, , 3]',
+    },
+    'open-range': {
+        summary: 'a range with an end left off anywhere but an index (`L[2...]`)',
+        example: 'L = [1...]',
+    },
     'multiple-subscripts': {
         summary: 'a name in an expression with more than one `_` part (`x_1_2`)',
         example: 'a = x_1_2',
@@ -190,7 +198,7 @@ export const DECOMPILER_DIAGNOSTICS = {
         summary: 'a list item Axis has no statement for, or an image with no URL',
     },
     'unsupported-value': {
-        summary: 'a colour or enum value Axis cannot write, or a blank cell',
+        summary: 'a colour or enum value Axis cannot write',
     },
 } as const satisfies Record<string, Pick<DiagnosticInfo, 'summary'>>;
 

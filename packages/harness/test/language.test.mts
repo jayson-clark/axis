@@ -85,6 +85,7 @@ const CALLS: Record<string, string> = {
     mod: 'mod(7, 3)',
     gcd: 'gcd(4, 6)',
     lcm: 'lcm(4, 6)',
+    cross: 'cross(3, 4)',
     erf: 'erf(1)',
 
     // statistics - over a list
@@ -228,6 +229,7 @@ const VALUES: Record<string, number> = {
     mod: 1,
     gcd: 2,
     lcm: 12,
+    cross: 12,
     sum: 6,
     prod: 24,
     int: 1,
@@ -469,6 +471,21 @@ describe('every function the language offers', { skip }, () => {
         );
         assert.equal(chart.analysis?.isError, true);
         assert.equal(regression.analysis?.isError, true);
+    });
+
+    test('cross is the cross product of two 3D points, and * their dot product', async () => {
+        await loadClean(
+            calculator(),
+            'u = (1, 2, 3)\nv = (4, 5, 6)\nc = cross(u, v).z\nd = u * v\nm = cross(3, 4)',
+        );
+        const values = (await calculator().inspectExpressions()).map(
+            expression =>
+                (expression.analysis?.evaluation as { value?: unknown } | undefined)?.value,
+        );
+
+        assert.equal(values[2], 1 * 5 - 2 * 4);
+        assert.equal(values[3], 1 * 4 + 2 * 5 + 3 * 6);
+        assert.equal(values[4], 12);
     });
 
     test('every colour function colours a curve', async () => {

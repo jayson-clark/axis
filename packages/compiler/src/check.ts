@@ -134,6 +134,9 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     // The charts and regressions that stand as a statement of their own,
     // which is the only place Desmos draws one.
     const standing = new WeakSet<Expression>();
+    // The ranges written straight into an index, the only place one may leave
+    // an end off: `L[2...]`, `L[[2, 4...]]`.
+    const slices = new WeakSet<Expression>();
     const stand = (expression: Expression): void => {
         if (isChart(expression) || isRegression(expression)) standing.add(expression);
     };
@@ -200,7 +203,9 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                             checkExpression(column.header, scope);
                         }
                         for (const value of column.values ?? []) {
-                            checkExpression(value, scope);
+                            // A blank cell is what a column's values may hold
+                            // and nothing else may.
+                            if (value.kind !== 'Blank') checkExpression(value, scope);
                         }
                         checkMetadata(column.metadata, 'column', scope);
                     }
@@ -377,6 +382,37 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
 
             case 'Identifier':
                 checkIdentifier(node, scope);
+                return;
+
+            case 'Index': {
+                const ranges = node.index.kind === 'List' ? node.index.elements : [node.index];
+                for (const range of ranges) {
+                    if (range.kind === 'ListRange') slices.add(range);
+                }
+                checkExpression(node.target, scope);
+                checkExpression(node.index, scope);
+                return;
+            }
+
+            case 'Blank':
+                report(
+                    'misplaced-blank',
+                    'An empty slot, `[4, , 6]`, is a blank table cell, and only a table column’s values may have one.',
+                    node.span,
+                );
+                return;
+
+            case 'ListRange':
+                if ((node.from === null || node.to === null) && !slices.has(node)) {
+                    report(
+                        'open-range',
+                        'A range may leave an end off only where it indexes a list, as in `L[2...]`; anywhere else it needs both.',
+                        node.span,
+                    );
+                }
+                for (const end of [node.from, node.to]) {
+                    if (end) checkExpression(end, scope);
+                }
                 return;
 
             case 'Comparison':
@@ -789,7 +825,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
             if (name !== 'slider' && (value.step !== null || value.soft !== 'none')) {
                 report(
                     'invalid-value',
-                    `A domain is two ends and nothing else; \`step\` and \`soft\` belong to a slider.`,
+                    `\`${name}\` is two ends and nothing else; \`step\` and \`soft\` belong to a slider.`,
                     value.span,
                 );
             }

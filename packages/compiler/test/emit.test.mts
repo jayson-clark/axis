@@ -384,6 +384,14 @@ describe('actions', () => {
     ]);
 });
 
+describe('cross', () => {
+    cases([
+        [call('cross', 'u', 'v'), 'u\\times v'],
+        [pow(call('cross', 'u', 'v'), 2), '\\left(u\\times v\\right)^{2}'],
+        [member(call('cross', 'u', 'v'), 'z'), '\\left(u\\times v\\right).z'],
+    ]);
+});
+
 describe('with and for', () => {
     cases([
         [withB(imp('x', 'n'), ['n', 3]), 'xn\\operatorname{with}n=3'],
@@ -431,7 +439,7 @@ describe('calculus', () => {
         // And it takes a factor after it, so one that is not its own is kept out.
         [mul(sum('n', 1, 3, 'n'), 2), '\\left(\\sum_{n=1}^{3}n\\right)\\cdot2'],
         [imp(sum('n', 1, 3, 'n'), 'x'), '\\left(\\sum_{n=1}^{3}n\\right)x'],
-        [imp(imp(2, sum('n', 1, 3, 'n')), 'x'), '\\left(2\\left(\\sum_{n=1}^{3}n\\right)\\right)x'],
+        [imp(imp(2, sum('n', 1, 3, 'n')), 'x'), '\\left(2\\sum_{n=1}^{3}n\\right)x'],
         [mul(neg(sum('n', 1, 3, 'n')), 2), '\\left(-\\sum_{n=1}^{3}n\\right)\\cdot2'],
         [pow(sum('n', 1, 3, 'n'), 2), '\\left(\\sum_{n=1}^{3}n\\right)^{2}'],
         [mul(2, sum('n', 1, 3, 'n')), '2\\cdot\\sum_{n=1}^{3}n'],

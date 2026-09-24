@@ -94,8 +94,10 @@ function levelOf(node: Expression): number {
             // it - but not as the base of a power, where `dt^{2}` squares the
             // differential.
             return node.operator === 'int' ? LEVEL.fraction : LEVEL.prefix;
-        case 'Prime':
         case 'Call':
+            // `cross(a, b)` is written as the product `a\times b`.
+            return isCross(node) ? LEVEL.product : LEVEL.postfix;
+        case 'Prime':
         case 'Index':
         case 'Member':
         case 'Factorial':
@@ -119,9 +121,21 @@ function opensRight(node: Expression): boolean {
             return opensRight(node.operand);
         case 'Binary':
             return node.operator !== '^' && node.operator !== '/' && opensRight(node.right);
+        case 'Call':
+            return isCross(node) && opensRight(node.arguments[1]);
         default:
             return false;
     }
+}
+
+/** `cross(a, b)`, which Desmos has as the operator `\times`, not a function. */
+function isCross(node: Expression): node is Call {
+    return node.kind === 'Call' && node.callee.name === 'cross' && node.arguments.length === 2;
+}
+
+/** A sum, a product or an integral, written bare: the right side of a product. */
+function open(node: Expression): string | undefined {
+    return node.kind === 'BigOperator' ? emit(node) : undefined;
 }
 
 /** The left side of a product: `at(node, LEVEL.product)`, or bracketed if it opens right. */
@@ -159,12 +173,17 @@ function emit(node: Expression): string {
         case 'List':
             return `\\left[${listElements(node.elements)}\\right]`;
         case 'ListRange':
-            return `${at(node.from, LEVEL.additive)}...${at(node.to, LEVEL.additive)}`;
-        case 'Piecewise':
+            return `${node.from ? at(node.from, LEVEL.additive) : ''}...${node.to ? at(node.to, LEVEL.additive) : ''}`;
+        case 'Piecewise': {
+            // The last entry's value may be a `with` bare: its bindings run to
+            // the closing brace, as Desmos writes it. Anywhere else a comma
+            // after it would be a binding's rather than the next branch's.
+            const last = node.otherwise ? -1 : node.branches.length - 1;
             return `\\left\\{${[
-                ...node.branches.map(branch),
-                ...(node.otherwise ? [at(node.otherwise, LEVEL.action)] : []),
+                ...node.branches.map((entry, index) => branch(entry, index === last)),
+                ...(node.otherwise ? [value(node.otherwise, true)] : []),
             ].join(',')}\\right\\}`;
+        }
         case 'Abs':
             return `\\left|${at(node.expression, LEVEL.action)}\\right|`;
         case 'Unary':
@@ -203,7 +222,18 @@ function emit(node: Expression): string {
         case 'Derivative':
             return `\\frac{d}{d${identifierLatex(node.variable.name)}}${at(node.body, LEVEL.product)}`;
         case 'Index':
-            return `${at(node.target, LEVEL.postfix)}\\left[${at(node.index, LEVEL.action)}\\right]`;
+            // `L[[2, 4...]]` - a stepped slice with an end left off - is
+            // written in the index's own brackets, the one place Desmos lets a
+            // range leave an end off: in a list of its own it has to have both.
+            if (
+                node.index.kind === 'List' &&
+                node.index.elements.some(
+                    element => element.kind === 'ListRange' && (!element.from || !element.to),
+                )
+            ) {
+                return `${at(node.target, LEVEL.postfix)}\\left[${listElements(node.index.elements)}\\right]`;
+            }
+            return `${at(node.target, LEVEL.postfix)}\\left[${elements([node.index])}\\right]`;
         case 'Member':
             return node.arguments
                 ? `${member(node.target)}.${memberLatex(node.name.name)}\\left(${elements(node.arguments)}\\right)`
@@ -223,6 +253,9 @@ function emit(node: Expression): string {
             return scoped(node.body, '\\operatorname{with}', node.bindings);
         case 'For':
             return scoped(node.body, '\\operatorname{for}', node.bindings);
+        case 'Blank':
+            // A blank table cell, which Desmos keeps as the empty string.
+            return '';
         case 'ErrorExpression':
             throw new Error('An expression the parser could not read has no latex');
     }
@@ -286,14 +319,18 @@ function binary(
         case '+':
         case '-':
             return join(at(left, LEVEL.additive) + operator, at(right, LEVEL.product));
+        // A sum, a product or an integral on the right is written bare, as
+        // Desmos writes `0.6\sum_{n=1}^{3}n`: its body is the product after
+        // it, and if anything is multiplied on after this product, `factor`
+        // brackets the whole of it.
         case '*':
-            return join(join(factor(left), '\\cdot'), at(right, LEVEL.prefix));
+            return join(join(factor(left), '\\cdot'), open(right) ?? at(right, LEVEL.prefix));
         case 'implicit':
             return juxtapose(
                 factor(left),
                 // A negation has to be bracketed here, where `*` did not: with
                 // nothing in front of it, `2-x` is a subtraction.
-                at(right, LEVEL.fraction),
+                open(right) ?? at(right, LEVEL.fraction),
             );
         case '/':
             // The braces are the grouping, so the operands are never bracketed
@@ -337,26 +374,29 @@ function join(left: string, right: string): string {
 
 /** Comma-separated values - a point, a call's arguments. */
 function elements(nodes: readonly Expression[]): string {
-    return nodes.map(node => at(node, LEVEL.action)).join(',');
-}
-
-/**
- * A list's elements. A comprehension is a list holding a lone `for`, and it
- * is written bare - its bindings run to the closing bracket, which is where
- * the list ends anyway. Anywhere else a `with` or `for` is bracketed, since its
- * bindings would take the commas after it.
- */
-function listElements(nodes: readonly Expression[]): string {
+    // A lone `with` or `for` - `\operatorname{total}\left(L\left[i\right]\operatorname{for}i=N\right)` -
+    // is written bare: its bindings run to the closing bracket, which is where
+    // the elements end anyway. Among others, its bindings would take theirs.
     const [only] = nodes;
     if (nodes.length === 1 && (only.kind === 'For' || only.kind === 'With')) {
         return emit(only);
     }
+    return nodes.map(node => at(node, LEVEL.action)).join(',');
+}
+
+/** A list's elements, a comprehension among them: a list holding a lone `for`. */
+function listElements(nodes: readonly Expression[]): string {
     return elements(nodes);
 }
 
-function branch({ condition, value }: PiecewiseBranch): string {
+function branch({ condition, value: then }: PiecewiseBranch, last: boolean): string {
     const written = at(condition, LEVEL.comparison);
-    return value ? `${written}:${at(value, LEVEL.action)}` : written;
+    return then ? `${written}:${value(then, last)}` : written;
+}
+
+/** A piecewise entry's value: bare if it is a `with` that ends the piecewise. */
+function value(node: Expression, last: boolean): string {
+    return last && node.kind === 'With' ? emit(node) : at(node, LEVEL.action);
 }
 
 /**
@@ -384,6 +424,12 @@ function call({ callee, arguments: args }: Call): string {
 
     if (name === 'sqrt' && args.length === 1) {
         return `\\sqrt{${braced(args[0])}}`;
+    }
+    if (name === 'cross' && args.length === 2) {
+        // Desmos has no `cross` function: its cross product is `\times`, which
+        // is `\cdot`'s product for numbers and the cross product of 3D points.
+        const [left, right] = args;
+        return join(join(factor(left), '\\times'), open(right) ?? at(right, LEVEL.prefix));
     }
     if (name === 'log' && args.length === 2) {
         const [argument, base] = args;

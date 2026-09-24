@@ -30,6 +30,7 @@ import {
     index,
     list,
     member,
+    cross,
     method,
     mul,
     neg,
@@ -85,7 +86,10 @@ describe('what Desmos writes', () => {
     describe('products and fractions', () => {
         cases([
             ['2\\cdot x', mul(2, 'x')],
-            ['2\\times x', mul(2, 'x')],
+            // `\\times` multiplies numbers, and crosses 3D points.
+            ['2\\times x', cross(2, 'x')],
+            ['a\\times b\\cdot c', mul(cross('a', 'b'), 'c')],
+            ['\\left(a-b\\right)\\times\\left(c-d\\right)', cross(sub('a', 'b'), sub('c', 'd'))],
             ['2x', imp(2, 'x')],
             ['2\\pi', imp(2, 'pi')],
             // Each letter is a variable of its own.
@@ -292,6 +296,15 @@ describe('what Desmos writes', () => {
     });
 });
 
+describe('slices with an end left off', () => {
+    cases([
+        ['L\\left[2...\\right]', index('L', range(2, null))],
+        ['L\\left[...3\\right]', index('L', range(null, 3))],
+        ['L\\left[2,...\\right]', index('L', range(2, null))],
+        ['L\\left[1,3...\\right]', index('L', list(1, range(3, null)))],
+    ]);
+});
+
 describe('regressions', () => {
     cases([
         ['y_{1}\\sim mx_{1}+b', cmp('y_1', '~', add(imp('m', 'x_1'), 'b'))],
@@ -319,6 +332,11 @@ describe('a number with nothing after its point', () => {
         ['3.\\left(y+1\\right)', imp(3, paren(add('y', 1)))],
         ['1.y-1.2', sub(imp(1, 'y'), 1.2)],
         ['2.x', imp(2, 'x')],
+        ['L^{2}.\\operatorname{total}^{-.5}', pow(member(pow('L', 2), 'total'), neg('.5'))],
+        [
+            '\\left[\\pm\\operatorname{for}\\pm=\\left[-1,1\\right]\\right]',
+            list(forB('pm', ['pm', list(neg(1), 1)])),
+        ],
         ['P_1.x', member('P_1', 'x')],
         ['P_1.\\operatorname{segments}\\left[3\\right]', index(member('P_1', 'segments'), 3)],
         ['\\pm=\\left[-1,1\\right]', eq('pm', list(neg(1), 1))],
@@ -336,6 +354,7 @@ describe('the other spellings Desmos accepts for a function', () => {
         ['\\operatorname{inverseCdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],
         ['\\operatorname{inversecdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],
         ['\\operatorname{TScore}\\left(L,m\\right)', call('tscore', 'L', 'm')],
+        ['\\operatorname{gcf}\\left(a,b\\right)', call('gcd', 'a', 'b')],
         ['\\arg\\left(z\\right)', call('arg', 'z')],
         ['\\operatorname{arg}\\left(z\\right)', call('arg', 'z')],
     ]);
@@ -423,7 +442,7 @@ describe('spans', () => {
 
 describe('latex it has no reading for', () => {
     const unreadable = [
-        'L\\left[2...\\right]',
+        'a\\&b',
         '\\int_{0}^{1}x',
         '\\sum_{n}^{10}n',
         "f'",

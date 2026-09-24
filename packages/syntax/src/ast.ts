@@ -234,6 +234,7 @@ export type Expression =
     | Sequence
     | With
     | For
+    | Blank
     | ErrorExpression;
 
 /** `3`, `0.5`, `1e-3` - the text as written, so nothing is lost to a float. */
@@ -294,8 +295,13 @@ export interface List extends NodeBase {
 /** `a...b` inside a list or an index. */
 export interface ListRange extends NodeBase {
     kind: 'ListRange';
-    from: Expression;
-    to: Expression;
+    /**
+     * Either end may be left off in an index, where it means the start or the
+     * end of the list: `L[2...]`, `L[...3]` (spec §5.2). Anywhere else the
+     * checker reports it.
+     */
+    from: Expression | null;
+    to: Expression | null;
 }
 
 /**
@@ -468,6 +474,15 @@ export interface For extends NodeBase {
 /** Where an expression should have been and was not, already reported. */
 export interface ErrorExpression extends NodeBase {
     kind: 'ErrorExpression';
+}
+
+/**
+ * The empty slot in `[4, , 6]`: a table cell left blank (spec §3.2). The
+ * parser reads one in any list, and the checker allows it only in a table
+ * column's values.
+ */
+export interface Blank extends NodeBase {
+    kind: 'Blank';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -35,6 +35,13 @@ folder "Working values" { @ collapsed
 
 y = amp * sin(freq * x) @ color: ORANGE, lineWidth: 3
 
+// inFrontOfEverything draws a folder's contents over everything else - a frame
+// round the graph, say, that nothing drawn later covers.
+folder "Frame" { @ inFrontOfEverything
+    y = 4 @ color: BLACK, lineWidth: 6
+    y = -4 @ color: BLACK, lineWidth: 6
+}
+
 // A folder needs no title: `folder { … }` groups without naming the group. Like
 // any block it may be written on one line, with a ; between its entries.
 folder { y = amp * cos(freq * x) @ color: BLUE; y = amp @ color: BLACK, lineStyle: DOTTED }

@@ -499,11 +499,15 @@ class Parser {
 
         for (;;) {
             const token = this.peek();
-            let operator: '*' | '/' | 'implicit';
+            let operator: '*' | '/' | 'implicit' | 'cross';
             let written = true;
 
-            if (token.type === 'command' && (token.name === 'cdot' || token.name === 'times')) {
+            if (token.type === 'command' && token.name === 'cdot') {
                 operator = '*';
+            } else if (token.type === 'command' && token.name === 'times') {
+                // Not `\cdot`: between two 3D points it is the cross product,
+                // which Axis writes `cross(a, b)`.
+                operator = 'cross';
             } else if (token.type === 'command' && token.name === 'div') {
                 operator = '/';
             } else if (token.type === 'symbol' && (token.text === '*' || token.text === '/')) {
@@ -523,7 +527,12 @@ class Parser {
                 this.advance();
             }
             const right = this.prefix();
-            left = { kind: 'Binary', operator, left, right, span: this.span(start) };
+            // As a call's arguments, the operands need no brackets of their own.
+            const bare = (node: Expression) => (node.kind === 'Paren' ? node.expression : node);
+            left =
+                operator === 'cross'
+                    ? this.call('cross', [bare(left), bare(right)], start, start)
+                    : { kind: 'Binary', operator, left, right, span: this.span(start) };
         }
     }
 
@@ -549,21 +558,22 @@ class Parser {
      */
     private power(): Expression {
         const start = this.peek().start;
-        const base = this.postfix(this.primary(), start);
-        if (!this.eatSymbol('^')) {
-            return base;
+        let result = this.postfix(this.primary(), start);
+        while (this.eatSymbol('^')) {
+            const exponent = this.script();
+            const power: Expression = {
+                kind: 'Binary',
+                operator: '^',
+                left: result,
+                right: exponent,
+                span: this.span(start),
+            };
+            // `x^{2}!` - a postfix after a power is the power's - and a power
+            // of that again, `L^{2}.\operatorname{total}^{-.5}`, is its own.
+            result = this.postfix(power, start);
+            if (result === power) break;
         }
-
-        const exponent = this.script();
-        const power: Expression = {
-            kind: 'Binary',
-            operator: '^',
-            left: base,
-            right: exponent,
-            span: this.span(start),
-        };
-        // `x^{2}!` - a postfix after a power is the power's.
-        return this.postfix(power, start);
+        return result;
     }
 
     /** `!`, `.x`, `.\operatorname{count}` and `[i]`, as many as follow. */
@@ -1140,18 +1150,31 @@ class Parser {
             return elements;
         }
 
+        // An end left off, `x\left[2...\right]` or `\left[...3\right]`,
+        // is a slice to the end or from the start of what it indexes.
+        const end = (): Expression | null =>
+            this.peekClose(delimiter) ? null : this.bindingLevel(false);
         for (;;) {
-            if (ranges && this.isSymbol('...') && elements.length > 0) {
+            if (ranges && this.isSymbol('...')) {
+                const start = this.peek().start;
                 this.advance();
                 this.eatSymbol(',');
-                const from = elements.pop()!;
-                const to = this.bindingLevel(false);
-                elements.push({ kind: 'ListRange', from, to, span: this.span(from.span.start) });
+                const from = elements.pop() ?? null;
+                const to = end();
+                if (!from && !to) {
+                    throw this.error('A range with neither end');
+                }
+                elements.push({
+                    kind: 'ListRange',
+                    from,
+                    to,
+                    span: this.span(from?.span.start ?? start),
+                });
             } else {
                 const start = this.peek().start;
                 const element = this.bindingLevel(false);
                 if (ranges && this.eatSymbol('...')) {
-                    const to = this.bindingLevel(false);
+                    const to = this.isSymbol(',') ? null : end();
                     elements.push({ kind: 'ListRange', from: element, to, span: this.span(start) });
                 } else {
                     elements.push(element);
@@ -1222,6 +1245,16 @@ class Parser {
 
     private bindingName(): Identifier {
         const token = this.peek();
+        // `\operatorname{for}\pm=\left[-1,1\right]`: a symbol Desmos lets a
+        // graph use as a name is as good a name to bind.
+        const symbol =
+            token.type === 'command'
+                ? [...SYMBOL_NAMES].find(([, command]) => command === `\\${token.name}`)
+                : undefined;
+        if (symbol) {
+            this.advance();
+            return { kind: 'Identifier', name: symbol[0], span: this.span(token.start) };
+        }
         if (token.type === 'command' && CONSTANT_FOR_COMMAND.has(`\\${token.name}`)) {
             const name = this.command(token.name, token.start);
             if (name.kind === 'Identifier') {

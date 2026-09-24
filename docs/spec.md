@@ -62,7 +62,7 @@ read becomes an `error` token and a diagnostic.
 | `string`     | `"a \"b\" c"`                                                               | Escapes: `\"`, `\\`, `\n`. Unterminated at end of line is an error.                  |
 | `color`      | `#c74440`, `#fff`                                                           | `#` followed by exactly 3 or 6 hex digits. Any other `#` is an error.                |
 | keywords     | `folder table config import image ticker style macro as for with step soft` | Reserved: never identifiers. `min`/`max` are contextual (§4.4), not keywords.        |
-| punctuation  | `( ) [ ] { } , ; : . .. ... = < <= > >= + - * / ^ ! \| -> @ @{ '`           | `@{` is one token only with no space between. `'` is a prime, one to a token.        |
+| punctuation  | `( ) [ ] { } , ; : . .. ... = < <= > >= + - * / ^ ! ~ \| -> @ @{ '`         | `@{` is one token only with no space between. `'` is a prime, one to a token.        |
 | `newline`    |                                                                             |                                                                                      |
 | `error`      |                                                                             | Anything else.                                                                       |
 
@@ -160,8 +160,9 @@ Notes on each:
   first separator) annotates the folder itself. Metadata anywhere else that
   trails nothing - on a line of its own - is an error (`misplaced-metadata`).
 - **`table`** — each entry is a column. `x = [1, 2, 3]` is a column with a
-  header and values; a bare expression (`x ^ 2`) is a computed column. The
-  same after-`{` rule gives the table metadata; a column's own metadata trails
+  header and values; a bare expression (`x ^ 2`) is a computed column. A cell
+  left blank is an empty slot, `y = [4, , 6]`, which only a column's values
+  may have (`misplaced-blank`). The same after-`{` rule gives the table metadata; a column's own metadata trails
   it. Only `header = [ … ]` splits into a header and values: anything else,
   `x = 5` included, is a computed column as written, and the checker decides
   whether it can be one. Table metadata takes column properties, which apply
@@ -339,9 +340,9 @@ A property in the wrong place is an error.
 | column     | `color`, `lineStyle`, `lineWidth`, `lineOpacity`, `pointStyle`, `pointSize`, `movablePointSize`, `pointOpacity`, `hidden`, `points`, `lines`, `dragMode`, `use` |
 | table      | exactly what a column takes, as defaults for every column                                                                                                       |
 | style      | anything an expression or a column takes, `slider` included                                                                                                     |
-| folder     | `collapsed`, `hidden`, `secret`                                                                                                                                 |
-| import     | `collapsed`, `hidden`, `secret`                                                                                                                                 |
-| image      | `name`, `center`, `width`, `height`, `angle`, `opacity`, `foreground`, `hidden`, `secret`, `dragMode`, `onClick`, `clickable`                                   |
+| folder     | `collapsed`, `hidden`, `secret`, `inFrontOfEverything`                                                                                                          |
+| import     | `collapsed`, `hidden`, `secret`, `inFrontOfEverything`                                                                                                          |
+| image      | `name`, `center`, `width`, `height`, `angle`, `opacity`, `foreground`, `hidden`, `secret`, `dragMode`, `onClick`, `clickable`, `disableGraphInteractions`       |
 | ticker     | `minStep`, `playing`, `open`                                                                                                                                    |
 | note       | `secret`                                                                                                                                                        |
 | config     | the calculator settings, and nothing that goes anywhere else                                                                                                    |
@@ -387,6 +388,11 @@ x^10                      → x^{10}
 2^3^2    = 2^(3^2)
 ```
 
+`cross(u, v)` is Desmos' `\times`, which has no function of its own: it
+multiplies numbers and lists as `*` does, but between two 3D points it is their
+cross product, where `*` - `\cdot` - is their dot product. It is written
+`u\times v`, and a graph's `\times` reads back as `cross(…)`.
+
 Implicit multiplication is juxtaposition of two operands with nothing between
 them: `2x`, `2pi x`, `3cos(t)`, `(a)(b)`, `x y`. An operand that starts with a
 sign is never juxtaposed - `a -b` is a subtraction - and a `[` straight after
@@ -426,7 +432,12 @@ That is the only place `=` binds more loosely than `->` and `,`. A chain
 
 Desmos' own spelling of a range with commas round the dots, `[1, ..., 10]` or
 `[1, 3, ..., 9]`, is read as the same `ListRange` as `[1...10]` and
-`[1, 3...9]`. A list spread over lines may end with a trailing comma, and so
+`[1, 3...9]`. In an index a range may leave an end off, meaning the start or
+the end of the list: `L[2...]` is everything from the second element on,
+`L[...3]` the first three, and `L[[2, 4...]]` every other one from the second -
+written in the index's own brackets, `L\left[2,4...\right]`, since that is
+the one place Desmos takes an open end. Anywhere else a range needs both ends,
+and one without is `open-range`. A list spread over lines may end with a trailing comma, and so
 may a call's arguments; a trailing comma in plain parentheses, `(a,)`, makes a
 one-element `Tuple`. An index holds exactly one expression: `L[1, 2]` is an
 error.
@@ -701,6 +712,8 @@ left off, and a statement that cannot be written at all is left out.
 | `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)                   |
 | `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have                          |
 | `statement-only`        | a chart or a regression `~` anywhere but as a statement of its own                               |
+| `open-range`            | a range with an end left off anywhere but an index (`L[2...]`)                                   |
+| `misplaced-blank`       | an empty slot, `[4, , 6]`, anywhere but a table column's values                                  |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                                       |
@@ -864,7 +877,7 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **Structure**: folders gather their members wherever the list keeps them; a
   folder with no title is `folder { … }`; a folder claiming to sit in another
   is written beside it. Tables write each column's own metadata, trailing
-  blank cells trimmed. An image's `draggable` is `dragMode: XY`. The ticker is
+  blank cells trimmed and a blank among them an empty slot. An image's `draggable` is `dragMode: XY`. The ticker is
   written last. A blank row is not written.
 - **What a graph cannot say**: imports come back as the folders they were
   flattened into, macros and styles as what they expanded to, and an inlined
@@ -877,8 +890,13 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **One name for each function**: the other spellings Desmos accepts are read
   as the name Axis has - `arsinh` as `arcsinh`, and `arcosh`, `artanh`,
   `arcsch`, `arsech`, `arcoth` alike; `inverseCdf` and `inversecdf` as
-  `quantile`; `TScore` as `tscore`; and `ittest`, the old name of the
+  `quantile`; `TScore` as `tscore`; `gcf` as `gcd`; and `ittest`, the old name of the
   two-sample test, as `ttest`.
+- **A table's own regression** - the kind picked from its menu - is written as
+  the `~` statement after the table that fits the same model, with fresh names
+  for its parameters, since a table's are its own and a statement's the
+  graph's. Desmos builds the one from the same model, fitted the same way, so
+  the graph draws and computes the same.
 - **Regressions and charts**: a regression's `residualVariable` is
   `residuals`, `isLogModeRegression` is `logMode`, and its
   `regressionParameters` - the fit - is not written. A chart's `vizProps` are
@@ -891,6 +909,9 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   are names, `pm` and `mp`. A colour typed with space round it, or as an opaque
   `rgb(…)`, is its hex, and a table column with no header and no values is
   left out, since it holds and draws nothing.
+- **A curve over an interval of its own parameter**, `(f(a))\operatorname{for}0<a<2`,
+  is written as the same curve in `t` with `domain: 0..2`, which Desmos draws
+  identically.
 - **Brackets that only group are dropped**: round all of a script,
   `x^{\left(n\right)}`, or of a value with bindings, and a product with a
   number on its right is written `*` - so decompiling what a decompiled file
@@ -909,7 +930,7 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 | ------------------- | -------------------------------------------------------------- |
 | `unsupported-latex` | latex the expression tree has no node for                      |
 | `unsupported-item`  | a list item Axis has no statement for, or an image with no URL |
-| `unsupported-value` | a colour or enum value Axis cannot write, or a blank cell      |
+| `unsupported-value` | a colour or enum value Axis cannot write                       |
 
 `decompileExpression`, `decompileSettings` and `decompileTicker` hand back one
 item's node - a folder as its header, with an empty body - for write-back to

@@ -209,6 +209,22 @@ const EXPRESSION: Record<string, PropertyCase> = {
         properties: ['showBoxplotOutliers: false'],
         expected: { vizProps: { showBoxplotOutliers: false } },
     },
+    showAngleLabel: {
+        setup: 'config { calculator: GEOMETRY }',
+        statement: 'angle((1, 0), (0, 0), (0, 1))',
+        properties: ['showAngleLabel: false'],
+        expected: { showAngleLabel: false },
+    },
+    disableGraphInteractions: {
+        statement: '(1, 2)',
+        properties: ['disableGraphInteractions'],
+        expected: { disableGraphInteractions: true },
+    },
+    cdf: {
+        statement: 'normaldist(0, 1)',
+        properties: ['cdf: -1..1'],
+        expected: { cdf: { show: true, min: '-1', max: '1' } },
+    },
     displayEvaluationAsFraction: {
         statement: 'a = 1 / 3',
         properties: ['displayEvaluationAsFraction'],
@@ -329,6 +345,10 @@ const FOLDER: Record<string, PropertyCase> = {
     collapsed: { properties: ['collapsed'], expected: { collapsed: true } },
     hidden: { properties: ['hidden'], expected: { hidden: true } },
     secret: { properties: ['secret'], expected: { secret: true } },
+    inFrontOfEverything: {
+        properties: ['inFrontOfEverything'],
+        expected: { inFrontOfEverything: true },
+    },
 };
 
 /**
@@ -340,6 +360,10 @@ const IMPORT: Record<string, PropertyCase> = {
     collapsed: { properties: ['collapsed: false'], expected: { collapsed: undefined } },
     hidden: { properties: ['hidden'], expected: { hidden: true, collapsed: true } },
     secret: { properties: ['secret'], expected: { secret: true } },
+    inFrontOfEverything: {
+        properties: ['inFrontOfEverything'],
+        expected: { inFrontOfEverything: true },
+    },
 };
 
 const IMAGE_CASES: Record<string, PropertyCase> = {
@@ -351,6 +375,10 @@ const IMAGE_CASES: Record<string, PropertyCase> = {
     angle: { properties: ['angle: -pi / 200'], expected: { angle: '\\frac{-\\pi}{200}' } },
     opacity: { properties: ['opacity: 0.5'], expected: { opacity: '0.5' } },
     foreground: { properties: ['foreground'], expected: { foreground: true } },
+    disableGraphInteractions: {
+        properties: ['disableGraphInteractions'],
+        expected: { disableGraphInteractions: true },
+    },
     hidden: { properties: ['hidden'], expected: { hidden: true } },
     secret: { properties: ['secret'], expected: { secret: true } },
     // Desmos ignores `dragMode` on an image and keeps a `draggable` flag

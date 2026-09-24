@@ -47,6 +47,7 @@ export const FUNCTION_ALIASES: ReadonlyMap<string, string> = new Map([
     ['inverseCdf', 'quantile'],
     ['inversecdf', 'quantile'],
     ['TScore', 'tscore'],
+    ['gcf', 'gcd'],
     // The two-sample t-test's old name, which Desmos still reads and keeps
     // the `ttest` it now means beside, as `latexV12`.
     ['ittest', 'ttest'],

@@ -67,6 +67,20 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   anywhere but as a statement of its own, and the `name` value type, for a
   property that takes a name.
 
+- `cross(u, v)`, the cross product of two 3D points, where `u * v` is their dot
+  product. It is Desmos' `\times`, which has no function of its own. A graph's
+  `\times` used to be read as `*`, which turned every cross product into a dot
+  product.
+- A slice may leave an end off: `L[2...]`, `L[...3]`, `L[[2, 4...]]`, as Desmos
+  allows in an index. Anywhere else a range still needs both ends, reported as
+  `open-range` (#76).
+- A blank table cell is an empty slot, `y = [4, , 6]`, which only a column's
+  values may hold (`misplaced-blank`). The decompiler writes one instead of
+  `0 / 0` (#80).
+- The properties `inFrontOfEverything` (folder), `showAngleLabel`,
+  `disableGraphInteractions` (expression and image) and `cdf` (a
+  distribution's shaded probability, `cdf: -1..1`). A table's own regression
+  is decompiled as the `~` statement that fits the same (#81).
 ### Changed
 
 - **Breaking:** the geometry functions' names are built in, so a file that
@@ -94,6 +108,14 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   and `mp`; a colour with space round it or written `rgb(…)` as its hex; and
   leaves out a table column with nothing in it, and a slider's empty bounds
   (#82).
+- A `with` ending a piecewise, a lone `with` or `for` as a call's argument or
+  an index, and a `sum`, `prod` or `int` on the right of a product are written
+  without brackets, as Desmos writes them.
+- Decompiling reads more of what real graphs hold: a curve over an interval of
+  its own parameter, `(…) for 0 < a < 2`, as the same curve in `t` over that
+  domain (they draw identically); `\pm` bound by a `for`; a power of a member,
+  `L^{2}.total^{-.5}`; a table cell holding only a space as blank; and `gcf`,
+  Desmos' other name for `gcd`.
 - Decompiled source compiles to latex that decompiles to the same source: a
   product with a number on its right is written `*`, and brackets that only
   group a script or a `with` inside a `for` are dropped (#83).

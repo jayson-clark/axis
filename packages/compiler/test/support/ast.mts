@@ -64,10 +64,10 @@ export const list = (...elements: Operand[]): Expression => ({
     elements: elements.map(node),
     span: SPAN,
 });
-export const range = (from: Operand, to: Operand): Expression => ({
+export const range = (from: Operand | null, to: Operand | null): Expression => ({
     kind: 'ListRange',
-    from: node(from),
-    to: node(to),
+    from: from === null ? null : node(from),
+    to: to === null ? null : node(to),
     span: SPAN,
 });
 export const abs = (expression: Operand): Expression => ({
@@ -117,6 +117,8 @@ export const binary = (operator: BinaryOperator, left: Operand, right: Operand):
 export const add = (a: Operand, b: Operand) => binary('+', a, b);
 export const sub = (a: Operand, b: Operand) => binary('-', a, b);
 export const mul = (a: Operand, b: Operand) => binary('*', a, b);
+/** `a\times b`, which Axis writes `cross(a, b)`. */
+export const cross = (a: Operand, b: Operand) => call('cross', a, b);
 export const div = (a: Operand, b: Operand) => binary('/', a, b);
 export const pow = (a: Operand, b: Operand) => binary('^', a, b);
 
@@ -282,7 +284,7 @@ export function show(tree: Expression): string {
         case 'List':
             return `[${tree.elements.map(show).join(', ')}]`;
         case 'ListRange':
-            return `${show(tree.from)}...${show(tree.to)}`;
+            return `${tree.from ? show(tree.from) : ''}...${tree.to ? show(tree.to) : ''}`;
         case 'Piecewise':
             return `{${[
                 ...tree.branches.map(b =>
@@ -323,6 +325,8 @@ export function show(tree: Expression): string {
                 .join(', ')})`;
         case 'ErrorExpression':
             return '<error>';
+        case 'Blank':
+            return '_';
     }
 }
 

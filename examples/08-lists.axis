@@ -20,6 +20,9 @@ folder "Building lists" {
     "L[3] indexes, length counts."
     third = ordered[3] @ hidden
     size = length(ordered) @ hidden
+    "An index takes a range, and may leave an end off: from the fourth on, the first three."
+    rest = ordered[4...] @ hidden
+    first = ordered[...3] @ hidden
 }
 
 folder "Lists as points" {
