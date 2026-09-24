@@ -41,6 +41,7 @@ import type {
     DesmosExpression,
     DomainBounds,
     Expression as DesmosExpressionItem,
+    VizProps,
     Folder,
     GraphImage,
     GraphState,
@@ -509,9 +510,67 @@ class Context {
                 ? this.enums(item, 'expression', ['editableLabelMode'], at, pending)
                 : []),
             ...this.flags(item, ['displayEvaluationAsFraction']),
+            ...this.regression(item, at, pending),
+            ...this.chart(item.vizProps, at, pending),
             ...this.strings(item, ['description']),
             ...this.domains(item, at, pending),
             ...this.clickable(item.clickableInfo, at, pending),
+        ];
+    }
+
+    /**
+     * A regression's settings. The residuals are named by Desmos when the file
+     * does not name them, and written all the same, since something may read
+     * them by that name. `regressionParameters` is the fit Desmos works out,
+     * not something the file says, so it is not read.
+     */
+    private regression(
+        item: DesmosExpressionItem,
+        at: { id?: string },
+        pending: Statement[],
+    ): Property[] {
+        return [
+            ...this.latexProperties(
+                { residuals: item.residualVariable },
+                ['residuals'],
+                at,
+                pending,
+            ),
+            ...this.flags({ logMode: item.isLogModeRegression }, ['logMode']),
+        ];
+    }
+
+    /**
+     * A chart's settings, which Desmos keeps together under `vizProps` and
+     * Axis writes as properties of their own. A setting at Desmos' default is
+     * left out, as the calculator itself leaves it.
+     */
+    private chart(
+        props: VizProps | undefined,
+        at: { id?: string },
+        pending: Statement[],
+    ): Property[] {
+        if (!props) return [];
+        const set = {
+            ...props,
+            alignedAxis: props.alignedAxis === 'x' ? undefined : props.alignedAxis,
+            binAlignment: props.binAlignment === 'center' ? undefined : props.binAlignment,
+            dotplotXMode: props.dotplotXMode === 'exact' ? undefined : props.dotplotXMode,
+            histogramMode: props.histogramMode === '' ? undefined : props.histogramMode,
+            showBoxplotOutliers: props.showBoxplotOutliers === false ? false : undefined,
+            breadth: props.breadth === '' ? undefined : props.breadth,
+            axisOffset: props.axisOffset === '' ? undefined : props.axisOffset,
+        };
+        return [
+            ...this.enums(
+                set,
+                'expression',
+                ['alignedAxis', 'binAlignment', 'dotplotXMode', 'histogramMode'],
+                at,
+                pending,
+            ),
+            ...this.latexProperties(set, ['breadth', 'axisOffset'], at, pending),
+            ...this.flags(set, ['showBoxplotOutliers']),
         ];
     }
 

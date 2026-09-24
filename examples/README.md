@@ -12,8 +12,8 @@ Read in order, each file assumes only what came before it.
 | `06-sliders-and-animation.axis` | `slider: lo..hi step s`, open and `soft` ends, bounds that are expressions, `playing`                |
 | `07-points-and-polygons.axis`   | Points, `polygon`, `distance`, `midpoint`, `.x` / `.y`                                               |
 | `08-lists.axis`                 | List arithmetic, `[1...10]`, lists of points, one statement drawing many curves                      |
-| `09-statistics.axis`            | `mean`, `stdev`, `quantile`, `corr`, distributions and `.pdf`, a `ttest`, `nCr`                      |
-| `10-tables.axis`                | `table { … }`, per-column styling, a table on one line, computed columns                             |
+| `09-statistics.axis`            | `mean`, `quantile`, `corr`, distributions and `.pdf`, a `ttest`, charts, `nCr`                       |
+| `10-tables.axis`                | `table { … }`, per-column styling, a table on one line, computed columns, a regression `~`           |
 | `11-parametric-and-polar.axis`  | Curves in `t` and their `domain`, equations in `r` and `theta`                                       |
 | `12-inequalities.axis`          | Shaded half-planes and regions                                                                       |
 | `13-interactivity.axis`         | `dragMode`, `onClick` actions, action runs, `clickable`, `ticker` and `dt`                           |

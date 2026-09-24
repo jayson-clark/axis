@@ -270,6 +270,7 @@ const COMPARISON = {
     '<=': '\\le',
     '>': '>',
     '>=': '\\ge',
+    '~': '\\sim',
 } as const;
 
 function binary(

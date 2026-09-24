@@ -150,6 +150,20 @@ describe('names', () => {
         clean('config { calculator: GRAPHING_3D }\nv = vector((0, 0, 0), (1, 0, 0))');
     });
 
+    test('a chart and a regression are statements of their own', () => {
+        clean('L = [1, 2, 3]\nhistogram(L, 2)\nstats(L)\nys ~ m L + b');
+        clean('macro CHART = boxplot([1, 2, 3])\nCHART');
+        reports('L = [1, 2, 3]\nH = histogram(L)', 'statement-only');
+        reports('a = 1 + stats([1, 2])', 'statement-only');
+        reports('a = 1 + (ys ~ m)', 'statement-only');
+        reports('ys ~ m ~ b', 'statement-only');
+    });
+
+    test('a regression’s residuals go in a name', () => {
+        clean('ys ~ m xs + b @ residuals: e1, logMode');
+        reports('ys ~ m xs + b @ residuals: 1 + e', 'invalid-value');
+    });
+
     test('a geometry token belongs to the geometry calculator', () => {
         reports('$1 = (0, 0)', 'requires-calculator');
         clean(

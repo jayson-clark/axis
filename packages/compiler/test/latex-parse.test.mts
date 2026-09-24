@@ -290,6 +290,16 @@ describe('what Desmos writes', () => {
     });
 });
 
+describe('regressions', () => {
+    cases([
+        ['y_{1}\\sim mx_{1}+b', cmp('y_1', '~', add(imp('m', 'x_1'), 'b'))],
+        [
+            'M\\sim aL^{2}\\left\\{L>2\\right\\}',
+            cmp('M', '~', imp('a', pow('L', 2), piecewise([[cmp('L', '>', 2), null]]))),
+        ],
+    ]);
+});
+
 describe('geometry tokens', () => {
     cases([
         ['\\token{12}', id('$12')],
@@ -305,6 +315,8 @@ describe('a number with nothing after its point', () => {
         ['\\left(2.,-0.\\right)', tuple(2, neg(0))],
         ['x\\le31.', cmp('x', '<=', 31)],
         ['3.\\left(y+1\\right)', imp(3, paren(add('y', 1)))],
+        ['20\\ 000', num(20000)],
+        ['1\\ 234\\ 567.5', num('1234567.5')],
     ]);
 });
 
@@ -403,7 +415,7 @@ describe('spans', () => {
 
 describe('latex it has no reading for', () => {
     const unreadable = [
-        'y_{1}\\sim mx_{1}+b',
+        'L\\left[2...\\right]',
         '\\int_{0}^{1}x',
         '\\sum_{n}^{10}n',
         "f'",

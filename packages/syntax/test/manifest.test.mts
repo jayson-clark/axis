@@ -25,6 +25,7 @@ const VALUE_TYPES = [
     'range',
     'action',
     'style',
+    'name',
 ];
 
 describe('manifest properties', () => {
@@ -135,7 +136,13 @@ describe('placement', () => {
     });
 
     test('a style carries exactly what an expression or a column may', () => {
-        const either = new Set([...names('expression'), ...names('column')]);
+        // Except a name: a regression's residuals are one list, and a style
+        // shared by two regressions would name it twice.
+        const either = new Set(
+            [...names('expression'), ...names('column')].filter(
+                name => findProperty(name)?.valueType !== 'name',
+            ),
+        );
         assert.deepEqual(new Set(names('style')), either);
         assert.ok(either.has('slider'));
     });

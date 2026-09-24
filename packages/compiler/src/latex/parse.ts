@@ -136,6 +136,15 @@ function tokenize(latex: string): Token[] {
             continue;
         }
 
+        // `20\ 000` is twenty thousand: Desmos keeps the space somebody typed
+        // between groups of digits, and reads the number whole.
+        const grouped = /^\d+(?:\\ \d{3})+(?:\.\d+)?/.exec(rest);
+        if (grouped) {
+            const text = grouped[0].replace(/\\ /g, '');
+            push({ type: 'number', text, start, end: start + grouped[0].length });
+            continue;
+        }
+
         const number = /^(?:\d+(?:\.\d+)?|\.\d+)/.exec(rest);
         if (number && !rest.startsWith('...')) {
             // `3.` is 3 to Desmos, which keeps whatever was typed: a point
@@ -275,6 +284,7 @@ const COMPARISONS: Record<string, ComparisonOperator> = {
     '\\leq': '<=',
     '\\ge': '>=',
     '\\geq': '>=',
+    '\\sim': '~',
 };
 
 /** `\sin^{-1}` is how Desmos writes arcsin. */

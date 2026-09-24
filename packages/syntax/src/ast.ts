@@ -340,7 +340,8 @@ export interface Binary extends NodeBase {
     right: Expression;
 }
 
-export type ComparisonOperator = '=' | '<' | '<=' | '>' | '>=';
+/** `~` is a regression: fit the right side's parameters to the left (§5.5). */
+export type ComparisonOperator = '=' | '<' | '<=' | '>' | '>=' | '~';
 
 /**
  * `y = x`, `f(x) = x^2`, `1 < x < 2`.

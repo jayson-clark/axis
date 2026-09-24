@@ -86,6 +86,54 @@ has nowhere on a column to put it.
 `dragMode` on a column makes its points draggable, and dragging one changes
 the cell it came from - a way to let whoever reads the graph move the data.
 
+## Fitting a model
+
+`~` fits a model to data. The names in the model that nothing defines - `m`
+and `b` here - are its parameters, and Desmos works out the values that fit
+best and defines them for the rest of the graph.
+
+```axis
+table {
+    x1 = [1, 2, 3, 4, 5]
+    y1 = [2.1, 3.9, 6.2, 7.8, 10.1]
+}
+y1 ~ m x1 + b @ residuals: e1
+```
+
+`residuals: e1` keeps what is left over, one number per point, in a list of
+that name. `logMode` fits in log space, which suits a model that grows by a
+factor:
+
+```axis
+xs = [1, 2, 3, 4, 5]
+ys = [1.1, 2.1, 3.9, 8.2, 15.8]
+ys ~ a c ^ xs @ logMode
+```
+
+A regression is a statement of its own; it cannot be assigned or be part of
+anything else.
+
+## Charts
+
+`histogram`, `dotplot` and `boxplot` draw a list as a chart, and `stats` shows
+its summary - minimum, quartiles, maximum - as a row of the expression list.
+Each is a statement of its own, set up with properties:
+
+```axis
+data = [2, 4, 4, 4, 5, 5, 7, 9]
+histogram(data, 2) @ binAlignment: left, histogramMode: relative
+dotplot(data) @ dotplotXMode: bin
+boxplot(data) @ axisOffset: 3, breadth: 1, showBoxplotOutliers: false
+stats(data)
+```
+
+Written anywhere else, a chart is reported, since Desmos draws it nowhere else:
+
+```axis error="statement-only"
+data = [2, 4, 4, 4, 5, 5, 7, 9]
+H = histogram(data)
+```
+
 ## Lists
 
 A list is written in square brackets and is a single value. Arithmetic on it

@@ -155,6 +155,60 @@ const EXPRESSION: Record<string, PropertyCase> = {
         properties: ['label: "P"', 'showLabel', 'editableLabelMode: TEXT'],
         expected: { editableLabelMode: 'TEXT' },
     },
+    residuals: {
+        setup: 'xs = [1, 2, 3, 4]\nys = [2.1, 3.9, 6.2, 7.8]',
+        statement: 'ys ~ m xs + b',
+        properties: ['residuals: r1'],
+        expected: { residualVariable: 'r_{1}' },
+    },
+    logMode: {
+        setup: 'xs = [1, 2, 3, 4]\nys = [2, 4.1, 7.9, 16.2]',
+        statement: 'ys ~ a b ^ xs',
+        properties: ['logMode'],
+        expected: { isLogModeRegression: true },
+    },
+    binAlignment: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'histogram(L, 2)',
+        properties: ['binAlignment: left'],
+        expected: { vizProps: { binAlignment: 'left' } },
+    },
+    histogramMode: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'histogram(L, 2)',
+        properties: ['histogramMode: density'],
+        expected: { vizProps: { histogramMode: 'density' } },
+    },
+    dotplotXMode: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'dotplot(L, 2)',
+        properties: ['dotplotXMode: bin'],
+        expected: { vizProps: { dotplotXMode: 'bin' } },
+    },
+    alignedAxis: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'boxplot(L)',
+        properties: ['alignedAxis: y'],
+        expected: { vizProps: { alignedAxis: 'y' } },
+    },
+    axisOffset: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'boxplot(L)',
+        properties: ['axisOffset: 2'],
+        expected: { vizProps: { axisOffset: '2' } },
+    },
+    breadth: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'boxplot(L)',
+        properties: ['breadth: 0.5'],
+        expected: { vizProps: { breadth: '0.5' } },
+    },
+    showBoxplotOutliers: {
+        setup: 'L = [1, 5, 5, 6, 8, 9, 9, 9, 30]',
+        statement: 'boxplot(L)',
+        properties: ['showBoxplotOutliers: false'],
+        expected: { vizProps: { showBoxplotOutliers: false } },
+    },
     displayEvaluationAsFraction: {
         statement: 'a = 1 / 3',
         properties: ['displayEvaluationAsFraction'],
@@ -328,7 +382,11 @@ const NOTE: Record<string, PropertyCase> = {
  * with the clause moved into a style - plus a style that uses another.
  */
 const STYLE: Record<string, PropertyCase> = {
-    ...EXPRESSION,
+    // Everything a style may set, which is nearly everything an expression
+    // takes: a regression's residuals are one list, not a look to share.
+    ...Object.fromEntries(
+        Object.entries(EXPRESSION).filter(([name]) => findProperty(name, 'style')),
+    ),
     use: {
         setup: `${THICK}\nstyle outer { use: thick; color: #00ff00 }`,
         statement: 'y = x',

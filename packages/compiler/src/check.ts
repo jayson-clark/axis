@@ -102,6 +102,21 @@ const CALCULATOR_NAMES: Readonly<Record<string, string>> = {
     GRAPHING_3D: '3D',
 };
 
+/** The functions that draw a chart, and so stand as a statement alone. */
+const CHARTS: ReadonlySet<string> = new Set(
+    AXIS_MANIFEST.functions.filter(fn => fn.category === 'chart').map(fn => fn.name),
+);
+
+/** `histogram(L)`, `stats(L)`: a chart, drawn by a statement of its own. */
+function isChart(node: Expression): node is Call {
+    return node.kind === 'Call' && CHARTS.has(node.callee.name);
+}
+
+/** `ys ~ m xs + b`: a regression, one `~` and two sides. */
+function isRegression(node: Expression): boolean {
+    return node.kind === 'Comparison' && node.operators.length === 1 && node.operators[0] === '~';
+}
+
 /** The members that read a point's coordinates rather than call a function. */
 const COORDINATES: ReadonlySet<string> = new Set(['x', 'y', 'z']);
 
@@ -116,6 +131,12 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     };
 
     const complexMode = allowsComplex(program);
+    // The charts and regressions that stand as a statement of their own,
+    // which is the only place Desmos draws one.
+    const standing = new WeakSet<Expression>();
+    const stand = (expression: Expression): void => {
+        if (isChart(expression) || isRegression(expression)) standing.add(expression);
+    };
     const calculator = calculatorOf(program);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -275,6 +296,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
 
         const definition = definitionOf(expression);
         if (!definition) {
+            stand(expression);
             checkExpression(expression, scope);
             return;
         }
@@ -328,6 +350,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
         }
 
         const bound = new Set(parameters?.map(parameter => parameter.name));
+        stand(body);
         checkExpression(body, { file, bound, ticker: false, macro: true });
     };
 
@@ -355,7 +378,27 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 checkIdentifier(node, scope);
                 return;
 
+            case 'Comparison':
+                if (node.operators.includes('~') && !standing.has(node)) {
+                    report(
+                        'statement-only',
+                        'A regression is a statement of its own - `ys ~ m xs + b` - and cannot be part of anything else.',
+                        node.span,
+                    );
+                }
+                for (const operand of node.operands) {
+                    checkExpression(operand, scope);
+                }
+                return;
+
             case 'Call':
+                if (isChart(node) && !standing.has(node)) {
+                    report(
+                        'statement-only',
+                        `\`${node.callee.name}\` draws a chart, and is a statement of its own; it cannot be assigned or used in an expression.`,
+                        node.span,
+                    );
+                }
                 checkCall(node, scope);
                 for (const arg of node.arguments) {
                     checkExpression(arg, scope);
@@ -805,6 +848,18 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
 
             case 'style':
                 checkUse(value, placement);
+                return;
+
+            case 'name':
+                if (value.kind !== 'Identifier') {
+                    report(
+                        'invalid-value',
+                        `\`${name}\` takes a name, such as \`e1\`.`,
+                        value.span,
+                    );
+                } else {
+                    checkSubscripts(value);
+                }
                 return;
 
             case 'range':
