@@ -81,6 +81,7 @@ import type { DecompilerDiagnosticCode } from './diagnostics';
 import { parseLatex, parseLatexStatement } from './latex/index';
 import { identifierLatex } from './latex/names';
 import { GEOMETRY_FOLDER_ID } from './lower';
+import { childrenOf, mapChildren } from './walk';
 
 /** A graph to decompile: what {@link compileAxis} hands back, or a calculator's own state. */
 export interface DecompileInput {
@@ -536,6 +537,22 @@ class Context {
         if (item.latex === undefined || item.latex.trim() === '') {
             return null;
         }
+        const curve = parametricInterval(item.latex);
+        if (curve) {
+            // `(…)\operatorname{for}0.1<a<2.1` is a curve in `a` over that
+            // interval, which draws exactly as the same curve in `t` does
+            // over the same domain - and that Axis can write.
+            const own = this.expressionProperties(
+                { ...item, domain: undefined, parametricDomain: undefined },
+                pending,
+            );
+            return {
+                kind: 'ExpressionStatement',
+                expression: curve.body,
+                metadata: metadata([...own, property('domain', range(curve.from, curve.to))]),
+                span: span(),
+            };
+        }
         const expression = this.latex(item.latex, { id: item.id }, pending, parseLatexStatement);
         if (!expression) {
             return null;
@@ -901,14 +918,16 @@ class Context {
             // Desmos pads a column with blank cells to the length of the
             // longest, so trailing ones are nothing the file has to say.
             const cells = [...(column.values ?? [])];
-            while (cells.length && cells[cells.length - 1].trim() === '') cells.pop();
+            while (cells.length && cells[cells.length - 1].replace(/\\ /g, '').trim() === '')
+                cells.pop();
 
             let values: Expression[] | null = null;
             if (cells.length) {
                 values = [];
                 for (const [index, cell] of cells.entries()) {
+                    // A cell holding only a space somebody typed is as blank.
                     const value =
-                        cell.trim() === ''
+                        cell.replace(/\\ /g, '').trim() === ''
                             ? this.blankCell()
                             : this.latex(cell, { ...at, property: `cell ${index + 1}` }, pending);
                     values.push(value ?? this.blankCell());
@@ -1401,3 +1420,45 @@ const MODELS: Readonly<
         latex: (x, p) => `${p('a')}\\cdot\\sin\\left(${p('b')}${x}+${p('c')}\\right)+${p('d')}`,
     },
 };
+
+/**
+ * `(f(a))\operatorname{for}0.1<a<2.1` - a curve in a parameter of its own,
+ * over an interval, which Desmos draws as it draws a parametric curve - as the
+ * same curve in `t`, and the interval's ends. Nothing for anything else, or
+ * for a body that already uses `t` for something of its own.
+ */
+function parametricInterval(
+    latex: string,
+): { body: Expression; from: Expression; to: Expression } | undefined {
+    // The `for` has to be the statement's own, outside every bracket.
+    let depth = 0;
+    let at = -1;
+    for (let i = 0; i < latex.length; i++) {
+        if (latex.startsWith('\\left', i) || latex[i] === '{') depth++;
+        else if (latex.startsWith('\\right', i) || latex[i] === '}') depth--;
+        else if (depth === 0 && latex.startsWith('\\operatorname{for}', i)) at = i;
+    }
+    if (at < 0) return undefined;
+    const interval =
+        /^(.+?)(?:<|\\le)((?:\\[a-zA-Z]+|[a-zA-Z])(?:_\{[a-zA-Z0-9]+\}|_[a-zA-Z0-9])?)(?:<|\\le)(.+)$/.exec(
+            latex.slice(at + '\\operatorname{for}'.length),
+        );
+    if (!interval) return undefined;
+    try {
+        const variable = parseLatex(interval[2]);
+        const body = parseLatex(latex.slice(0, at));
+        if (variable.kind !== 'Identifier' || body.kind !== 'Tuple') return undefined;
+        const name = variable.name;
+        const uses = (node: Expression, which: string): boolean =>
+            (node.kind === 'Identifier' && node.name === which) ||
+            childrenOf(node).some(child => uses(child, which));
+        if (name !== 't' && uses(body, 't')) return undefined;
+        const rename = (node: Expression): Expression =>
+            node.kind === 'Identifier' && node.name === name
+                ? { ...node, name: 't' }
+                : mapChildren(node, rename);
+        return { body: rename(body), from: parseLatex(interval[1]), to: parseLatex(interval[3]) };
+    } catch {
+        return undefined;
+    }
+}

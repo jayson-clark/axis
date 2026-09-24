@@ -328,8 +328,11 @@ describe('a number with nothing after its point', () => {
         ['3.\\left(y+1\\right)', imp(3, paren(add('y', 1)))],
         ['1.y-1.2', sub(imp(1, 'y'), 1.2)],
         ['2.x', imp(2, 'x')],
-        ['\\mathbf{ }-f', neg('f')],
-        ['\\mathit{x}+1', add('x', 1)],
+        ['L^{2}.\\operatorname{total}^{-.5}', pow(member(pow('L', 2), 'total'), neg('.5'))],
+        [
+            '\\left[\\pm\\operatorname{for}\\pm=\\left[-1,1\\right]\\right]',
+            list(forB('pm', ['pm', list(neg(1), 1)])),
+        ],
         ['P_1.x', member('P_1', 'x')],
         ['P_1.\\operatorname{segments}\\left[3\\right]', index(member('P_1', 'segments'), 3)],
         ['\\pm=\\left[-1,1\\right]', eq('pm', list(neg(1), 1))],

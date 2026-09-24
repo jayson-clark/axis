@@ -904,6 +904,9 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   are names, `pm` and `mp`. A colour typed with space round it, or as an opaque
   `rgb(…)`, is its hex, and a table column with no header and no values is
   left out, since it holds and draws nothing.
+- **A curve over an interval of its own parameter**, `(f(a))\operatorname{for}0<a<2`,
+  is written as the same curve in `t` with `domain: 0..2`, which Desmos draws
+  identically.
 - **Brackets that only group are dropped**: round all of a script,
   `x^{\left(n\right)}`, or of a value with bindings, and a product with a
   number on its right is written `*` - so decompiling what a decompiled file

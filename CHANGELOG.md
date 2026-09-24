@@ -104,10 +104,11 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   and `mp`; a colour with space round it or written `rgb(…)` as its hex; and
   leaves out a table column with nothing in it, and a slider's empty bounds
   (#82).
-- Decompiling reads `\mathbf{…}`, `\mathit{…}` and the other styling commands
-  as what they hold - an empty one as nothing - rather than leaving the
-  expression out, and a `with` ending a piecewise is written without brackets,
-  as Desmos writes it.
+- A `with` ending a piecewise is written without brackets, as Desmos writes it.
+- Decompiling reads more of what real graphs hold: a curve over an interval of
+  its own parameter, `(…) for 0 < a < 2`, as the same curve in `t` over that
+  domain (they draw identically); `\pm` bound by a `for`; a power of a member,
+  `L^{2}.total^{-.5}`; and a table cell holding only a space as blank.
 - Decompiled source compiles to latex that decompiles to the same source: a
   product with a number on its right is written `*`, and brackets that only
   group a script or a `with` inside a `for` are dropped (#83).

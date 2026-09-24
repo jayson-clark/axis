@@ -816,6 +816,19 @@ describe('config', () => {
         );
     });
 
+    test('writes a curve over an interval of its own parameter as a curve in t over a domain', () => {
+        assert.equal(
+            fromState(
+                items({
+                    type: 'expression',
+                    id: '1',
+                    latex: '\\left(2\\sin\\left(a\\right),\\cos\\left(a\\right)\\right)\\operatorname{for}0.1<a<2.1',
+                }),
+            ),
+            '(2sin(t), cos(t)) @ domain: 0.1..2.1\n',
+        );
+    });
+
     test('writes a member called as one', () => {
         const source =
             'D = normaldist(0, 1)\np = D.cdf(-1, 1)\nhi = ttest([1, 2, 3]).conf(0.95).upper\n';
