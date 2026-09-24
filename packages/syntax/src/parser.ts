@@ -1297,36 +1297,38 @@ class Parser {
     private parseListElements(): ast.Expression[] {
         const elements: ast.Expression[] = [];
         if (this.at(']')) return elements;
+        // An end left off - `L[2...]`, `L[...3]`, `L[2, ...]` - is read here
+        // wherever it is written, and the checker says where it may be.
+        const end = (): ast.Expression | null =>
+            this.at(']') ? null : this.parseTopOrError(false);
         for (;;) {
             if (this.at('...')) {
                 const dots = this.next();
                 if (this.at(',')) this.next();
-                const to = this.parseTopOrError(false);
-                const from = elements.pop();
-                if (from) {
+                const to = end();
+                // `[1, ..., 10]` is Desmos' spelling of `[1...10]`; `[...3]`
+                // has no start at all.
+                const from = elements.pop() ?? null;
+                if (from === null && to === null) {
+                    this.error('expected-expression', 'A range needs at least one end', dots.span);
+                } else {
                     elements.push({
                         kind: 'ListRange',
                         from,
                         to,
-                        span: this.span(from.span.start),
+                        span: this.span(from?.span.start ?? dots.span.start),
                     });
-                } else {
-                    this.error(
-                        'expected-expression',
-                        'A range needs a start before `...`',
-                        dots.span,
-                    );
-                    elements.push(to);
                 }
+            } else if (this.at(',')) {
+                // `[4, , 6]`: a slot with nothing in it, a table's blank cell.
+                const at = this.peek().span.start;
+                elements.push({ kind: 'Blank', span: { start: at, end: at } });
             } else {
                 const start = this.startOf();
                 const element = this.parseTopOrError(false);
                 if (this.at('...')) {
                     this.next();
-                    // `[1, ...]`, with the end left off: an end is needed.
-                    const to = this.at(',')
-                        ? this.errorExpression('Expected the end of the range')
-                        : this.parseTopOrError(false);
+                    const to = this.at(',') ? null : end();
                     elements.push({ kind: 'ListRange', from: element, to, span: this.span(start) });
                 } else {
                     elements.push(element);

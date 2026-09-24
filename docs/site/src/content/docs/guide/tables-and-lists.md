@@ -86,6 +86,16 @@ has nowhere on a column to put it.
 `dragMode` on a column makes its points draggable, and dragging one changes
 the cell it came from - a way to let whoever reads the graph move the data.
 
+A cell left blank is an empty slot - nothing between the commas - and its row
+draws no point:
+
+```axis
+table {
+    x = [1, 2, 3, 4]
+    y = [3, , 5, 6]
+}
+```
+
 ## Fitting a model
 
 `~` fits a model to data. The names in the model that nothing defines - `m`
@@ -172,12 +182,15 @@ pair.
 ### Reading lists
 
 `L[3]` is the third element, counting from 1. A list range inside the brackets
-takes a slice, and a condition keeps just the elements that meet it:
+takes a slice - and there it may leave an end off, to run to the end or from
+the start - and a condition keeps just the elements that meet it:
 
 ```axis
 L = [4, 1, 7, 3, 9]
 third = L[3]
 firstTwo = L[1...2]
+fromThird = L[3...]
+firstThree = L[...3]
 big = L[L > 3]
 n = length(L)
 avg = L.mean

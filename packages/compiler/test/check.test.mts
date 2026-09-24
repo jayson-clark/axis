@@ -160,6 +160,17 @@ describe('names', () => {
         clean('config { calculator: GRAPHING_3D }\nv = vector((0, 0, 0), (1, 0, 0))');
     });
 
+    test('a range leaves an end off only in an index', () => {
+        clean('L = [1, 2, 3]\na = L[2...]\nb = L[...2]\nc = L[[1, 3...]]\nd = L[2, ...]');
+        reports('L = [1...]', 'open-range');
+        reports('L = [1, 2]\na = total([2...])', 'open-range');
+    });
+
+    test('a blank slot belongs in a table column’s values', () => {
+        clean('table {\n    x = [1, 2, 3]\n    y = [4, , 6]\n}');
+        reports('L = [1, , 3]', 'misplaced-blank');
+    });
+
     test('a chart and a regression are statements of their own', () => {
         clean('L = [1, 2, 3]\nhistogram(L, 2)\nstats(L)\nys ~ m L + b');
         clean('macro CHART = boxplot([1, 2, 3])\nCHART');

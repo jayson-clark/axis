@@ -159,7 +159,7 @@ function emit(node: Expression): string {
         case 'List':
             return `\\left[${listElements(node.elements)}\\right]`;
         case 'ListRange':
-            return `${at(node.from, LEVEL.additive)}...${at(node.to, LEVEL.additive)}`;
+            return `${node.from ? at(node.from, LEVEL.additive) : ''}...${node.to ? at(node.to, LEVEL.additive) : ''}`;
         case 'Piecewise':
             return `\\left\\{${[
                 ...node.branches.map(branch),
@@ -203,6 +203,17 @@ function emit(node: Expression): string {
         case 'Derivative':
             return `\\frac{d}{d${identifierLatex(node.variable.name)}}${at(node.body, LEVEL.product)}`;
         case 'Index':
+            // `L[[2, 4...]]` - a stepped slice with an end left off - is
+            // written in the index's own brackets, the one place Desmos lets a
+            // range leave an end off: in a list of its own it has to have both.
+            if (
+                node.index.kind === 'List' &&
+                node.index.elements.some(
+                    element => element.kind === 'ListRange' && (!element.from || !element.to),
+                )
+            ) {
+                return `${at(node.target, LEVEL.postfix)}\\left[${listElements(node.index.elements)}\\right]`;
+            }
             return `${at(node.target, LEVEL.postfix)}\\left[${at(node.index, LEVEL.action)}\\right]`;
         case 'Member':
             return node.arguments
@@ -223,6 +234,9 @@ function emit(node: Expression): string {
             return scoped(node.body, '\\operatorname{with}', node.bindings);
         case 'For':
             return scoped(node.body, '\\operatorname{for}', node.bindings);
+        case 'Blank':
+            // A blank table cell, which Desmos keeps as the empty string.
+            return '';
         case 'ErrorExpression':
             throw new Error('An expression the parser could not read has no latex');
     }

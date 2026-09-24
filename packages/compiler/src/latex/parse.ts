@@ -1140,18 +1140,31 @@ class Parser {
             return elements;
         }
 
+        // An end left off, `x\left[2...\right]` or `\left[...3\right]`,
+        // is a slice to the end or from the start of what it indexes.
+        const end = (): Expression | null =>
+            this.peekClose(delimiter) ? null : this.bindingLevel(false);
         for (;;) {
-            if (ranges && this.isSymbol('...') && elements.length > 0) {
+            if (ranges && this.isSymbol('...')) {
+                const start = this.peek().start;
                 this.advance();
                 this.eatSymbol(',');
-                const from = elements.pop()!;
-                const to = this.bindingLevel(false);
-                elements.push({ kind: 'ListRange', from, to, span: this.span(from.span.start) });
+                const from = elements.pop() ?? null;
+                const to = end();
+                if (!from && !to) {
+                    throw this.error('A range with neither end');
+                }
+                elements.push({
+                    kind: 'ListRange',
+                    from,
+                    to,
+                    span: this.span(from?.span.start ?? start),
+                });
             } else {
                 const start = this.peek().start;
                 const element = this.bindingLevel(false);
                 if (ranges && this.eatSymbol('...')) {
-                    const to = this.bindingLevel(false);
+                    const to = this.isSymbol(',') ? null : end();
                     elements.push({ kind: 'ListRange', from: element, to, span: this.span(start) });
                 } else {
                     elements.push(element);

@@ -508,7 +508,7 @@ describe('a graph written in Desmos rather than in Axis', { skip }, () => {
                 expressions: {
                     list: [
                         { type: 'expression', id: '1', latex: 'y=x' },
-                        { type: 'expression', id: '2', latex: 'L\\left[2...\\right]' },
+                        { type: 'expression', id: '2', latex: 'a\\&b' },
                         { type: 'expression', id: '3', latex: 'y=2x' },
                     ],
                 },

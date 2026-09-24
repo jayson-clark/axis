@@ -292,6 +292,15 @@ describe('what Desmos writes', () => {
     });
 });
 
+describe('slices with an end left off', () => {
+    cases([
+        ['L\\left[2...\\right]', index('L', range(2, null))],
+        ['L\\left[...3\\right]', index('L', range(null, 3))],
+        ['L\\left[2,...\\right]', index('L', range(2, null))],
+        ['L\\left[1,3...\\right]', index('L', list(1, range(3, null)))],
+    ]);
+});
+
 describe('regressions', () => {
     cases([
         ['y_{1}\\sim mx_{1}+b', cmp('y_1', '~', add(imp('m', 'x_1'), 'b'))],
@@ -423,7 +432,7 @@ describe('spans', () => {
 
 describe('latex it has no reading for', () => {
     const unreadable = [
-        'L\\left[2...\\right]',
+        'a\\&b',
         '\\int_{0}^{1}x',
         '\\sum_{n}^{10}n',
         "f'",

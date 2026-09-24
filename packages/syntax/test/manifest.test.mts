@@ -100,8 +100,8 @@ describe('placement', () => {
         propertiesFor(placement).map(p => p.name);
 
     test('folders and imports', () => {
-        assert.deepEqual(names('folder'), ['hidden', 'secret', 'collapsed']);
-        assert.deepEqual(names('import'), ['hidden', 'secret', 'collapsed']);
+        assert.deepEqual(names('folder'), ['hidden', 'secret', 'inFrontOfEverything', 'collapsed']);
+        assert.deepEqual(names('import'), ['hidden', 'secret', 'inFrontOfEverything', 'collapsed']);
     });
 
     test('tickers take only their own', () => {

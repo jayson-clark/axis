@@ -112,7 +112,11 @@ export function debugTree(node: Node | null): string {
         case 'List':
             return list('list', ...all(node.elements));
         case 'ListRange':
-            return list('...', debugTree(node.from), debugTree(node.to));
+            return list(
+                '...',
+                node.from ? debugTree(node.from) : '_',
+                node.to ? debugTree(node.to) : '_',
+            );
         case 'Piecewise':
             return list(
                 'piecewise',
@@ -173,5 +177,7 @@ export function debugTree(node: Node | null): string {
             return list('for', debugTree(node.body), ...all(node.bindings));
         case 'ErrorExpression':
             return '(error)';
+        case 'Blank':
+            return '_';
     }
 }

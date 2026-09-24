@@ -471,6 +471,7 @@ class Printer {
             case 'String':
                 return quote(expression.value);
             case 'ErrorExpression':
+            case 'Blank':
                 return '';
 
             case 'Paren':
@@ -514,9 +515,9 @@ class Printer {
                 // Level 2 at either end: a `with` is bracketed rather than left
                 // to wonder whether the `...` or a comma after it is its own.
                 return [
-                    this.expression(expression.from, 2, ELEMENT),
+                    expression.from ? this.expression(expression.from, 2, ELEMENT) : '',
                     '...',
-                    this.expression(expression.to, 2, ELEMENT),
+                    expression.to ? this.expression(expression.to, 2, ELEMENT) : '',
                 ];
             case 'Piecewise': {
                 const parts = [

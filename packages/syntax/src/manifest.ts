@@ -1793,6 +1793,35 @@ export const AXIS_MANIFEST = {
             appliesTo: ['expression', 'style'],
         },
         {
+            name: 'showAngleLabel',
+            detail: "Show a geometry angle's measure [default: true]",
+            example:
+                'config { calculator: GEOMETRY }\na = angle((1, 0), (0, 0), (0, 1)) @ showAngleLabel: false',
+            snippet: 'showAngleLabel: ${1|true,false|}',
+            valueType: 'boolean',
+            appliesTo: ['expression', 'style'],
+        },
+        {
+            name: 'disableGraphInteractions',
+            detail: 'Let the graph be clicked and dragged through this, as though it were not there [default: false]',
+            documentation:
+                'For a point that should not be dragged, a picture laid over the graph, a label that should not catch the pointer.',
+            example: 'P = (1, 2) @ disableGraphInteractions',
+            snippet: 'disableGraphInteractions',
+            valueType: 'boolean',
+            appliesTo: ['expression', 'image', 'style'],
+        },
+        {
+            name: 'cdf',
+            detail: "Shade a distribution's probability between two bounds",
+            documentation:
+                'Either end may be left off: `cdf: ..1` shades everything up to 1. The probability is shown beside the distribution.',
+            example: 'normaldist(0, 1) @ cdf: -1..1',
+            snippet: 'cdf: ${1:-1}..${2:1}',
+            valueType: 'range',
+            appliesTo: ['expression', 'style'],
+        },
+        {
             name: 'residuals',
             detail: "The list a regression's residuals are kept in",
             documentation:
@@ -2048,6 +2077,14 @@ export const AXIS_MANIFEST = {
             snippet: 'foreground',
             valueType: 'boolean',
             appliesTo: ['image'],
+        },
+        {
+            name: 'inFrontOfEverything',
+            detail: 'Draw what the folder holds over everything else [default: false]',
+            example: 'folder "Border" { @ inFrontOfEverything\n    y = x @ lineWidth: 8\n}\ny < x',
+            snippet: 'inFrontOfEverything',
+            valueType: 'boolean',
+            appliesTo: ['folder', 'import'],
         },
         {
             name: 'collapsed',

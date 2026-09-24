@@ -160,8 +160,9 @@ Notes on each:
   first separator) annotates the folder itself. Metadata anywhere else that
   trails nothing - on a line of its own - is an error (`misplaced-metadata`).
 - **`table`** — each entry is a column. `x = [1, 2, 3]` is a column with a
-  header and values; a bare expression (`x ^ 2`) is a computed column. The
-  same after-`{` rule gives the table metadata; a column's own metadata trails
+  header and values; a bare expression (`x ^ 2`) is a computed column. A cell
+  left blank is an empty slot, `y = [4, , 6]`, which only a column's values
+  may have (`misplaced-blank`). The same after-`{` rule gives the table metadata; a column's own metadata trails
   it. Only `header = [ … ]` splits into a header and values: anything else,
   `x = 5` included, is a computed column as written, and the checker decides
   whether it can be one. Table metadata takes column properties, which apply
@@ -339,9 +340,9 @@ A property in the wrong place is an error.
 | column     | `color`, `lineStyle`, `lineWidth`, `lineOpacity`, `pointStyle`, `pointSize`, `movablePointSize`, `pointOpacity`, `hidden`, `points`, `lines`, `dragMode`, `use` |
 | table      | exactly what a column takes, as defaults for every column                                                                                                       |
 | style      | anything an expression or a column takes, `slider` included                                                                                                     |
-| folder     | `collapsed`, `hidden`, `secret`                                                                                                                                 |
-| import     | `collapsed`, `hidden`, `secret`                                                                                                                                 |
-| image      | `name`, `center`, `width`, `height`, `angle`, `opacity`, `foreground`, `hidden`, `secret`, `dragMode`, `onClick`, `clickable`                                   |
+| folder     | `collapsed`, `hidden`, `secret`, `inFrontOfEverything`                                                                                                          |
+| import     | `collapsed`, `hidden`, `secret`, `inFrontOfEverything`                                                                                                          |
+| image      | `name`, `center`, `width`, `height`, `angle`, `opacity`, `foreground`, `hidden`, `secret`, `dragMode`, `onClick`, `clickable`, `disableGraphInteractions`       |
 | ticker     | `minStep`, `playing`, `open`                                                                                                                                    |
 | note       | `secret`                                                                                                                                                        |
 | config     | the calculator settings, and nothing that goes anywhere else                                                                                                    |
@@ -426,7 +427,12 @@ That is the only place `=` binds more loosely than `->` and `,`. A chain
 
 Desmos' own spelling of a range with commas round the dots, `[1, ..., 10]` or
 `[1, 3, ..., 9]`, is read as the same `ListRange` as `[1...10]` and
-`[1, 3...9]`. A list spread over lines may end with a trailing comma, and so
+`[1, 3...9]`. In an index a range may leave an end off, meaning the start or
+the end of the list: `L[2...]` is everything from the second element on,
+`L[...3]` the first three, and `L[[2, 4...]]` every other one from the second -
+written in the index's own brackets, `L\left[2,4...\right]`, since that is
+the one place Desmos takes an open end. Anywhere else a range needs both ends,
+and one without is `open-range`. A list spread over lines may end with a trailing comma, and so
 may a call's arguments; a trailing comma in plain parentheses, `(a,)`, makes a
 one-element `Tuple`. An index holds exactly one expression: `L[1, 2]` is an
 error.
@@ -701,6 +707,8 @@ left off, and a statement that cannot be written at all is left out.
 | `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)                   |
 | `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have                          |
 | `statement-only`        | a chart or a regression `~` anywhere but as a statement of its own                               |
+| `open-range`            | a range with an end left off anywhere but an index (`L[2...]`)                                   |
+| `misplaced-blank`       | an empty slot, `[4, , 6]`, anywhere but a table column's values                                  |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                                       |
@@ -864,7 +872,7 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **Structure**: folders gather their members wherever the list keeps them; a
   folder with no title is `folder { … }`; a folder claiming to sit in another
   is written beside it. Tables write each column's own metadata, trailing
-  blank cells trimmed. An image's `draggable` is `dragMode: XY`. The ticker is
+  blank cells trimmed and a blank among them an empty slot. An image's `draggable` is `dragMode: XY`. The ticker is
   written last. A blank row is not written.
 - **What a graph cannot say**: imports come back as the folders they were
   flattened into, macros and styles as what they expanded to, and an inlined
@@ -879,6 +887,11 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   `arcsch`, `arsech`, `arcoth` alike; `inverseCdf` and `inversecdf` as
   `quantile`; `TScore` as `tscore`; and `ittest`, the old name of the
   two-sample test, as `ttest`.
+- **A table's own regression** - the kind picked from its menu - is written as
+  the `~` statement after the table that fits the same model, with fresh names
+  for its parameters, since a table's are its own and a statement's the
+  graph's. Desmos builds the one from the same model, fitted the same way, so
+  the graph draws and computes the same.
 - **Regressions and charts**: a regression's `residualVariable` is
   `residuals`, `isLogModeRegression` is `logMode`, and its
   `regressionParameters` - the fit - is not written. A chart's `vizProps` are
@@ -909,7 +922,7 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 | ------------------- | -------------------------------------------------------------- |
 | `unsupported-latex` | latex the expression tree has no node for                      |
 | `unsupported-item`  | a list item Axis has no statement for, or an image with no URL |
-| `unsupported-value` | a colour or enum value Axis cannot write, or a blank cell      |
+| `unsupported-value` | a colour or enum value Axis cannot write                       |
 
 `decompileExpression`, `decompileSettings` and `decompileTicker` hand back one
 item's node - a folder as its header, with an empty body - for write-back to

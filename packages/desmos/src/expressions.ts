@@ -189,6 +189,12 @@ export interface Expression {
     isLogModeRegression?: boolean;
     /** How a histogram, a dot plot or a box plot is drawn. */
     vizProps?: VizProps;
+    /** Whether a geometry angle shows its measure [true]. */
+    showAngleLabel?: boolean;
+    /** Let the expression be clicked and dragged through, as though not there. */
+    disableGraphInteractions?: boolean;
+    /** A distribution's shaded probability between two bounds, as latex. */
+    cdf?: { show?: boolean; min?: string; max?: string };
     /** Drop the outline Desmos draws behind a label. */
     suppressTextOutline?: boolean;
     /** Draw a ring around each point, in the graph's background colour. */
@@ -221,6 +227,8 @@ export interface Folder {
     collapsed?: boolean;
     hidden?: boolean;
     secret?: boolean;
+    /** Draw what the folder holds over everything else in the graph. */
+    inFrontOfEverything?: boolean;
 }
 
 /**
@@ -276,6 +284,8 @@ export interface GraphImage {
     opacity?: string;
     /** Whether the image is drawn over the graph rather than under it. */
     foreground?: boolean;
+    /** Let the image be clicked and dragged through, as though not there. */
+    disableGraphInteractions?: boolean;
     /** Whether the image ignores clicks aimed at what is behind it. */
     clickableInfo?: ClickableInfo;
     hidden?: boolean;

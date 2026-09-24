@@ -527,6 +527,7 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
         case 'Identifier':
         case 'String':
         case 'Color':
+        case 'Blank':
         case 'ErrorExpression':
             return [];
         case 'Paren':
@@ -537,7 +538,7 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
         case 'Sequence':
             return node.elements;
         case 'ListRange':
-            return [node.from, node.to];
+            return [node.from, node.to].filter(end => end !== null);
         case 'Piecewise':
             return [
                 ...node.branches.flatMap(branch =>

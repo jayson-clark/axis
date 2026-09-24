@@ -473,6 +473,7 @@ export function lowerProgram(
             ...(read.boolean('collapsed') === true && { collapsed: true }),
             ...(read.boolean('hidden') === true && { hidden: true }),
             ...(read.boolean('secret') === true && { secret: true }),
+            ...(read.boolean('inFrontOfEverything') === true && { inFrontOfEverything: true }),
         } satisfies Folder);
 
         lowerStatements(statement.body, id, false, true);
@@ -506,6 +507,7 @@ export function lowerProgram(
                 ...(read.boolean('collapsed') !== false && { collapsed: true }),
                 ...(read.boolean('hidden') === true && { hidden: true }),
                 ...(read.boolean('secret') === true && { secret: true }),
+                ...(read.boolean('inFrontOfEverything') === true && { inFrontOfEverything: true }),
             } satisfies Folder);
         }
 
@@ -582,6 +584,7 @@ export function lowerProgram(
             angle: read.latex('angle'),
             opacity: read.latex('opacity'),
             foreground: read.boolean('foreground'),
+            disableGraphInteractions: read.boolean('disableGraphInteractions'),
             hidden: read.boolean('hidden'),
             secret: read.boolean('secret'),
             // An image is dragged or it is not: Desmos keeps `draggable` for
@@ -755,6 +758,9 @@ export function lowerProgram(
             residualVariable: read.name('residuals'),
             isLogModeRegression: read.boolean('logMode'),
             vizProps: buildVizProps(read),
+            showAngleLabel: read.boolean('showAngleLabel'),
+            disableGraphInteractions: read.boolean('disableGraphInteractions'),
+            cdf: buildCdf(read),
             suppressTextOutline: read.boolean('suppressTextOutline'),
             pointOutline: read.boolean('pointOutline'),
             description: read.string('description'),
@@ -762,6 +768,17 @@ export function lowerProgram(
             clickableInfo: buildClickableInfo(read),
         });
         return expression;
+    };
+
+    /**
+     * `@ cdf: -1..1`: the probability shaded between two bounds, which Desmos
+     * keeps as the ends' latex and a flag to show it at all.
+     */
+    const buildCdf = (read: Reader): DesmosExpressionItem['cdf'] => {
+        const range = read.range('cdf')?.range;
+        if (!range) return undefined;
+        const end = (node: Expression | null) => (node ? latex(node) : undefined);
+        return defined({ show: true, min: end(range.min), max: end(range.max) });
     };
 
     /**

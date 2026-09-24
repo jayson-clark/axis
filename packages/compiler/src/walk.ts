@@ -21,6 +21,7 @@ export function childrenOf(node: Expression): Expression[] {
         case 'Identifier':
         case 'String':
         case 'Color':
+        case 'Blank':
         case 'ErrorExpression':
             return [];
         case 'Paren':
@@ -31,7 +32,7 @@ export function childrenOf(node: Expression): Expression[] {
         case 'Sequence':
             return node.elements;
         case 'ListRange':
-            return [node.from, node.to];
+            return [node.from, node.to].filter(end => end !== null);
         case 'Piecewise':
             return [
                 ...node.branches.flatMap(branch =>
@@ -86,6 +87,7 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
         case 'Identifier':
         case 'String':
         case 'Color':
+        case 'Blank':
         case 'ErrorExpression':
             return node;
         case 'Paren':
@@ -100,8 +102,8 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
             return elements === node.elements ? node : { ...node, elements };
         }
         case 'ListRange': {
-            const from = map(node.from);
-            const to = map(node.to);
+            const from = node.from && map(node.from);
+            const to = node.to && map(node.to);
             return from === node.from && to === node.to ? node : { ...node, from, to };
         }
         case 'Piecewise': {

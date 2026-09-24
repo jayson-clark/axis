@@ -149,6 +149,19 @@ const PROPERTY_CASES: Record<string, string[]> = {
     ],
     displayEvaluationAsFraction: ['a = 1 / 3 @ displayEvaluationAsFraction'],
     residuals: ['ys ~ m xs + b @ residuals: e1'],
+    inFrontOfEverything: ['folder "F" { @ inFrontOfEverything\n    y = x\n}'],
+    showAngleLabel: [
+        'config { calculator: GEOMETRY }\nangle((1, 0), (0, 0), (0, 1)) @ showAngleLabel: false',
+    ],
+    disableGraphInteractions: [
+        '(1, 2) @ disableGraphInteractions',
+        'image "https://example.com/a.png" @ disableGraphInteractions',
+    ],
+    cdf: [
+        'normaldist(0, 1) @ cdf: -1..1',
+        'normaldist(0, 1) @ cdf: ..1',
+        'normaldist(0, 1) @ cdf: -1..',
+    ],
     logMode: ['ys ~ a b ^ xs @ logMode', 'ys ~ a b ^ xs @ logMode: false'],
     binAlignment: ['histogram([1, 2, 3], 1) @ binAlignment: left'],
     histogramMode: [
@@ -581,18 +594,41 @@ describe('tables', () => {
         );
     });
 
-    test('reports a blank cell among others and keeps the rows in line', () => {
+    test('writes a blank cell among others as an empty slot, which compiles back blank', () => {
         const table: Table = {
             type: 'table',
             id: 't',
             columns: [{ id: 'c', latex: 'x', values: ['1', '', '3'] }],
         };
         const { source, diagnostics } = decompileAxis({ state: { version: 11, ...items(table) } });
-        assert.deepEqual(
-            diagnostics.map(d => d.code),
-            ['unsupported-value'],
-        );
-        assert.match(source, /x = \[1, 0 \/ 0, 3\]/);
+        assert.deepEqual(diagnostics, []);
+        assert.match(source, /x = \[1, , 3\]/);
+        const [compiled] = listOf(source) as Table[];
+        assert.deepEqual(compiled.columns[0].values, ['1', '', '3']);
+    });
+
+    test('leaves out a column with no header and nothing in it', () => {
+        // A calculator's own state can hold a column with no header at all.
+        const table = {
+            type: 'table',
+            id: 't',
+            columns: [
+                { id: 'a', latex: 'x', values: ['1', '2'] },
+                { id: 'b', values: ['', ''] },
+                { id: 'c', latex: '\\ ' },
+            ],
+        } as Table;
+        assert.equal(fromState(items(table)), 'table {\n    x = [1, 2]\n}\n');
+    });
+
+    test('writes a slice with an end left off', () => {
+        for (const source of [
+            'L = [1, 2, 3]\na = L[2...]\n',
+            'L = [1, 2, 3]\nb = L[...2]\n',
+            'L = [1, 2, 3, 4]\nc = L[[1, 3...]]\n',
+        ]) {
+            assert.equal(roundTrip(source), source);
+        }
     });
 });
 
@@ -756,6 +792,30 @@ describe('config', () => {
         );
     });
 
+    test('writes a table’s own regression as the `~` statement that fits the same', () => {
+        const table = {
+            type: 'table',
+            id: 't',
+            columns: [
+                { id: 'cx', latex: 'x_{1}', values: ['1', '2', '3'] },
+                { id: 'cy', latex: 'y_{1}', values: ['2', '4', '7'] },
+            ],
+            regression: {
+                type: 'quadratic',
+                columnIds: { x: 'cx', y: 'cy' },
+                id: 'r',
+                color: '#388c46',
+                isLogMode: false,
+                residualVariable: 'e_{3}',
+            },
+        } as unknown as Table;
+        const source = fromState(items(table));
+        assert.equal(
+            source,
+            'table {\n    x_1 = [1, 2, 3]\n    y_1 = [2, 4, 7]\n}\ny_1 ~ fit1a x_1 ^ 2 + fit1b x_1 + fit1c @ color: GREEN, residuals: e_3\n',
+        );
+    });
+
     test('writes a member called as one', () => {
         const source =
             'D = normaldist(0, 1)\np = D.cdf(-1, 1)\nhi = ttest([1, 2, 3]).conf(0.95).upper\n';
@@ -812,13 +872,13 @@ describe('what Axis cannot write', () => {
                 includeFunctionParametersInRandomSeed: true,
                 ...items(
                     { type: 'expression', id: 'a', latex: 'y=x' },
-                    { type: 'expression', id: 'b', latex: 'L\\left[2...\\right]' },
+                    { type: 'expression', id: 'b', latex: 'a\\&b' },
                     { type: 'expression', id: 'c', latex: 'y=2x' },
                 ),
             },
         });
 
-        assert.equal(source, 'y = x\n// unsupported: L\\left[2...\\right]\ny = 2x\n');
+        assert.equal(source, 'y = x\n// unsupported: a\\&b\ny = 2x\n');
         assert.equal(diagnostics.length, 1);
         const [diagnostic] = diagnostics;
         assert.equal(diagnostic.code, 'unsupported-latex');
@@ -826,7 +886,7 @@ describe('what Axis cannot write', () => {
         assert.match(diagnostic.message, /Expression b/);
         assert.equal(
             source.slice(diagnostic.span.start, diagnostic.span.end),
-            '// unsupported: L\\left[2...\\right]',
+            '// unsupported: a\\&b',
         );
         assertWellFormed(source);
         assert.equal(listOf(source).length, 2);
@@ -1026,7 +1086,7 @@ describe('decompileExpression, decompileSettings and decompileTicker', () => {
         const { statement, diagnostics } = decompileExpression({
             type: 'expression',
             id: 'e',
-            latex: 'L\\left[2...\\right]',
+            latex: 'a\\&b',
         });
         assert.equal(statement, null);
         assert.deepEqual(

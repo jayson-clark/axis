@@ -67,6 +67,16 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   anywhere but as a statement of its own, and the `name` value type, for a
   property that takes a name.
 
+- A slice may leave an end off: `L[2...]`, `L[...3]`, `L[[2, 4...]]`, as Desmos
+  allows in an index. Anywhere else a range still needs both ends, reported as
+  `open-range` (#76).
+- A blank table cell is an empty slot, `y = [4, , 6]`, which only a column's
+  values may hold (`misplaced-blank`). The decompiler writes one instead of
+  `0 / 0` (#80).
+- The properties `inFrontOfEverything` (folder), `showAngleLabel`,
+  `disableGraphInteractions` (expression and image) and `cdf` (a
+  distribution's shaded probability, `cdf: -1..1`). A table's own regression
+  is decompiled as the `~` statement that fits the same (#81).
 ### Changed
 
 - **Breaking:** the geometry functions' names are built in, so a file that

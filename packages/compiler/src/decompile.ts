@@ -79,6 +79,7 @@ import {
 } from '@axis-dsl/syntax';
 import type { DecompilerDiagnosticCode } from './diagnostics';
 import { parseLatex, parseLatexStatement } from './latex/index';
+import { identifierLatex } from './latex/names';
 import { GEOMETRY_FOLDER_ID } from './lower';
 
 /** A graph to decompile: what {@link compileAxis} hands back, or a calculator's own state. */
@@ -141,7 +142,7 @@ export interface DecompileExpressionOptions {
 /** Turn a graph back into the `.axis` source that builds it. */
 export function decompileAxis(input: DecompileInput, options: PrintOptions = {}): DecompileResult {
     const list = input.state.expressions?.list ?? [];
-    const context = new Context(definedNames(list));
+    const context = new Context(definedNames(list), JSON.stringify(list));
 
     const units: Unit[] = [];
     const config = settingsStatement(input);
@@ -330,7 +331,13 @@ class Context {
     /** The palette names the graph does not take for variables of its own. */
     private readonly palette: ReadonlyMap<string, string>;
 
-    constructor(defined: ReadonlySet<string>) {
+    /** Every latex in the graph, which a name made up here must not appear in. */
+    private readonly written: string;
+    /** How many table regressions have been given names of their own. */
+    private fits = 0;
+
+    constructor(defined: ReadonlySet<string>, written = '') {
+        this.written = written;
         this.palette = new Map(
             AXIS_PALETTE.filter(color => !defined.has(color.name)).map(color => [
                 color.hex,
@@ -403,7 +410,58 @@ class Context {
     item(item: DesmosExpression): Statement[] {
         const pending: Statement[] = [];
         const statement = this.statement(item, pending);
-        return statement ? [...pending, statement] : pending;
+        const fit = item.type === 'table' ? this.tableRegression(item, pending) : null;
+        return [...pending, ...(statement ? [statement] : []), ...(fit ? [fit] : [])];
+    }
+
+    /**
+     * A regression made from a table's own menu, as the `~` statement it is.
+     * Desmos builds one from the same model, fitted the same way - the two
+     * give the same residuals to the last digit, for every kind - so the graph
+     * is the same. Its parameters are named afresh: a table's are its own, and
+     * a statement's are the graph's, where `a` and `b` may already be taken.
+     */
+    private tableRegression(table: Table, pending: Statement[]): Statement | null {
+        const regression = (table as Table & { regression?: TableRegression }).regression;
+        const model = regression && MODELS[regression.type];
+        if (!regression || !model) return null;
+        const columns = table.columns ?? [];
+        const x = columns.find(column => column.id === regression.columnIds?.x)?.latex;
+        const y = columns.find(column => column.id === regression.columnIds?.y)?.latex;
+        if (!x || !y) return null;
+
+        this.fits++;
+        const names = new Map<string, string>();
+        for (const parameter of model.parameters) {
+            let name = `fit${this.fits}${parameter}`;
+            while (this.written.includes(identifierLatex(name))) name += parameter;
+            names.set(parameter, identifierLatex(name));
+        }
+        // A column named by a name goes in as it is; one that is an
+        // expression is bracketed, so the model's products take all of it.
+        const variable = /^[a-zA-Z](_\{[a-zA-Z0-9]+\})?$/.test(x.trim())
+            ? x
+            : `\\left(${x}\\right)`;
+        const latex = `${y}\\sim ${model.latex(variable, parameter => names.get(parameter)!)}`;
+        const at = { id: table.id };
+        const expression = this.latex(latex, at, pending, parseLatexStatement);
+        if (!expression) return null;
+        const item = {
+            ...regression,
+            residualVariable: regression.residualVariable,
+            isLogModeRegression: regression.isLogMode === true ? true : undefined,
+        } as unknown as DesmosExpressionItem;
+        return {
+            kind: 'ExpressionStatement',
+            expression: unbracketed(expression),
+            metadata: metadata([
+                ...this.color(item, at, pending),
+                ...this.enums(item, 'expression', ['lineStyle'], at, pending),
+                ...this.flags(item, ['hidden']),
+                ...this.regression(item, at, pending),
+            ]),
+            span: span(),
+        };
     }
 
     private statement(item: DesmosExpression, pending: Statement[]): Statement | null {
@@ -457,7 +515,7 @@ class Context {
     folder(folder: Folder): FolderStatement {
         // Desmos says "not collapsed" by leaving the key off, and the compiler
         // writes these flags only when they are on - so only those are read.
-        const entries = (['collapsed', 'hidden', 'secret'] as const)
+        const entries = (['collapsed', 'hidden', 'secret', 'inFrontOfEverything'] as const)
             .filter(key => folder[key] === true)
             .map(key => flag(key, true));
         return {
@@ -512,6 +570,10 @@ class Context {
             ...this.flags(item, ['displayEvaluationAsFraction']),
             ...this.regression(item, at, pending),
             ...this.chart(item.vizProps, at, pending),
+            ...this.cdf(item.cdf, at, pending),
+            // `true` is the default, and only a switched-off label is said.
+            ...(item.showAngleLabel === false ? [flag('showAngleLabel', false)] : []),
+            ...this.flags(item, ['disableGraphInteractions']),
             ...this.strings(item, ['description']),
             ...this.domains(item, at, pending),
             ...this.clickable(item.clickableInfo, at, pending),
@@ -538,6 +600,20 @@ class Context {
             ),
             ...this.flags({ logMode: item.isLogModeRegression }, ['logMode']),
         ];
+    }
+
+    /** A distribution's shaded probability, `cdf: -1..1`, when it is shown. */
+    private cdf(
+        cdf: DesmosExpressionItem['cdf'],
+        at: { id?: string },
+        pending: Statement[],
+    ): Property[] {
+        if (!cdf?.show) return [];
+        const end = (latex: string | undefined, name: string) =>
+            latex === undefined || latex === ''
+                ? null
+                : (this.latex(latex, { ...at, property: `cdf ${name}` }, pending) ?? null);
+        return [property('cdf', range(end(cdf.min, 'min'), end(cdf.max, 'max'), null, 'none'))];
     }
 
     /**
@@ -833,9 +909,9 @@ class Context {
                 for (const [index, cell] of cells.entries()) {
                     const value =
                         cell.trim() === ''
-                            ? this.blankCell(at, index, pending)
+                            ? this.blankCell()
                             : this.latex(cell, { ...at, property: `cell ${index + 1}` }, pending);
-                    values.push(value ?? this.blankCell(at, index, pending, false));
+                    values.push(value ?? this.blankCell());
                 }
             }
 
@@ -860,27 +936,13 @@ class Context {
     }
 
     /**
-     * A cell with nothing in it, among cells that have something - which a
-     * list has no way to write. It is written as `0 / 0`, undefined as the
-     * blank is, so the rows after it stay in their rows, and reported.
+     * A cell with nothing in it, among cells that have something: the empty
+     * slot of `[4, , 6]`, which keeps the rows after it in their rows. A cell
+     * whose latex Axis cannot read has been reported already, and is left as
+     * a blank for the same reason.
      */
-    private blankCell(
-        at: { id?: string },
-        index: number,
-        pending: Statement[],
-        report = true,
-    ): Expression {
-        if (report) {
-            pending.push(
-                this.problem({
-                    code: 'unsupported-value',
-                    comment: `blank cell ${index + 1} written as 0 / 0`,
-                    message: `${describe({ ...at, property: `cell ${index + 1}` })} is blank, which a list cannot hold, so it was written as 0 / 0.`,
-                }),
-            );
-        }
-        const zero = (): Expression => ({ kind: 'Number', value: '0', span: span() });
-        return { kind: 'Binary', operator: '/', left: zero(), right: zero(), span: span() };
+    private blankCell(): Expression {
+        return { kind: 'Blank', span: span() };
     }
 
     private image(image: GraphImage, pending: Statement[]): Statement | null {
@@ -909,7 +971,12 @@ class Context {
                     at,
                     pending,
                 ),
-                ...this.flags(image, ['foreground', 'hidden', 'secret']),
+                ...this.flags(image, [
+                    'foreground',
+                    'hidden',
+                    'secret',
+                    'disableGraphInteractions',
+                ]),
                 // Desmos keeps `draggable` for an image and ignores `dragMode`
                 // on one, and the compiler makes any mode but `NONE` into it -
                 // so a draggable image is written with the mode that says
@@ -1286,3 +1353,51 @@ function configValue(
     }
     return undefined;
 }
+
+/** A regression made from a table's menu, as the table keeps it. */
+interface TableRegression {
+    type: string;
+    columnIds?: { x?: string; y?: string };
+    color?: string;
+    lineStyle?: string;
+    hidden?: boolean;
+    isLogMode?: boolean;
+    residualVariable?: string;
+}
+
+/**
+ * The model of each kind of table regression, as Desmos builds it: the same
+ * latex, the same parameters, in the same order.
+ */
+const MODELS: Readonly<
+    Record<string, { parameters: string[]; latex(x: string, p: (name: string) => string): string }>
+> = {
+    linear: { parameters: ['m', 'b'], latex: (x, p) => `${p('m')}${x}+${p('b')}` },
+    quadratic: {
+        parameters: ['a', 'b', 'c'],
+        latex: (x, p) => `${p('a')}${x}^{2}+${p('b')}${x}+${p('c')}`,
+    },
+    cubic: {
+        parameters: ['a', 'b', 'c', 'd'],
+        latex: (x, p) => `${p('a')}${x}^{3}+${p('b')}${x}^{2}+${p('c')}${x}+${p('d')}`,
+    },
+    quartic: {
+        parameters: ['a', 'b', 'c', 'd', 'f'],
+        latex: (x, p) =>
+            `${p('a')}${x}^{4}+${p('b')}${x}^{3}+${p('c')}${x}^{2}+${p('d')}${x}+${p('f')}`,
+    },
+    exponential: { parameters: ['a', 'b'], latex: (x, p) => `${p('a')}\\cdot${p('b')}^{${x}}` },
+    power: { parameters: ['a', 'b'], latex: (x, p) => `${p('a')}\\cdot${x}^{${p('b')}}` },
+    logarithmic: {
+        parameters: ['a', 'b'],
+        latex: (x, p) => `${p('a')}+${p('b')}\\cdot\\ln\\left(${x}\\right)`,
+    },
+    logistic: {
+        parameters: ['a', 'b', 'c'],
+        latex: (x, p) => `\\frac{${p('a')}}{1+e^{-\\left(${p('b')}${x}+${p('c')}\\right)}}`,
+    },
+    sinusoidal: {
+        parameters: ['a', 'b', 'c', 'd'],
+        latex: (x, p) => `${p('a')}\\cdot\\sin\\left(${p('b')}${x}+${p('c')}\\right)+${p('d')}`,
+    },
+};
