@@ -30,7 +30,7 @@ describe('names', () => {
     test('a builtin, a function the file defines, anywhere in it, is a call', () => {
         clean('y = sin(x) + mean([1, 2]) + random()');
         clean('y = f(x)\nf(x) = x ^ 2');
-        clean('area(w, h) = w * h\na = area(2, 3)');
+        clean('rectArea(w, h) = w * h\na = rectArea(2, 3)');
     });
 
     test('a name Desmos reads as a value, with one argument, is a product', () => {
@@ -129,6 +129,32 @@ describe('names', () => {
         reports('config { allowComplex: false }\na = arg(1)', 'requires-complex-mode');
         clean('config { allowComplex: true }\na = real(3 + 4i)\nb = (3 + 4i).conj');
         clean('config { allowComplex }\na = arg(1)');
+    });
+
+    test('a member called has to be a built-in, or a coordinate times something', () => {
+        clean('D = normaldist(0, 1)\np = D.cdf(1)\nq = [1, 2, 3].quantile(0.5)');
+        clean('P = (1, 2)\na = P.x(3)');
+        reports('L = [1, 2]\na = L.nope(1)', 'unknown-function');
+        clean('P = (1, 2)\na = P.x(1, 2)');
+    });
+
+    test('a function of another calculator needs that calculator', () => {
+        reports('s = segment((0, 0), (1, 1))', 'requires-calculator');
+        reports('s = (0, 0).start', 'requires-calculator');
+        reports(
+            'config { calculator: GEOMETRY }\ntriangle((0, 0, 0), (1, 0, 0), (0, 1, 0))',
+            'requires-calculator',
+        );
+        clean('config { calculator: GEOMETRY }\ns = segment((0, 0), (1, 1))');
+        clean('config { calculator: GRAPHING_3D }\ntriangle((0, 0, 0), (1, 0, 0), (0, 1, 0))');
+        clean('config { calculator: GRAPHING_3D }\nv = vector((0, 0, 0), (1, 0, 0))');
+    });
+
+    test('a geometry token belongs to the geometry calculator', () => {
+        reports('$1 = (0, 0)', 'requires-calculator');
+        clean(
+            'config { calculator: GEOMETRY }\n$1 = (0, 0)\n$2 = segment($1, (1, 1))\na = $2.length',
+        );
     });
 
     test('complex mode is the merged config’s: the entry file wins over an import', () => {

@@ -44,6 +44,25 @@ folder "Two lists" {
     cp = covp(data, other) @ hidden
 }
 
+folder "Distributions" {
+    "A distribution is drawn as its density, and read with its members."
+    N = normaldist(avg, s) @ color: ORANGE, hidden
+    y = N.pdf(x) @ color: ORANGE, lineWidth: 3
+    below = N.cdf(5) @ hidden
+    within = N.cdf(avg - s, avg + s) @ hidden
+    B = binomialdist(8, 0.5) @ hidden
+    heads = B.pdf(4) @ hidden
+}
+
+folder "Testing" {
+    "Is the mean of data different from 4? A t-test says how surprising the sample is if it were."
+    T = ttest(data).null(4) @ hidden
+    tp = T.pright @ hidden
+    "A 95% confidence interval for the mean."
+    ci_low = ttest(data).conf(0.95).lower @ hidden
+    ci_high = ttest(data).conf(0.95).upper @ hidden
+}
+
 folder "Seeing the data" {
     "The samples along a line."
     (data, 0) @ color: BLUE, pointSize: 14

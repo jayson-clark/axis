@@ -115,6 +115,9 @@ describe('precedence (spec §5.1)', () => {
         assert.equal(expr('L[L > 2]'), '(index L (> L 2))');
         assert.equal(expr('P.x'), '(. P x)');
         assert.equal(expr('L.count'), '(. L count)');
+        assert.equal(expr('D.cdf(-1, 1)'), '(. D cdf (- 1) 1)');
+        assert.equal(expr('T.conf(0.95).upper'), '(. (. T conf 0.95) upper)');
+        assert.equal(expr('$12.length'), '(. $12 length)');
         assert.equal(expr('n!'), '(! n)');
         assert.equal(expr('-n!'), '(- (! n))');
         assert.equal(expr('L[1].x!'), '(! (. (index L 1) x))');

@@ -622,8 +622,24 @@ class Printer {
                     this.expression(expression.target, 9, context),
                     group('[', [this.expression(expression.index, 1, ELEMENT)], ']'),
                 ];
-            case 'Member':
-                return [this.expression(expression.target, 9, context), '.', expression.name.name];
+            case 'Member': {
+                const target = this.expression(expression.target, 9, context);
+                if (!expression.arguments) {
+                    return [target, '.', expression.name.name];
+                }
+                const opener = this.find('(', expression.name.span.end);
+                return [
+                    target,
+                    '.',
+                    expression.name.name,
+                    group(
+                        '(',
+                        this.elements(expression.arguments),
+                        ')',
+                        this.authorBroke(opener, expression.arguments[0]),
+                    ),
+                ];
+            }
             case 'Factorial':
                 return [this.expression(expression.operand, 9, context), '!'];
 

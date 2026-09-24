@@ -205,7 +205,9 @@ function emit(node: Expression): string {
         case 'Index':
             return `${at(node.target, LEVEL.postfix)}\\left[${at(node.index, LEVEL.action)}\\right]`;
         case 'Member':
-            return `${member(node.target)}.${memberLatex(node.name.name)}`;
+            return node.arguments
+                ? `${member(node.target)}.${memberLatex(node.name.name)}\\left(${elements(node.arguments)}\\right)`
+                : `${member(node.target)}.${memberLatex(node.name.name)}`;
         case 'Factorial':
             return `${at(node.operand, LEVEL.postfix)}!`;
         case 'Action':

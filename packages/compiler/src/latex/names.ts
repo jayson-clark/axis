@@ -47,6 +47,9 @@ export const FUNCTION_ALIASES: ReadonlyMap<string, string> = new Map([
     ['inverseCdf', 'quantile'],
     ['inversecdf', 'quantile'],
     ['TScore', 'tscore'],
+    // The two-sample t-test's old name, which Desmos still reads and keeps
+    // the `ttest` it now means beside, as `latexV12`.
+    ['ittest', 'ttest'],
 ]);
 
 /** `\sin` → `sin`, for the functions that are latex commands of their own. */
@@ -79,12 +82,16 @@ const IDENTIFIER = /^([A-Za-z][A-Za-z0-9]*)(?:_([A-Za-z0-9]+))?$/;
  *   longer name stays a command and carries the rest as its subscript, as v1
  *   did, so a graph v1 wrote reads back with the names it had
  * - `sin` → `\sin`, `mean` → `\operatorname{mean}`, `dt` → `\operatorname{dt}`
+ * - `$12` → `\token{12}`, the geometry calculator's name for a construction
  *
  * Desmos has one subscript, so a name that is long *and* has an explicit
  * subscript - `amp_2` - runs the two together: `a_{mp2}`, the same latex as
  * `amp2`. The spec gives no other spelling for it and Desmos has none.
  */
 export function identifierLatex(name: string): string {
+    if (name.startsWith('$')) {
+        return `\\token{${name.slice(1)}}`;
+    }
     if (OPERATOR_NAMES.has(name)) {
         return `\\operatorname{${name}}`;
     }

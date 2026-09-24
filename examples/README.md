@@ -2,28 +2,29 @@
 
 Read in order, each file assumes only what came before it.
 
-| File                            | Covers                                                                                  |
-| ------------------------------- | --------------------------------------------------------------------------------------- |
-| `01-basics.axis`                | Statements, `;`, comments, notes, definitions, `@` metadata, palette names, bare flags  |
-| `02-functions.axis`             | Definitions, composition, the built-in library, `sum`, `int`, `d/dx` and `f'(x)`        |
-| `03-piecewise.axis`             | `{condition: value}` branches and domain restrictions                                   |
-| `04-styling.axis`               | Colour, line and point styles, fills, opacity, labels                                   |
-| `05-folders-and-notes.axis`     | Grouping a graph; folder metadata after the `{`, `collapsed`, untitled `folder { … }`   |
-| `06-sliders-and-animation.axis` | `slider: lo..hi step s`, open and `soft` ends, bounds that are expressions, `playing`   |
-| `07-points-and-polygons.axis`   | Points, `polygon`, `distance`, `midpoint`, `.x` / `.y`                                  |
-| `08-lists.axis`                 | List arithmetic, `[1...10]`, lists of points, one statement drawing many curves         |
-| `09-statistics.axis`            | `mean`, `stdev`, `var`, `mad`, `quantile`, `corr`, `nCr`, `nPr`                         |
-| `10-tables.axis`                | `table { … }`, per-column styling, a table on one line, computed columns                |
-| `11-parametric-and-polar.axis`  | Curves in `t` and their `domain`, equations in `r` and `theta`                          |
-| `12-inequalities.axis`          | Shaded half-planes and regions                                                          |
-| `13-interactivity.axis`         | `dragMode`, `onClick` actions, action runs, `clickable`, `ticker` and `dt`              |
-| `14-colors.axis`                | Hex colours, palette names, colours worked out by an expression, opacity                |
-| `15-config.axis`                | Every calculator setting worth knowing; `width` and `height`                            |
-| `16-imports.axis`               | `import "./file.axis"`, `as "Name"`, and how a file is flattened                        |
-| `17-macros.axis`                | `macro NAME = expr`, `macro NAME(a, b) = expr`, and why metadata is a style's job       |
-| `18-images.axis`                | `image "./file.png"`, placed and sized by expressions                                   |
-| `19-styles.axis`                | `style name { … }`, `use:`, styles using styles, and which property wins                |
-| `20-complex-numbers.axis`       | `allowComplex`, `i`, `real`, `imag`, `conj`, `arg`, and complex numbers drawn as points |
+| File                            | Covers                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `01-basics.axis`                | Statements, `;`, comments, notes, definitions, `@` metadata, palette names, bare flags               |
+| `02-functions.axis`             | Definitions, composition, the built-in library, `sum`, `int`, `d/dx` and `f'(x)`                     |
+| `03-piecewise.axis`             | `{condition: value}` branches and domain restrictions                                                |
+| `04-styling.axis`               | Colour, line and point styles, fills, opacity, labels                                                |
+| `05-folders-and-notes.axis`     | Grouping a graph; folder metadata after the `{`, `collapsed`, untitled `folder { … }`                |
+| `06-sliders-and-animation.axis` | `slider: lo..hi step s`, open and `soft` ends, bounds that are expressions, `playing`                |
+| `07-points-and-polygons.axis`   | Points, `polygon`, `distance`, `midpoint`, `.x` / `.y`                                               |
+| `08-lists.axis`                 | List arithmetic, `[1...10]`, lists of points, one statement drawing many curves                      |
+| `09-statistics.axis`            | `mean`, `stdev`, `quantile`, `corr`, distributions and `.pdf`, a `ttest`, `nCr`                      |
+| `10-tables.axis`                | `table { … }`, per-column styling, a table on one line, computed columns                             |
+| `11-parametric-and-polar.axis`  | Curves in `t` and their `domain`, equations in `r` and `theta`                                       |
+| `12-inequalities.axis`          | Shaded half-planes and regions                                                                       |
+| `13-interactivity.axis`         | `dragMode`, `onClick` actions, action runs, `clickable`, `ticker` and `dt`                           |
+| `14-colors.axis`                | Hex colours, palette names, colours worked out by an expression, opacity                             |
+| `15-config.axis`                | Every calculator setting worth knowing; `width` and `height`                                         |
+| `16-imports.axis`               | `import "./file.axis"`, `as "Name"`, and how a file is flattened                                     |
+| `17-macros.axis`                | `macro NAME = expr`, `macro NAME(a, b) = expr`, and why metadata is a style's job                    |
+| `18-images.axis`                | `image "./file.png"`, placed and sized by expressions                                                |
+| `19-styles.axis`                | `style name { … }`, `use:`, styles using styles, and which property wins                             |
+| `20-complex-numbers.axis`       | `allowComplex`, `i`, `real`, `imag`, `conj`, `arg`, and complex numbers drawn as points              |
+| `21-geometry.axis`              | `calculator: GEOMETRY`, `segment`, `circle`, `intersection`, `glider`, measurements, transformations |
 
 The picture under `images/` is what `18-images.axis` draws. The files under
 `lib/` are what `16-imports.axis` imports. They are ordinary

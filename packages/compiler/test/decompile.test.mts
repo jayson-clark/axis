@@ -704,6 +704,18 @@ describe('config', () => {
         assert.equal(fromState({}, { allowComplex: true }), '');
     });
 
+    test('writes a geometry graph’s tokens, and they go back into its hidden folder', () => {
+        const source =
+            'config {\n    calculator: GEOMETRY\n}\n\n$1 = (0, 0)\n$2(x) = reflect(x, line((0, 0), (0, 1)))\ns = segment($1, (4, 1))\nm = s.length\n$2(s)\n';
+        assert.equal(roundTrip(source), source);
+    });
+
+    test('writes a member called as one', () => {
+        const source =
+            'D = normaldist(0, 1)\np = D.cdf(-1, 1)\nhi = ttest([1, 2, 3]).conf(0.95).upper\n';
+        assert.equal(roundTrip(source), source);
+    });
+
     test('writes the calculator a geometry or 3D graph is for', () => {
         assert.equal(
             roundTrip('config { calculator: GEOMETRY }\ny = x'),

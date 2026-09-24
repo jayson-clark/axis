@@ -321,19 +321,39 @@ export class AxisCalculator {
      * up on the quiet after `maxSettleMs` and returns rather than throwing —
      * by then the analysis has long since stabilized even if the values have
      * not, and a test that waits on a playing graph should not fail for it.
+     *
+     * Quiet is not the same as analyzed, though. A big graph on a slow machine
+     * can sit quiet for longer than `quietMs` before Desmos has analyzed any of
+     * it, and then every expression reads as having no analysis at all. So the
+     * wait also goes on until each expression with latex has one - bounded by
+     * the timeout rather than `maxSettleMs`, since a playing slider does not
+     * hold that back.
      */
     async settle(quietMs = this.options.quietMs): Promise<void> {
         await this.page.evaluate(
-            async ([quiet, limit]) => {
-                const deadline = Date.now() + limit;
-                while (
-                    Date.now() < deadline &&
-                    Date.now() - window.__axisHarness!.lastChange < quiet
-                ) {
+            async ([quiet, limit, timeout]) => {
+                const harness = window.__axisHarness!;
+                const unanalyzed = () => {
+                    const analysis = harness.calculator.expressionAnalysis;
+                    return harness.calculator
+                        .getExpressions()
+                        .some(
+                            expression =>
+                                expression.type === 'expression' &&
+                                !!expression.latex &&
+                                !!expression.id &&
+                                !analysis[expression.id],
+                        );
+                };
+                const start = Date.now();
+                while (Date.now() - start < limit && Date.now() - harness.lastChange < quiet) {
+                    await new Promise(resolve => setTimeout(resolve, 25));
+                }
+                while (Date.now() - start < timeout && unanalyzed()) {
                     await new Promise(resolve => setTimeout(resolve, 25));
                 }
             },
-            [quietMs, this.options.maxSettleMs] as const,
+            [quietMs, this.options.maxSettleMs, this.options.timeout] as const,
         );
     }
 

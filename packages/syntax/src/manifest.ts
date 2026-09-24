@@ -41,6 +41,8 @@ export interface FunctionDefinition {
         | 'statistics'
         | 'combinatorics'
         | 'complex'
+        | 'distribution'
+        | 'inference'
         | 'geometry'
         | 'audio';
     /**
@@ -48,6 +50,12 @@ export interface FunctionDefinition {
      * error on the calculator, so the checker reports it first.
      */
     complex?: true;
+    /**
+     * The calculators it exists on, for a function the graphing calculator
+     * does not have. Anywhere else Desmos rejects it, so the checker reports
+     * it first.
+     */
+    calculators?: readonly ('GEOMETRY' | 'GRAPHING_3D')[];
     /**
      * LaTeX command Desmos expects for this function. Only names that are real
      * LaTeX commands set this; everything else falls back to
@@ -691,6 +699,188 @@ export const AXIS_MANIFEST = {
             snippet: 'tscore(${1:list}, ${2:mu})',
             category: 'statistics',
         },
+
+        // Distributions - evaluated with their members: D.pdf(x), D.cdf(x)
+        {
+            name: 'normaldist',
+            detail: 'Normal distribution with a mean and a standard deviation',
+            documentation:
+                'With no arguments, the standard normal: mean 0, standard deviation 1. Evaluate one with `.pdf(x)`, `.cdf(x)` or `.random(n)`.',
+            example: 'D = normaldist(0, 1)\ny = D.pdf(x)',
+            snippet: 'normaldist(${1:mean}, ${2:stdev})',
+            category: 'distribution',
+        },
+        {
+            name: 'tdist',
+            detail: "Student's t-distribution with some degrees of freedom",
+            example: 'T = tdist(4)\ny = T.pdf(x)',
+            snippet: 'tdist(${1:dof})',
+            category: 'distribution',
+        },
+        {
+            name: 'chisqdist',
+            detail: 'Chi-squared distribution with some degrees of freedom',
+            example: 'C = chisqdist(3)\ny = C.pdf(x)',
+            snippet: 'chisqdist(${1:dof})',
+            category: 'distribution',
+        },
+        {
+            name: 'uniformdist',
+            detail: 'Uniform distribution between two values',
+            documentation: 'With no arguments, between 0 and 1.',
+            example: 'U = uniformdist(0, 4)\np = U.cdf(1)',
+            snippet: 'uniformdist(${1:min}, ${2:max})',
+            category: 'distribution',
+        },
+        {
+            name: 'binomialdist',
+            detail: 'Binomial distribution: successes in some trials, each with a probability',
+            example: 'B = binomialdist(10, 0.5)\np = B.pdf(5)',
+            snippet: 'binomialdist(${1:trials}, ${2:p})',
+            category: 'distribution',
+        },
+        {
+            name: 'poissondist',
+            detail: 'Poisson distribution with a mean',
+            example: 'P = poissondist(3)\np = P.pdf(2)',
+            snippet: 'poissondist(${1:mean})',
+            category: 'distribution',
+        },
+        {
+            name: 'geodist',
+            detail: 'Geometric distribution: trials until the first success',
+            example: 'G = geodist(0.3)\np = G.cdf(4)',
+            snippet: 'geodist(${1:p})',
+            category: 'distribution',
+        },
+        {
+            name: 'pdf',
+            detail: "A distribution's probability density (or mass) at a value; usually written `D.pdf(x)`",
+            example: 'D = normaldist(0, 1)\ny = D.pdf(x)',
+            snippet: 'pdf(${1:dist}, ${2:x})',
+            category: 'distribution',
+        },
+        {
+            name: 'cdf',
+            detail: "The probability a distribution's value is at most x, or between two values; usually written `D.cdf(x)`",
+            documentation:
+                '`D.cdf(x)` is the probability of a value up to `x`, and `D.cdf(a, b)` of one between `a` and `b`.',
+            example: 'D = normaldist(0, 1)\np = D.cdf(1)\nq = D.cdf(-1, 1)',
+            snippet: 'cdf(${1:dist}, ${2:x})',
+            category: 'distribution',
+        },
+
+        // Inference - a test's result is read with its members: T.pleft
+        {
+            name: 'ttest',
+            detail: 't-test of one list against a mean, or of two lists against each other',
+            documentation:
+                'With one list, it tests its mean against 0 - `.null(mu)` changes that. With two, it tests the difference of their means. Read the result with its members: `.score`, `.pleft`, `.pright`, `.dof`, `.estimate`, `.stderr`, `.conf(level)`.',
+            example:
+                'before = [12, 15, 11, 14]\nafter = [14, 17, 13, 15]\np = ttest(before, after).pleft',
+            snippet: 'ttest(${1:list})',
+            category: 'inference',
+        },
+        {
+            name: 'ztest',
+            detail: "z-test of a list's mean, given the population standard deviation",
+            example: 'L = [12, 15, 11, 14]\nz = ztest(L, 2).score',
+            snippet: 'ztest(${1:list}, ${2:sigma})',
+            category: 'inference',
+        },
+        {
+            name: 'zproptest',
+            detail: 'z-test of a proportion: successes out of a count, or two of them compared',
+            example: 'p = zproptest(40, 100).pleft\nq = zproptest(40, 100, 70, 100).score',
+            snippet: 'zproptest(${1:successes}, ${2:count})',
+            category: 'inference',
+        },
+        {
+            name: 'chisqtest',
+            detail: 'Chi-squared test for independence of the columns of a two-way table',
+            example: 'c = chisqtest([10, 20], [30, 25]).score',
+            snippet: 'chisqtest(${1:column}, ${2:column})',
+            category: 'inference',
+        },
+        {
+            name: 'chisqgof',
+            detail: 'Chi-squared goodness-of-fit test of observed counts against expected ones',
+            example: 'g = chisqgof([10, 20, 30], [20, 20, 20]).score',
+            snippet: 'chisqgof(${1:observed}, ${2:expected})',
+            category: 'inference',
+        },
+        {
+            name: 'score',
+            detail: "A test's statistic: its t, z or chi-squared score; usually written `T.score`",
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\ns = T.score',
+            snippet: 'score(${1:test})',
+            category: 'inference',
+        },
+        {
+            name: 'pleft',
+            detail: "A test's p-value for the alternative that the true value is less; usually written `T.pleft`",
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\np = T.pleft',
+            snippet: 'pleft(${1:test})',
+            category: 'inference',
+        },
+        {
+            name: 'pright',
+            detail: "A test's p-value for the alternative that the true value is greater; usually written `T.pright`",
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\np = T.pright',
+            snippet: 'pright(${1:test})',
+            category: 'inference',
+        },
+        {
+            name: 'dof',
+            detail: "A test's degrees of freedom; usually written `T.dof`",
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\nd = T.dof',
+            snippet: 'dof(${1:test})',
+            category: 'inference',
+        },
+        {
+            name: 'estimate',
+            detail: 'The value a test estimates, such as a sample mean; usually written `T.estimate`',
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\nm = T.estimate',
+            snippet: 'estimate(${1:test})',
+            category: 'inference',
+        },
+        {
+            name: 'stderr',
+            detail: "A test's standard error; usually written `T.stderr`",
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\nse = T.stderr',
+            snippet: 'stderr(${1:test})',
+            category: 'inference',
+        },
+        {
+            name: 'conf',
+            detail: 'A confidence interval at a level; usually written `T.conf(0.95)`',
+            documentation: 'Its ends are read with `.lower` and `.upper`.',
+            example:
+                'L = [12, 15, 11, 14]\nT = ttest(L)\nC = T.conf(0.95)\nlo = C.lower\nhi = C.upper',
+            snippet: 'conf(${1:test}, ${2:level})',
+            category: 'inference',
+        },
+        {
+            name: 'null',
+            detail: 'The same test against another null value; usually written `T.null(mu)`',
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\np = T.null(12).pright',
+            snippet: 'null(${1:test}, ${2:value})',
+            category: 'inference',
+        },
+        {
+            name: 'lower',
+            detail: 'The lower end of a confidence interval; usually written `C.lower`',
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\nlo = T.conf(0.95).lower',
+            snippet: 'lower(${1:interval})',
+            category: 'inference',
+        },
+        {
+            name: 'upper',
+            detail: 'The upper end of a confidence interval; usually written `C.upper`',
+            example: 'L = [12, 15, 11, 14]\nT = ttest(L)\nhi = T.conf(0.95).upper',
+            snippet: 'upper(${1:interval})',
+            category: 'inference',
+        },
         {
             name: 'discretedist',
             detail: 'Discrete distribution over values with optional weights (new in Desmos v1.12)',
@@ -783,6 +973,296 @@ export const AXIS_MANIFEST = {
             example: 'midpoint((0, 0), (4, 2))',
             snippet: 'midpoint(${1:A}, ${2:B})',
             category: 'geometry',
+        },
+        {
+            name: 'segment',
+            detail: 'The segment between two points',
+            example: 'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\ns = segment(A, B)',
+            snippet: 'segment(${1:A}, ${2:B})',
+            category: 'geometry',
+            calculators: ['GEOMETRY', 'GRAPHING_3D'],
+        },
+        {
+            name: 'line',
+            detail: 'The line through two points',
+            example: 'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nline(A, B)',
+            snippet: 'line(${1:A}, ${2:B})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'ray',
+            detail: 'The ray from one point through another',
+            example: 'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nray(A, B)',
+            snippet: 'ray(${1:A}, ${2:B})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'vector',
+            detail: 'The vector from one point to another',
+            example: 'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nv = vector(A, B)',
+            snippet: 'vector(${1:A}, ${2:B})',
+            category: 'geometry',
+            calculators: ['GEOMETRY', 'GRAPHING_3D'],
+        },
+        {
+            name: 'circle',
+            detail: 'A circle about a centre, through a point or with a radius',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\ncircle(A, B)\ncircle(B, 2)',
+            snippet: 'circle(${1:center}, ${2:radius})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'arc',
+            detail: 'The arc through three points, from the first to the last',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\narc(A, C, B)',
+            snippet: 'arc(${1:A}, ${2:B}, ${3:C})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'glider',
+            detail: 'A point a fraction of the way along a path, which the viewer can slide',
+            documentation:
+                'The path is a segment, a line, a circle, an arc or a polygon; `t` from 0 to 1 goes once along it.',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\ns = segment(A, B)\nP = glider(s, 0.25)',
+            snippet: 'glider(${1:path}, ${2:t})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'parallel',
+            detail: 'The line through a point parallel to a line',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nparallel(line(A, B), C)',
+            snippet: 'parallel(${1:line}, ${2:point})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'perpendicular',
+            detail: 'The line through a point perpendicular to a line',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nperpendicular(line(A, B), C)',
+            snippet: 'perpendicular(${1:line}, ${2:point})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'intersection',
+            detail: 'Where two lines, circles or arcs cross',
+            documentation: 'Where two objects cross more than once, it is a list of the points.',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nP = intersection(circle(A, B), line(B, C))',
+            snippet: 'intersection(${1:a}, ${2:b})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'strictintersection',
+            detail: 'Where two objects cross, only within their extents',
+            documentation:
+                'A segment, a ray or an arc stops where it ends here, where `intersection` treats it as the whole line or circle.',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nP = strictintersection(segment(A, B), segment(C, (2, -2)))',
+            snippet: 'strictintersection(${1:a}, ${2:b})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'angle',
+            detail: 'The angle at the middle of three points',
+            documentation: 'Always the smaller way round; `directedangle` keeps the direction.',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\na = angle(A, B, C)',
+            snippet: 'angle(${1:A}, ${2:vertex}, ${3:C})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'directedangle',
+            detail: 'The angle turned from the first point to the last about the middle one',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\na = directedangle(A, B, C)',
+            snippet: 'directedangle(${1:A}, ${2:vertex}, ${3:C})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'angles',
+            detail: 'The interior angles of a polygon',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nT = polygon(A, B, C)\nangles(T)',
+            snippet: 'angles(${1:polygon})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'directedangles',
+            detail: 'The signed interior angles of a polygon',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nT = polygon(A, B, C)\ndirectedangles(T)',
+            snippet: 'directedangles(${1:polygon})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'anglebisector',
+            detail: 'The ray that bisects an angle',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nanglebisector(angle(A, B, C))',
+            snippet: 'anglebisector(${1:angle})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'coterminal',
+            detail: 'The other way round an angle',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\ncoterminal(angle(A, B, C))',
+            snippet: 'coterminal(${1:angle})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'supplement',
+            detail: 'The supplement of a directed angle',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nsupplement(directedangle(A, B, C))',
+            snippet: 'supplement(${1:angle})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'center',
+            detail: 'The centre of a circle or an arc',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nc = circle(A, B)\nO = center(c)',
+            snippet: 'center(${1:circle})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'radius',
+            detail: 'The radius of a circle or an arc',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nc = circle(A, B)\nr = radius(c)',
+            snippet: 'radius(${1:circle})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'area',
+            detail: 'The area of a polygon',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\na = area(polygon(A, B, C))',
+            snippet: 'area(${1:polygon})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'perimeter',
+            detail: 'The perimeter of a polygon',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\np = perimeter(polygon(A, B, C))',
+            snippet: 'perimeter(${1:polygon})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'start',
+            detail: 'The point a vector starts at',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nv = vector(A, B)\nstart(v)',
+            snippet: 'start(${1:vector})',
+            category: 'geometry',
+            calculators: ['GEOMETRY', 'GRAPHING_3D'],
+        },
+        {
+            name: 'end',
+            detail: 'The point a vector ends at',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nv = vector(A, B)\nend(v)',
+            snippet: 'end(${1:vector})',
+            category: 'geometry',
+            calculators: ['GEOMETRY', 'GRAPHING_3D'],
+        },
+        {
+            name: 'vertices',
+            detail: 'The corners of a polygon, as a list of points',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nvertices(polygon(A, B, C))',
+            snippet: 'vertices(${1:polygon})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'segments',
+            detail: 'The sides of a polygon, as a list of segments',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nsegments(polygon(A, B, C))',
+            snippet: 'segments(${1:polygon})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'translate',
+            detail: 'An object moved by a vector, or from one point to another',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nT = polygon(A, B, C)\ntranslate(T, A, (2, 2))',
+            snippet: 'translate(${1:object}, ${2:from}, ${3:to})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'rotate',
+            detail: 'An object turned about a point by an angle',
+            documentation: 'The angle is a number, or an angle made with `angle`.',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nT = polygon(A, B, C)\nrotate(T, A, pi / 2)',
+            snippet: 'rotate(${1:object}, ${2:center}, ${3:angle})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'dilate',
+            detail: 'An object scaled about a point by a factor',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nT = polygon(A, B, C)\ndilate(T, A, 2)',
+            snippet: 'dilate(${1:object}, ${2:center}, ${3:factor})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'reflect',
+            detail: 'An object reflected in a line',
+            example:
+                'config { calculator: GEOMETRY }\nA = (0, 0)\nB = (4, 1)\nC = (1, 3)\nT = polygon(A, B, C)\nreflect(T, line(A, B))',
+            snippet: 'reflect(${1:object}, ${2:line})',
+            category: 'geometry',
+            calculators: ['GEOMETRY'],
+        },
+        {
+            name: 'triangle',
+            detail: 'The triangle with three 3D points as corners',
+            example:
+                'config { calculator: GRAPHING_3D }\ntriangle((0, 0, 0), (1, 0, 0), (0, 1, 1))',
+            snippet: 'triangle(${1:A}, ${2:B}, ${3:C})',
+            category: 'geometry',
+            calculators: ['GRAPHING_3D'],
+        },
+        {
+            name: 'sphere',
+            detail: 'The sphere about a 3D point with a radius',
+            example: 'config { calculator: GRAPHING_3D }\nsphere((0, 0, 0), 2)',
+            snippet: 'sphere(${1:center}, ${2:radius})',
+            category: 'geometry',
+            calculators: ['GRAPHING_3D'],
         },
 
         // Color functions — ok* spaces are perceptually uniform (new in Desmos v1.12)

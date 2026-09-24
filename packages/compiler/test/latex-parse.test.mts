@@ -30,8 +30,10 @@ import {
     index,
     list,
     member,
+    method,
     mul,
     neg,
+    num,
     paren,
     piecewise,
     pow,
@@ -251,6 +253,12 @@ describe('what Desmos writes', () => {
             ['L.\\max', member('L', 'max')],
             ['i\\left[x.\\operatorname{count}\\right]', index('i', member('x', 'count'))],
             ['\\frac{a+b}{2}.x', member(div(add('a', 'b'), 2), 'x')],
+            ['D.\\operatorname{cdf}\\left(1\\right)', method('D', 'cdf', 1)],
+            ['D.\\operatorname{cdf}\\left(-1,1\\right)', method('D', 'cdf', neg(1), 1)],
+            [
+                'T.\\operatorname{conf}\\left(0.95\\right).\\operatorname{upper}',
+                member(method('T', 'conf', 0.95), 'upper'),
+            ],
             ['L\\left[2\\right]', index('L', 2)],
             ['L\\left[2...5\\right]', index('L', range(2, 5))],
             ['L\\left[L>2\\right]', index('L', cmp('L', '>', 2))],
@@ -282,8 +290,27 @@ describe('what Desmos writes', () => {
     });
 });
 
+describe('geometry tokens', () => {
+    cases([
+        ['\\token{12}', id('$12')],
+        ['\\token{12}=\\left(1,2\\right)', eq('$12', tuple(1, 2))],
+        ['\\token{3}\\left(\\token{2}\\right)', call('$3', '$2')],
+        ['\\token{2}.\\operatorname{length}', member('$2', 'length')],
+    ]);
+});
+
+describe('a number with nothing after its point', () => {
+    cases([
+        ['3.', num(3)],
+        ['\\left(2.,-0.\\right)', tuple(2, neg(0))],
+        ['x\\le31.', cmp('x', '<=', 31)],
+        ['3.\\left(y+1\\right)', imp(3, paren(add('y', 1)))],
+    ]);
+});
+
 describe('the other spellings Desmos accepts for a function', () => {
     cases([
+        ['\\operatorname{ittest}\\left(a,b\\right)', call('ttest', 'a', 'b')],
         ['\\operatorname{arsinh}\\left(x\\right)', call('arcsinh', 'x')],
         ['\\operatorname{arcoth}\\left(x\\right)', call('arccoth', 'x')],
         ['\\operatorname{inverseCdf}\\left(L,p\\right)', call('quantile', 'L', 'p')],

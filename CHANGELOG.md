@@ -35,6 +35,35 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   name Axis has for it: `arsinh` as `arcsinh`, `inverseCdf` as `quantile`,
   `TScore` as `tscore`, and so on.
 - `examples/20-complex-numbers.axis`.
+- A member can be called: `D.cdf(1)`, `L.quantile(0.5)`, `T.conf(0.95)` - the
+  function called with the member's target first, as Desmos writes it.
+- The distributions `normaldist`, `tdist`, `chisqdist`, `uniformdist`,
+  `binomialdist`, `poissondist` and `geodist`, with `pdf` and `cdf` (#64).
+- The hypothesis tests `ttest`, `ztest`, `zproptest`, `chisqtest` and
+  `chisqgof`, and their members `score`, `pleft`, `pright`, `dof`, `estimate`,
+  `stderr`, `conf`, `null`, `lower` and `upper` (#65). The decompiler reads
+  `ittest`, the old name of the two-sample test, as `ttest`.
+- The geometry functions (#67): `segment`, `line`, `ray`, `vector`, `circle`,
+  `arc`, `glider`, `parallel`, `perpendicular`, `intersection`,
+  `strictintersection`, `angle`, `directedangle`, `angles`, `directedangles`,
+  `anglebisector`, `coterminal`, `supplement`, `center`, `radius`, `area`,
+  `perimeter`, `start`, `end`, `vertices`, `segments`, `translate`, `rotate`,
+  `dilate` and `reflect` on the geometry calculator, and `triangle` and
+  `sphere` on the 3D one. The new `requires-calculator` diagnostic reports one
+  used on a calculator that lacks it.
+- Geometry tokens: `$12` is the `\token{12}` the geometry calculator names a
+  construction with. A token's definition is compiled into the calculator's
+  hidden folder, where Desmos accepts it, so a graph built on the geometry
+  calculator decompiles to a file that builds it again.
+- `examples/21-geometry.axis`, and a Geometry page in the guide.
+
+### Changed
+
+- **Breaking:** the geometry functions' names are built in, so a file that
+  defines `area`, `center`, `radius`, `angle`, `line`, `start`, `end`,
+  `vector`, `segment`, `circle` or any other of them now reports
+  `assign-to-builtin`. Rename the definition. `examples/02-functions.axis`
+  renames its `area(w, h)` to `rectArea(w, h)`.
 
 ### Fixed
 
@@ -45,6 +74,12 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
   it on, so `sqrt(-1)` stayed undefined. A file that says `allowComplex: true`
   now draws in complex mode. The decompiler writes `allowComplex` only for a
   graph that is in complex mode.
+- Decompiling reads a number with nothing after its point, `3.`, which Desmos
+  accepts and keeps as typed, as the number it is rather than leaving the
+  expression out.
+- The harness waits for Desmos to analyze every expression before it counts a
+  graph as settled. A big graph on a slow machine could go quiet before Desmos
+  had analyzed any of it, so every expression read as having no analysis.
 
 ## 2.3.0 - 2026-09-23
 

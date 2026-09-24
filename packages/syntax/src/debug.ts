@@ -156,7 +156,9 @@ export function debugTree(node: Node | null): string {
         case 'Index':
             return list('index', debugTree(node.target), debugTree(node.index));
         case 'Member':
-            return list('.', debugTree(node.target), node.name.name);
+            return node.arguments
+                ? list('.', debugTree(node.target), node.name.name, ...all(node.arguments))
+                : list('.', debugTree(node.target), node.name.name);
         case 'Factorial':
             return list('!', debugTree(node.operand));
         case 'Action':

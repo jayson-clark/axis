@@ -13,7 +13,7 @@
 
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { AXIS_COMPLEX_FUNCTION_NAMES, AXIS_MANIFEST, parseExpression } from '@axis-dsl/syntax';
+import { AXIS_MANIFEST, parseExpression } from '@axis-dsl/syntax';
 import { compileAxis, emitLatex } from '@axis-dsl/compiler';
 import type { AxisCalculator, InspectedExpression } from '../dist/index.js';
 import { skip, useCalculator } from './support.mts';
@@ -107,6 +107,35 @@ const CALLS: Record<string, string> = {
     corr: 'corr([1, 2, 3], [1, 2, 4])',
     spearman: 'spearman([1, 2, 3], [1, 2, 4])',
     tscore: 'tscore([1, 2, 3], 1)',
+
+    // distributions - drawn on their own, evaluated with their members
+    normaldist: 'normaldist(0, 1)',
+    tdist: 'tdist(3)',
+    chisqdist: 'chisqdist(2)',
+    uniformdist: 'uniformdist(0, 4)',
+    binomialdist: 'binomialdist(10, 0.5)',
+    poissondist: 'poissondist(2)',
+    geodist: 'geodist(0.5)',
+    pdf: 'pdf(normaldist(0, 1), 0)',
+    cdf: 'cdf(normaldist(0, 1), 0)',
+
+    // inference - a test has no value of its own, so each is read through a
+    // member, and each member is called on a test
+    ttest: 'ttest([1, 2, 3, 4, 6]).score',
+    ztest: 'ztest([1, 2, 3, 4, 6], 1).score',
+    zproptest: 'zproptest(40, 100).score',
+    chisqtest: 'chisqtest([10, 20], [30, 25]).score',
+    chisqgof: 'chisqgof([10, 20, 30], [20, 20, 20]).score',
+    score: 'score(ttest([1, 2, 3, 4, 6]))',
+    pleft: 'pleft(ttest([1, 2, 3, 4, 6]))',
+    pright: 'pright(ttest([1, 2, 3, 4, 6]))',
+    dof: 'dof(ttest([1, 2, 3, 4, 6]))',
+    estimate: 'estimate(ttest([1, 2, 3, 4, 6]))',
+    stderr: 'stderr(ttest([1, 2, 3, 4, 6]))',
+    conf: 'conf(ttest([1, 2, 3, 4, 6]), 0.95).upper',
+    null: 'null(ttest([1, 2, 3, 4, 6]), 3).pleft',
+    lower: 'lower(ttest([1, 2, 3, 4, 6]).conf(0.95))',
+    upper: 'upper(ttest([1, 2, 3, 4, 6]).conf(0.95))',
     discretedist: 'discretedist([1, 2, 3], [0.2, 0.3, 0.5])',
     random: 'random()',
 
@@ -124,6 +153,39 @@ const CALLS: Record<string, string> = {
         'polygonInteriorDirectedAngles(polygon((0, 0), (1, 0), (1, 1)), 1)',
     distance: 'distance((0, 0), (3, 4))',
     midpoint: 'midpoint((0, 0), (2, 2))',
+    // on the geometry calculator, or the 3D one, where they exist
+    segment: 'segment((0, 0), (4, 1))',
+    line: 'line((0, 0), (4, 1))',
+    ray: 'ray((0, 0), (4, 1))',
+    vector: 'vector((0, 0), (4, 1))',
+    circle: 'circle((0, 0), 2)',
+    arc: 'arc((0, 0), (1, 3), (4, 1))',
+    glider: 'glider(circle((0, 0), 2), 0.25)',
+    parallel: 'parallel(line((0, 0), (4, 1)), (1, 3))',
+    perpendicular: 'perpendicular(line((0, 0), (4, 1)), (1, 3))',
+    intersection: 'intersection(circle((0, 0), 2), line((0, 0), (4, 1)))',
+    strictintersection: 'strictintersection(circle((0, 0), 2), segment((0, 0), (4, 1)))',
+    angle: 'angle((0, 0), (4, 1), (1, 3))',
+    directedangle: 'directedangle((0, 0), (4, 1), (1, 3))',
+    angles: 'angles(polygon((0, 0), (4, 1), (1, 3)))',
+    directedangles: 'directedangles(polygon((0, 0), (4, 1), (1, 3)))',
+    anglebisector: 'anglebisector(angle((0, 0), (4, 1), (1, 3)))',
+    coterminal: 'coterminal(angle((0, 0), (4, 1), (1, 3)))',
+    supplement: 'supplement(directedangle((0, 0), (4, 1), (1, 3)))',
+    center: 'center(circle((1, 1), 2))',
+    radius: 'radius(circle((1, 1), 2))',
+    area: 'area(polygon((0, 0), (4, 0), (0, 3)))',
+    perimeter: 'perimeter(polygon((0, 0), (4, 0), (0, 3)))',
+    start: 'start(vector((0, 0), (4, 1)))',
+    end: 'end(vector((0, 0), (4, 1)))',
+    vertices: 'vertices(polygon((0, 0), (4, 1), (1, 3)))',
+    segments: 'segments(polygon((0, 0), (4, 1), (1, 3)))',
+    translate: 'translate(polygon((0, 0), (4, 1), (1, 3)), (0, 0), (2, 2))',
+    rotate: 'rotate(polygon((0, 0), (4, 1), (1, 3)), (0, 0), pi / 2)',
+    dilate: 'dilate(polygon((0, 0), (4, 1), (1, 3)), (0, 0), 2)',
+    reflect: 'reflect(polygon((0, 0), (4, 1), (1, 3)), line((0, 0), (0, 1)))',
+    triangle: 'triangle((0, 0, 0), (1, 0, 0), (0, 1, 1))',
+    sphere: 'sphere((0, 0, 0), 2)',
 
     // color
     rgb: 'rgb(255, 0, 0)',
@@ -178,6 +240,9 @@ const VALUES: Record<string, number> = {
     spearman: 1,
     real: 3,
     imag: 4,
+    radius: 2,
+    area: 6,
+    perimeter: 12,
 };
 
 /**
@@ -219,24 +284,29 @@ describe('every function the language offers', { skip }, () => {
     // interact, and 70 loads would be a minute of Chromium for no more signal.
     // The calls are written bare, with nothing assigned to them, because that
     // is the form Desmos reports an unknown name in. Each is its own statement,
-    // so the list is in the manifest's order. A function known only in
-    // complex mode has a graph of its own, in complex mode: turned on for
-    // everything, it makes `sqrt(4)` the complex number 2 + 0i.
+    // so the list is in the manifest's order. A function that exists only in
+    // complex mode, or only on another calculator, has a graph of its own
+    // where it does: complex mode turned on for everything makes `sqrt(4)` the
+    // complex number 2 + 0i, and the geometry calculator has no `length` of a
+    // list.
     before(async () => {
-        const complex = names.filter(name => AXIS_COMPLEX_FUNCTION_NAMES.has(name));
-        const real = names.filter(name => !AXIS_COMPLEX_FUNCTION_NAMES.has(name));
-        await loadClean(calculator(), real.map(name => CALLS[name]).join('\n'));
-        const reals = await calculator().inspectExpressions();
-        await loadClean(
-            calculator(),
-            ['config { allowComplex: true }', ...complex.map(name => CALLS[name])].join('\n'),
-        );
-        const complexes = await calculator().inspectExpressions();
-        inspected = names.map(name =>
-            AXIS_COMPLEX_FUNCTION_NAMES.has(name)
-                ? complexes[complex.indexOf(name)]
-                : reals[real.indexOf(name)],
-        );
+        const where = (name: string): string => {
+            const definition = AXIS_MANIFEST.functions.find(entry => entry.name === name);
+            if (definition?.complex) return 'config { allowComplex: true }';
+            const calculator = definition?.calculators?.[0];
+            return calculator ? `config { calculator: ${calculator} }` : '';
+        };
+        const graphs = new Map<string, string[]>();
+        for (const name of names) {
+            graphs.set(where(name), [...(graphs.get(where(name)) ?? []), name]);
+        }
+        const found = new Map<string, InspectedExpression>();
+        for (const [config, members] of graphs) {
+            await loadClean(calculator(), [config, ...members.map(name => CALLS[name])].join('\n'));
+            const expressions = await calculator().inspectExpressions();
+            members.forEach((name, index) => found.set(name, expressions[index]));
+        }
+        inspected = names.map(name => found.get(name)!);
     });
 
     test('every function in the manifest has a call to test it with', () => {
@@ -297,6 +367,69 @@ describe('every function the language offers', { skip }, () => {
             ['requires-complex-mode'],
         );
         assert.equal(expression.analysis?.isError, true);
+    });
+
+    test('a member called is the function called with the member first', async () => {
+        await loadClean(
+            calculator(),
+            'D = normaldist(0, 1)\np = D.cdf(1)\nq = cdf(D, 1)\nL = [1, 2, 3, 4]\nm = L.quantile(0.5)\nT = ttest([1, 2, 3, 4, 6])\nhi = T.conf(0.95).upper',
+        );
+        const values = (await calculator().inspectExpressions()).map(
+            expression =>
+                (expression.analysis?.evaluation as { value?: unknown } | undefined)?.value,
+        );
+
+        assert.equal(values[1], 0.8413447460685429);
+        assert.equal(values[2], values[1]);
+        assert.equal(values[4], 2.5);
+        assert.ok(typeof values[6] === 'number' && values[6] > 5.5 && values[6] < 5.6);
+    });
+
+    test('a geometry function is an error on the graphing calculator, to Desmos and to Axis', async () => {
+        const { diagnostics } = await calculator().load('s = segment((0, 0), (4, 1))');
+        const [expression] = await calculator().inspectExpressions();
+
+        assert.deepEqual(
+            diagnostics.map(diagnostic => diagnostic.code),
+            ['requires-calculator'],
+        );
+        assert.equal(expression.analysis?.isError, true);
+    });
+
+    test('a geometry token is defined in the hidden folder, where Desmos accepts it', async () => {
+        await loadClean(
+            calculator(),
+            [
+                'config { calculator: GEOMETRY }',
+                'folder "Mine" {',
+                '    $1 = (0, 0)',
+                '    $2 = segment($1, (4, 1))',
+                '    $3(x) = reflect(x, line((0, 0), (0, 1)))',
+                '}',
+                'm = $2.length',
+                '$3($2)',
+            ].join('\n'),
+        );
+        const state = await calculator().getState();
+        const list = state.expressions?.list ?? [];
+        const hidden = list.filter(
+            item => (item as { folderId?: string }).folderId === '**dcg_geo_folder**',
+        );
+
+        // The three definitions, and not the use of one after them.
+        assert.deepEqual(
+            hidden.map(item => (item as { latex?: string }).latex),
+            [
+                '\\token{1}=\\left(0,0\\right)',
+                '\\token{2}=\\operatorname{segment}\\left(\\token{1},\\left(4,1\\right)\\right)',
+                '\\token{3}\\left(x\\right)=\\operatorname{reflect}\\left(x,\\operatorname{line}\\left(\\left(0,0\\right),\\left(0,1\\right)\\right)\\right)',
+            ],
+        );
+        assert.deepEqual(await calculator().getErrors(), []);
+        const length = (await calculator().inspectExpressions()).find(
+            expression => expression.latex === 'm=\\token{2}.\\operatorname{length}',
+        );
+        assert.equal((length?.analysis?.evaluation as { value: number }).value, Math.hypot(4, 1));
     });
 
     test('every colour function colours a curve', async () => {

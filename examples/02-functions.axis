@@ -16,7 +16,7 @@ g(x) = 2x - 1 @ color: BLUE
 h(x) = f(g(x)) @ color: GREEN, lineStyle: DASHED
 
 // A function of two arguments does not graph on its own - it is a helper.
-area(w, h) = w * h @ hidden
+rectArea(w, h) = w * h @ hidden
 
 folder "Trigonometry" {
     y = sin(x) @ color: RED

@@ -2,7 +2,7 @@
 title: Imports and images
 description: Building a graph out of several files, and putting pictures on it.
 sidebar:
-  order: 8
+  order: 9
 ---
 
 A file can bring in two things from outside itself: another file, with

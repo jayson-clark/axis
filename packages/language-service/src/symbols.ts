@@ -484,6 +484,9 @@ class Analyzer {
             }
             case 'Member': {
                 this.expression(node.target, scopes);
+                for (const arg of node.arguments ?? []) {
+                    this.expression(arg, scopes);
+                }
                 this.record({
                     identifier: node.name,
                     role: 'member',
@@ -558,7 +561,7 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
         case 'Index':
             return [node.target, node.index];
         case 'Member':
-            return [node.target, node.name];
+            return [node.target, node.name, ...(node.arguments ?? [])];
         case 'Factorial':
             return [node.operand];
         case 'Action':

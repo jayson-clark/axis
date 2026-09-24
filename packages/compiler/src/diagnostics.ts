@@ -33,6 +33,10 @@ export const COMPILER_DIAGNOSTICS = {
         summary: '`real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)',
         example: 'a = real(3)',
     },
+    'requires-calculator': {
+        summary: 'a function or a `$` token the calculator the graph is for does not have',
+        example: 'A = (0, 0)\nB = (4, 1)\ns = segment(A, B)',
+    },
     'multiple-subscripts': {
         summary: 'a name in an expression with more than one `_` part (`x_1_2`)',
         example: 'a = x_1_2',

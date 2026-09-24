@@ -98,6 +98,10 @@ into Desmos' spelling:
 - an explicit subscript is braced: `x_1` → `x_{1}`, `x_12` → `x_{12}`
 - a Greek letter or constant from the manifest becomes its command: `theta` →
   `\theta`, and `theta2` → `\theta_{2}`
+- a geometry token, `$` and digits, is `\token{…}`: `$12` → `\token{12}`. The
+  geometry calculator names the constructions nobody named this way, and a
+  token is a name like any other - defined once (`$12 = segment(A, B)`), used
+  anywhere - but only on that calculator (§5.3)
 
 ### 2.4 Brackets and continuation
 
@@ -446,11 +450,35 @@ imported one's where the entry says nothing. Anywhere else Desmos rejects them,
 so a use of one, called or written as a member (`z.real`), is
 `requires-complex-mode`.
 
+The geometry functions - `segment`, `line`, `ray`, `circle`, `arc`, `glider`,
+`intersection`, `angle`, `rotate` and the rest - exist only on the geometry
+calculator, and `triangle` and `sphere` only on the 3D one; `segment`,
+`vector`, `start` and `end` on both. The manifest says which (`calculators`).
+Used in a graph for any other calculator, as a call or a member, one is
+`requires-calculator`, and so is a `$` token outside a geometry graph. Their
+names are built-in everywhere all the same, so none of them can be defined.
+
 ### 5.4 Members
 
 `.name` after an expression is a `Member`: point coordinates (`P.x`, `P.y`) and
 list statistics written postfix (`L.count`, `L.mean`) — any single-argument
 function in the manifest may be used this way.
+
+A member may be called: `D.cdf(1)`, `L.quantile(0.5)`, `T.conf(0.95)`. It is
+the function called with the member's target first - `D.cdf(1)` is
+`cdf(D, 1)` - and it is how Desmos writes a distribution's and a test's
+methods, so it is how the decompiler writes them too. A member called has to
+be a built-in function; `P.x(2)` is the coordinate times 2 and `P.x(1, 2)`
+the coordinate times the point, as they always were, and anything else is
+`unknown-function`.
+
+```axis
+D = normaldist(0, 1)
+y = D.pdf(x)
+p = D.cdf(-1, 1)
+T = ttest([12, 15, 11, 14])
+lo = T.conf(0.95).lower
+```
 
 ### 5.5 Comparisons and definitions
 
@@ -649,6 +677,7 @@ left off, and a statement that cannot be written at all is left out.
 | `assign-to-builtin`     | defining a function, an operator, `pi`, `tau`, `e`, `infinity`, `true`/`false`   |
 | `theta-equation`        | `theta = …`, which Desmos will not graph - write `r = …` (§5.5)                  |
 | `requires-complex-mode` | `real`, `imag`, `conj` or `arg` in a graph without `allowComplex: true` (§5.3)   |
+| `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have          |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                       |
@@ -713,7 +742,10 @@ edge the file did not give filled in from ±10; `graph.product`, when
 (`"graphing-3d"`) - those calculators drop a state that does not name them, and
 a host builds the calculator the state names; `graph.complex: true` for
 `allowComplex: true`, since the option only permits complex mode and the graph
-is what turns it on; and the ticker beside the list
+is what turns it on; a token's definition (`$12 = …`, or `$13(x) = …`) in
+the geometry calculator's hidden folder, `**dcg_geo_folder**`, first in the
+list with its members after it, wherever the file wrote it - Desmos accepts
+the definition nowhere else; and the ticker beside the list
 only when there is one. The options are the Axis defaults under the merged
 config, with `actions: true` added for a file with a ticker and no `actions`
 of its own - Desmos decides `auto` from the list, which the ticker is not in.
@@ -822,7 +854,12 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **One name for each function**: the other spellings Desmos accepts are read
   as the name Axis has - `arsinh` as `arcsinh`, and `arcosh`, `artanh`,
   `arcsch`, `arsech`, `arcoth` alike; `inverseCdf` and `inversecdf` as
-  `quantile`; `TScore` as `tscore`.
+  `quantile`; `TScore` as `tscore`; and `ittest`, the old name of the
+  two-sample test, as `ttest`.
+- **What a person typed is kept to what it means**: `\token{12}` is `$12`, and
+  the token definitions in the geometry calculator's hidden folder are written
+  at the top level, where compiling puts them back. A number with nothing
+  after its point, `3.`, is 3.
 - **What Axis cannot write** is reported, never thrown. Latex `parseLatex`
   has no reading for (`\sum`, `\int`, …) leaves out the expression - or only
   the property, if that is where it is - and a `// unsupported: <latex>`

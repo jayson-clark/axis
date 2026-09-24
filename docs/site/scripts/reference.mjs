@@ -64,6 +64,8 @@ const CATEGORY_TITLES = {
     list: 'Lists',
     combinatorics: 'Combinatorics',
     complex: 'Complex numbers',
+    distribution: 'Distributions',
+    inference: 'Hypothesis tests',
     geometry: 'Geometry',
     color: 'Colour',
     audio: 'Sound',

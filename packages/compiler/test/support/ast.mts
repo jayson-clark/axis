@@ -151,6 +151,14 @@ export const member = (target: Operand, name: string): Expression => ({
     name: id(name),
     span: SPAN,
 });
+/** `D.cdf(1)`: a member called. */
+export const method = (target: Operand, name: string, ...args: Operand[]): Expression => ({
+    kind: 'Member',
+    target: node(target),
+    name: id(name),
+    arguments: args.map(node),
+    span: SPAN,
+});
 export const fact = (operand: Operand): Expression => ({
     kind: 'Factorial',
     operand: node(operand),
@@ -301,7 +309,7 @@ export function show(tree: Expression): string {
         case 'Index':
             return `${show(tree.target)}[${show(tree.index)}]`;
         case 'Member':
-            return `${show(tree.target)}.${tree.name.name}`;
+            return `${show(tree.target)}.${tree.name.name}${tree.arguments ? `(${tree.arguments.map(show).join(', ')})` : ''}`;
         case 'Factorial':
             return `${show(tree.operand)}!`;
         case 'Action':

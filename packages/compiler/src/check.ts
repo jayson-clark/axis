@@ -26,6 +26,7 @@
 
 import {
     AXIS_COMPLEX_FUNCTION_NAMES,
+    AXIS_MANIFEST,
     AXIS_CONSTANT_NAME_SET,
     AXIS_FUNCTION_NAME_SET,
     AXIS_OPERATOR_NAME_SET,
@@ -40,6 +41,7 @@ import {
     placementsOf,
     type Prime,
     type Property,
+    type PropertyValue,
     type PropertyDefinition,
     type PropertyPlacement,
     type Span,
@@ -86,6 +88,23 @@ interface Scope {
     macro: boolean;
 }
 
+/** The calculators each function the graphing calculator lacks exists on. */
+const FUNCTION_CALCULATORS: ReadonlyMap<string, readonly string[]> = new Map(
+    AXIS_MANIFEST.functions.flatMap(fn =>
+        fn.calculators ? [[fn.name, fn.calculators] as const] : [],
+    ),
+);
+
+/** How a `calculator:` value is named in a message. */
+const CALCULATOR_NAMES: Readonly<Record<string, string>> = {
+    GRAPHING: 'graphing',
+    GEOMETRY: 'geometry',
+    GRAPHING_3D: '3D',
+};
+
+/** The members that read a point's coordinates rather than call a function. */
+const COORDINATES: ReadonlySet<string> = new Set(['x', 'y', 'z']);
+
 /** Check every file of `program` against the names it defines. */
 export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     const diagnostics: Diagnostic[] = [];
@@ -97,6 +116,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
     };
 
     const complexMode = allowsComplex(program);
+    const calculator = calculatorOf(program);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Statements
@@ -270,6 +290,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
             );
         }
         checkSubscripts(definition.name);
+        checkToken(definition.name);
 
         const bound = new Set(scope.bound);
         if (definition.kind === 'function') {
@@ -352,7 +373,14 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 // `z.real` is `real(z)` written after it (§5.4), and as much
                 // an error outside complex mode.
                 checkComplex(node.name.name, node.name, scope);
+                checkCalculator(node.name.name, node.name);
                 checkExpression(node.target, scope);
+                if (node.arguments) {
+                    checkMemberCall(node.name);
+                    for (const arg of node.arguments) {
+                        checkExpression(arg, scope);
+                    }
+                }
                 return;
 
             case 'BigOperator': {
@@ -404,6 +432,9 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
 
     const checkIdentifier = (node: Identifier, scope: Scope): void => {
         checkSubscripts(node);
+        if (!checkToken(node)) {
+            return;
+        }
         if (scope.bound.has(node.name)) {
             return;
         }
@@ -499,6 +530,7 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
         }
         if (AXIS_FUNCTION_NAME_SET.has(name)) {
             checkComplex(name, node.callee, scope);
+            checkCalculator(name, node.callee);
             return;
         }
 
@@ -514,6 +546,56 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 : `\`${name}\` is not a function - neither a built-in one nor one this file defines.`,
             node.callee.span,
         );
+    };
+
+    /**
+     * `$12` in a graph for any calculator but the geometry one. A token names
+     * a construction in that calculator's hidden folder, which no other
+     * calculator has. Says whether the name is fine.
+     */
+    const checkToken = (node: Identifier): boolean => {
+        if (!node.name.startsWith('$') || calculator === 'GEOMETRY') {
+            return true;
+        }
+        report(
+            'requires-calculator',
+            `\`${node.name}\` is a geometry token, which exists only on the geometry calculator; draw on it with \`config { calculator: GEOMETRY }\`.`,
+            node.span,
+        );
+        return false;
+    };
+
+    /**
+     * `D.cdf(1)`: a member called is a built-in called with the member's
+     * target first (§5.4), so it has to name one. `P.x(2)` is the coordinate
+     * times 2, and `P.x(1, 2)` times the point, as they always were; anything
+     * else is as unknown as `sine(x)`.
+     */
+    const checkMemberCall = (name: Identifier): void => {
+        if (AXIS_FUNCTION_NAME_SET.has(name.name) || COORDINATES.has(name.name)) {
+            return;
+        }
+        report(
+            'unknown-function',
+            `\`.${name.name}(…)\` calls a member, and \`${name.name}\` is not a built-in function.`,
+            name.span,
+        );
+    };
+
+    /**
+     * `segment(A, B)` in a graph for a calculator that has no `segment`, which
+     * Desmos rejects: "This calculator does not support the 'segment'
+     * function."
+     */
+    const checkCalculator = (name: string, at: Identifier): void => {
+        const calculators = FUNCTION_CALCULATORS.get(name);
+        if (calculators && !calculators.includes(calculator)) {
+            report(
+                'requires-calculator',
+                `\`${name}\` exists only on the ${list(calculators.map(named => CALCULATOR_NAMES[named]))} calculator; draw on it with \`config { calculator: ${calculators[0]} }\`.`,
+                at.span,
+            );
+        }
     };
 
     /**
@@ -849,6 +931,8 @@ function readsAsVariable(name: string, symbols: Symbols): boolean {
     const head = name.split('_')[0];
     return (
         head.length === 1 ||
+        // A geometry token names a value, as one letter does.
+        name.startsWith('$') ||
         symbols.variables.has(name) ||
         AXIS_CONSTANT_NAME_SET.has(name) ||
         AXIS_OPERATOR_NAME_SET.has(name)
@@ -986,19 +1070,36 @@ function findStyleCycles(
  * nothing, so it says nothing here either.
  */
 function allowsComplex(program: Program): boolean {
-    let imported: boolean | undefined;
-    let entry: boolean | undefined;
+    const value = configEntry(program, 'allowComplex');
+    return value === null || (value?.kind === 'Identifier' && value.name === 'true');
+}
+
+/** The calculator the graph is for, `GRAPHING` unless a config block says. */
+function calculatorOf(program: Program): string {
+    const value = configEntry(program, 'calculator');
+    const definition = findProperty('calculator', 'config');
+    const named =
+        value?.kind === 'Identifier' && definition ? enumValue(definition, value.name) : undefined;
+    return named ?? 'GRAPHING';
+}
+
+/**
+ * The value a config block gives `key` - `null` for a bare flag - with the
+ * entry file's winning over an imported one's, as it does when the blocks are
+ * merged, or undefined when none gives it.
+ */
+function configEntry(program: Program, key: string): PropertyValue | null | undefined {
+    let imported: PropertyValue | null | undefined;
+    let entry: PropertyValue | null | undefined;
     for (const file of program.files) {
         for (const statement of file.tree.file.statements) {
             if (statement.kind !== 'ConfigStatement') continue;
             for (const property of statement.entries) {
-                if (property.key.name !== 'allowComplex') continue;
-                const value = property.value;
-                const on = value === null || (value.kind === 'Identifier' && value.name === 'true');
-                if (file.entry) entry = on;
-                else imported = on;
+                if (property.key.name !== key) continue;
+                if (file.entry) entry = property.value;
+                else imported = property.value;
             }
         }
     }
-    return entry ?? imported ?? false;
+    return entry !== undefined ? entry : imported;
 }
