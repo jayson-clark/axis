@@ -489,6 +489,52 @@ describe('action runs, `with` and `for`', () => {
     test('writes a bare run of points as the run it is', () => {
         assert.equal(roundTrip('(1, 2), (3, 4)'), '(1, 2), (3, 4)\n');
     });
+
+    test('writes the cases of a recursion, in a `with` or as statements', () => {
+        const source = [
+            'f(x) = 2x with f(1) = 1',
+            'g(n) = g(n - 1) + 3 with g(1) = 1, g(2) = 7',
+            'M(L, n) = M(L, n - 1) with M(L, 0) = L, a = 2',
+            'h(n) = h(n - 1) + 3',
+            'h(1) = 1',
+            'h(2) = 7',
+            '',
+        ].join('\n');
+        assert.equal(roundTrip(source), source);
+    });
+});
+
+describe('a name before a bracket', () => {
+    test('writes a call on a variable as the product Desmos reads', () => {
+        // Desmos reads `r\left(a,b\right)` as r times the point, and Axis
+        // would read `r(a, b)` as a call on something that is not a function.
+        assert.equal(
+            fromState(
+                items(
+                    { type: 'expression', id: '1', latex: 'r=15' },
+                    {
+                        type: 'expression',
+                        id: '2',
+                        latex: 'S=r\\left(1,2,3\\right)+f\\left(1,2\\right)',
+                    },
+                    { type: 'expression', id: '3', latex: 'f\\left(a,b\\right)=a+b' },
+                ),
+            ),
+            'r = 15\nS = (r)(1, 2, 3) + f(1, 2)\nf(a, b) = a + b\n',
+        );
+    });
+
+    test('leaves a call of one alone, which is a product already', () => {
+        assert.equal(
+            fromState(
+                items(
+                    { type: 'expression', id: '1', latex: 'r=15' },
+                    { type: 'expression', id: '2', latex: 'S=r\\left(2\\right)' },
+                ),
+            ),
+            'r = 15\nS = r(2)\n',
+        );
+    });
 });
 
 describe('folders', () => {

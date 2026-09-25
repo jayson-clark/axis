@@ -292,6 +292,23 @@ describe('what Desmos writes', () => {
             ],
             ['a\\operatorname{with}\\theta=1', withB('a', ['theta', 1])],
             ['\\left(a\\operatorname{with}a=1\\right),2', seq(paren(withB('a', ['a', 1])), 2)],
+            // A case of a function after a `with` is the base of a recursion.
+            [
+                'f\\left(x\\right)=2x\\operatorname{with}f\\left(1\\right)=1',
+                withB(eq(call('f', 'x'), imp(2, 'x')), [['f', 1], 1]),
+            ],
+            [
+                'g\\left(n\\right)=g\\left(n-1\\right)\\operatorname{with}g\\left(1\\right)=1,g\\left(2\\right)=7',
+                withB(eq(call('g', 'n'), call('g', sub('n', 1))), [['g', 1], 1], [['g', 2], 7]),
+            ],
+            [
+                'M\\left(L,n\\right)=M\\left(L,n-1\\right)\\operatorname{with}M\\left(L,0\\right)=L,a=2',
+                withB(
+                    eq(call('M', 'L', 'n'), call('M', 'L', sub('n', 1))),
+                    [['M', 'L', 0], 'L'],
+                    ['a', 2],
+                ),
+            ],
         ]);
     });
 });

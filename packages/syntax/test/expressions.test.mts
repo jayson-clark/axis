@@ -26,6 +26,14 @@ describe('precedence (spec §5.1)', () => {
         assert.equal(expr('x with a = 1 with b = 2'), '(with (with x (a 1)) (b 2))');
     });
 
+    test('a `with` binding can be a case of a function, and a `for` one cannot', () => {
+        assert.equal(expr('2x with f(1) = 1'), '(with (implicit 2 x) ((f 1) 1))');
+        assert.equal(
+            expr('g(n - 1) with g(1) = 1, g(L, 2) = 7, a = 3'),
+            '(with (call g (- n 1)) ((g 1) 1) ((g L 2) 7) (a 3))',
+        );
+    });
+
     test('level 2: an action run is a sequence', () => {
         assert.equal(expr('a -> 1, b -> 2'), '(run (-> a 1) (-> b 2))');
         assert.equal(expr('A, B, C'), '(run A B C)');

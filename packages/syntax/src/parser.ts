@@ -836,7 +836,7 @@ class Parser {
         let body = allowRun ? this.parseRun(left) : this.parseAction(left);
         while (this.at('with') || this.at('for')) {
             const keyword = this.next().text;
-            const bindings = this.parseBindings();
+            const bindings = this.parseBindings(keyword === 'with');
             body =
                 keyword === 'with'
                     ? { kind: 'With', body, bindings, span: this.span(start) }
@@ -845,30 +845,61 @@ class Parser {
         return body;
     }
 
-    /** `a = 1, b = 2` after `with` or `for`: to the end of the bracket or statement. */
-    private parseBindings(): ast.Binding[] {
+    /**
+     * `a = 1, b = 2` after `with` or `for`: to the end of the bracket or
+     * statement. After a `with`, a binding can also be a case of a function,
+     * `f(1) = 1` - a recursion's base, as Desmos writes one.
+     */
+    private parseBindings(cases: boolean): ast.Binding[] {
         const bindings: ast.Binding[] = [];
         for (;;) {
-            if (this.peek().kind !== 'identifier' || !this.at('=', this.peekAt(1))) {
+            const call = cases && this.caseAhead();
+            if (!call && (this.peek().kind !== 'identifier' || !this.at('=', this.peekAt(1)))) {
                 this.error(
                     'expected-binding',
-                    'Expected a binding: `name = value`',
+                    cases
+                        ? 'Expected a binding: `name = value`, or a case such as `f(1) = value`'
+                        : 'Expected a binding: `name = value`',
                     this.missingSpan(),
                 );
                 break;
             }
             const start = this.startOf();
             const name = this.parseIdentifier();
+            const args = call
+                ? this.parseBracket(')', () => this.parseElements(')')).value
+                : undefined;
             this.next();
             const value = this.canStartExpression()
                 ? this.parseComparison()
                 : this.errorExpression('Expected a value to bind');
-            bindings.push({ kind: 'Binding', name, value, span: this.span(start) });
+            bindings.push(
+                args
+                    ? { kind: 'Binding', name, arguments: args, value, span: this.span(start) }
+                    : { kind: 'Binding', name, value, span: this.span(start) },
+            );
 
             if (!this.at(',') || this.commaEndsValue()) break;
             this.next();
         }
         return bindings;
+    }
+
+    /**
+     * Whether a function case, `f(…) =`, is next: a name, a bracket straight
+     * after it, and an `=` once the bracket closes.
+     */
+    private caseAhead(): boolean {
+        if (this.peek().kind !== 'identifier' || !this.at('(', this.peekAt(1))) return false;
+        let depth = 0;
+        for (let n = 1; ; n++) {
+            const token = this.peekAt(n);
+            if (token.kind === 'eof') return false;
+            if (this.at('(', token) || this.at('[', token) || this.at('{', token)) depth++;
+            if (this.at(')', token) || this.at(']', token) || this.at('}', token)) {
+                if (--depth === 0) return this.at('=', this.peekAt(n + 1));
+            }
+        }
     }
 
     /** Level 2: an action run, `a -> 1, b -> 2`, or a run of names, `A, B`. */

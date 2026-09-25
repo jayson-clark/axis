@@ -410,7 +410,7 @@ class Parser {
                 return body;
             }
             this.advance();
-            const bindings = this.bindings();
+            const bindings = this.bindings(token.name === 'with');
             body = {
                 kind: token.name === 'with' ? 'With' : 'For',
                 body,
@@ -1226,21 +1226,40 @@ class Parser {
         return { kind: 'Piecewise', branches, otherwise, span: this.span(start) };
     }
 
-    /** `a=1,b=2` after a `with` or a `for`: as many as there are. */
-    private bindings(): Binding[] {
+    /**
+     * `a=1,b=2` after a `with` or a `for`: as many as there are. After a
+     * `with`, one can be a case of a function, `f\left(1\right)=1` - the
+     * base of a recursion, as Desmos writes one.
+     */
+    private bindings(cases: boolean): Binding[] {
         const bindings: Binding[] = [];
 
         do {
             const start = this.peek().start;
             const name = this.bindingName();
+            const args = cases ? this.caseArguments() : undefined;
             if (!this.eatSymbol('=')) {
                 throw this.error("Expected '=' in a binding");
             }
             const value = this.additive();
-            bindings.push({ kind: 'Binding', name, value, span: this.span(start) });
-        } while (this.isSymbol(',') && this.bindingFollows() && this.advance());
+            bindings.push(
+                args
+                    ? { kind: 'Binding', name, arguments: args, value, span: this.span(start) }
+                    : { kind: 'Binding', name, value, span: this.span(start) },
+            );
+        } while (this.isSymbol(',') && this.bindingFollows(cases) && this.advance());
 
         return bindings;
+    }
+
+    /** The bracket of a function case, `f\left(1\right)`, if one follows the name. */
+    private caseArguments(): Expression[] | undefined {
+        const next = this.peek();
+        if (next.type !== 'open' || next.delimiter !== '(') {
+            return undefined;
+        }
+        this.advance();
+        return this.elements('(', false);
     }
 
     private bindingName(): Identifier {
@@ -1268,11 +1287,12 @@ class Parser {
      * Whether the comma ahead starts another binding - `, b=2` - rather than
      * ending the run, which is where the bracket around it takes over.
      */
-    private bindingFollows(): boolean {
+    private bindingFollows(cases: boolean): boolean {
         const saved = this.position;
         try {
             this.advance();
             this.bindingName();
+            if (cases) this.caseArguments();
             return this.isSymbol('=');
         } catch {
             return false;

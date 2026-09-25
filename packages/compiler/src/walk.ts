@@ -62,7 +62,10 @@ export function childrenOf(node: Expression): Expression[] {
             return [node.target, node.value];
         case 'With':
         case 'For':
-            return [node.body, ...node.bindings.map(binding => binding.value)];
+            return [
+                node.body,
+                ...node.bindings.flatMap(binding => [...(binding.arguments ?? []), binding.value]),
+            ];
     }
 }
 
@@ -180,11 +183,15 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
             let changed = body !== node.body;
             const bindings = node.bindings.map(binding => {
                 const value = map(binding.value);
-                if (value === binding.value) {
+                const args = binding.arguments?.map(map);
+                if (
+                    value === binding.value &&
+                    (args ?? []).every((arg, i) => arg === binding.arguments![i])
+                ) {
                     return binding;
                 }
                 changed = true;
-                return { ...binding, value };
+                return args ? { ...binding, arguments: args, value } : { ...binding, value };
             });
             return changed ? { ...node, body, bindings } : node;
         }

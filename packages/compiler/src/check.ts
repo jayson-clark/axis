@@ -496,6 +496,24 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 // inside them.
                 const bound = new Set(scope.bound);
                 for (const binding of node.bindings) {
+                    if (binding.arguments) {
+                        // `f(1) = 1` binds no name: it is a case of a function
+                        // the file defines, so there has to be one - a
+                        // product has no cases.
+                        checkSubscripts(binding.name);
+                        if (!symbols.functions.has(binding.name.name)) {
+                            report(
+                                'unknown-function',
+                                `\`${binding.name.name}(…) = …\` is a case of a function, and \`${binding.name.name}\` is not one this file defines.`,
+                                binding.name.span,
+                            );
+                        }
+                        for (const arg of binding.arguments) {
+                            checkExpression(arg, scope);
+                        }
+                        checkExpression(binding.value, scope);
+                        continue;
+                    }
                     checkSubscripts(binding.name);
                     checkBindable(
                         binding.name,

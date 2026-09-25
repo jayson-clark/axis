@@ -47,6 +47,14 @@ describe('names', () => {
         reports('f(g) = g(1, 2)', 'unknown-function');
     });
 
+    test('a case of a function after a `with` needs a function to be a case of', () => {
+        clean('f(x) = 2x with f(1) = 1');
+        clean('g(n) = g(n - 1) + 3 with g(1) = 1, g(2) = 7');
+        clean('M(L, n) = M(L, n - 1) with M(L, 0) = L');
+        reports('a = 1\ny = x with a(1) = 2', 'unknown-function');
+        reports('y = x with b(1) = 2', 'unknown-function');
+    });
+
     test('says which call it was, and where', () => {
         const [diagnostic] = compileAxis('y = 2 + sine(x)').diagnostics;
         assert.deepEqual(diagnostic.span, { start: 8, end: 12 });

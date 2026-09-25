@@ -170,7 +170,9 @@ export function debugTree(node: Node | null): string {
         case 'Sequence':
             return list('run', ...all(node.elements));
         case 'Binding':
-            return list(node.name.name, debugTree(node.value));
+            return node.arguments
+                ? list(list(node.name.name, ...all(node.arguments)), debugTree(node.value))
+                : list(node.name.name, debugTree(node.value));
         case 'With':
             return list('with', debugTree(node.body), ...all(node.bindings));
         case 'For':

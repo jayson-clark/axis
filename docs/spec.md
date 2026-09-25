@@ -541,6 +541,22 @@ sequence of names that are themselves actions is also a run: `R = A, B`.
 the expression before it. Both take a comma-separated run of `name = value`
 bindings that extends to the end of the enclosing bracket or statement.
 
+A `with` binding can also be a case of a function the file defines,
+`f(1) = value`: where the arguments match, `f` is the case's value instead of
+its body. It is how Desmos writes the base of a recursion, and as many cases as
+it takes can follow one `with`. Such a binding binds no name, and one on a name
+that is not a function the file defines is `unknown-function`. The same cases
+can be written as statements of their own, `f(1) = 1` beside `f(x) = …`, which
+Desmos reads the same way.
+
+```axis
+f(x) = 2x with f(1) = 1
+g(n) = g(n - 1) + 3 with g(1) = 1, g(2) = 7
+h(n) = h(n - 1) + 3
+h(1) = 1
+h(2) = 7
+```
+
 ### 5.8 Piecewise
 
 `{condition: value, condition: value, otherwise}`; a branch without `: value`
@@ -912,6 +928,11 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
 - **A curve over an interval of its own parameter**, `(f(a))\operatorname{for}0<a<2`,
   is written as the same curve in `t` with `domain: 0..2`, which Desmos draws
   identically.
+- **A name before a bracket that is not a function is a product.** Desmos
+  reads `r\left(a,b\right)` as `r` times the point when `r` is a number, but
+  the Axis parser reads `r(a, b)` as a call (§5.3). So a call of two or more
+  on a name that is neither a builtin nor a function the graph defines is
+  written `(r)(a, b)`.
 - **Brackets that only group are dropped**: round all of a script,
   `x^{\left(n\right)}`, or of a value with bindings, and a product with a
   number on its right is written `*` - so decompiling what a decompiled file

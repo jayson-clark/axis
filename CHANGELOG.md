@@ -10,6 +10,19 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Added
+
+- A `with` binding can be a case of a function, `f(1) = 1` - the base of a
+  recursion, as Desmos writes one - and one `with` can hold several:
+  `g(n) = g(n - 1) + 3 with g(1) = 1, g(2) = 7`. Decompiling a graph that has
+  them writes them back, where it used to leave the whole definition out.
+
+### Fixed
+
+- Decompiling `r\left(a,b\right)`, where `r` is a number rather than a
+  function, writes the product `(r)(a, b)`. It used to write `r(a, b)`, which
+  does not compile, so the whole decompiled graph failed.
+
 ## 2.4.0 - 2026-09-24
 
 ### Added
