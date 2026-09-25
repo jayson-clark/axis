@@ -10,6 +10,8 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+## 2.5.0 - 2026-09-25
+
 ### Added
 
 - A `with` binding can be a case of a function, `f(1) = 1` - the base of a
