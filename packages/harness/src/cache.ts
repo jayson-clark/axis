@@ -66,6 +66,12 @@ async function writeCached(path: string, asset: CachedAsset): Promise<void> {
     await Promise.all([writeFile(path, asset.body), writeFile(`${path}.type`, asset.contentType)]);
 }
 
+/**
+ * How long one download from desmos.com may take - well inside the time the
+ * calculator is given to load, so a hung download is reported as one.
+ */
+const FETCH_TIMEOUT_MS = 20_000;
+
 export interface FetchAssetOptions {
     /** Never touch the network: a miss is an error rather than a download. */
     offline?: boolean;
@@ -94,7 +100,21 @@ export async function fetchAsset(
         );
     }
 
-    const response = await fetch(url);
+    // A download that hangs would otherwise surface only as the calculator
+    // failing to load in time, which says nothing about why. Timed out here,
+    // the script's failure is named in that error instead.
+    let response: Response;
+    try {
+        response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    } catch (error) {
+        const reason =
+            error instanceof Error && error.name === 'TimeoutError'
+                ? `no response within ${FETCH_TIMEOUT_MS / 1000}s`
+                : error instanceof Error
+                  ? error.message
+                  : String(error);
+        throw new Error(`Could not fetch ${url}: ${reason}`);
+    }
     if (!response.ok) {
         // A bad API key is the common one: Desmos answers it with a 403 whose
         // body is not JavaScript, so the failure is worth naming here rather
