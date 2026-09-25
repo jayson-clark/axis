@@ -502,6 +502,20 @@ class Analyzer {
                 const scope = new Map<string, SymbolDefinition>();
                 for (const binding of node.bindings) {
                     this.expression(binding.value, scopes);
+                    if (binding.arguments) {
+                        // `f(1) = 1` names no local: it is a case of `f`,
+                        // referred to as a call to it would be.
+                        this.expression(
+                            {
+                                kind: 'Call',
+                                callee: binding.name,
+                                arguments: binding.arguments,
+                                span: binding.span,
+                            },
+                            scopes,
+                        );
+                        continue;
+                    }
                     scope.set(binding.name.name, this.local(binding.name, 'binding', node.span));
                 }
                 this.expression(node.body, [...scopes, scope]);
@@ -569,6 +583,13 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
             return [node.target, node.value];
         case 'With':
         case 'For':
-            return [node.body, ...node.bindings.flatMap(binding => [binding.name, binding.value])];
+            return [
+                node.body,
+                ...node.bindings.flatMap(binding => [
+                    binding.name,
+                    ...(binding.arguments ?? []),
+                    binding.value,
+                ]),
+            ];
     }
 }

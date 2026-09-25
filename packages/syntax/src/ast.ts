@@ -450,10 +450,16 @@ export interface Sequence extends NodeBase {
     elements: Expression[];
 }
 
-/** `name = value`, as `with` and `for` take them. */
+/**
+ * `name = value`, as `with` and `for` take them - or, after a `with` only,
+ * `f(1) = value`: a case of the function being defined, which is how Desmos
+ * writes the base of a recursion (spec §5.5).
+ */
 export interface Binding extends NodeBase {
     kind: 'Binding';
     name: Identifier;
+    /** The arguments of a function case, `f(1) = 1`; absent on a plain binding. */
+    arguments?: Expression[];
     value: Expression;
 }
 

@@ -405,7 +405,10 @@ function value(node: Expression, last: boolean): string {
  */
 function scoped(body: Expression, keyword: string, bindings: readonly Binding[]): string {
     const written = bindings
-        .map(({ name, value }) => `${identifierLatex(name.name)}=${at(value, LEVEL.additive)}`)
+        .map(
+            ({ name, arguments: args, value }) =>
+                `${identifierLatex(name.name)}${args ? `\\left(${elements(args)}\\right)` : ''}=${at(value, LEVEL.additive)}`,
+        )
         .join(',');
     // A chain of them reads left to right, as Desmos reads it - `a with b = 1
     // for n = L` is the `with`, then the `for` over it - so a `with` or a

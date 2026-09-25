@@ -665,6 +665,9 @@ class Printer {
                     join(
                         expression.bindings.map(binding => [
                             binding.name.name,
+                            binding.arguments
+                                ? ['(', join(this.elements(binding.arguments), ', '), ')']
+                                : '',
                             ' = ',
                             this.expression(binding.value, 4, inner),
                         ]),

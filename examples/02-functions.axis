@@ -59,6 +59,15 @@ folder "Rounding and sign" {
     y = erf(x) @ color: RED, lineStyle: DASHED
 }
 
+folder "Recursion" {
+    "A function may call itself, and its base cases say where that stops."
+    fib(n) = fib(n - 1) + fib(n - 2) with fib(0) = 0, fib(1) = 1 @ hidden
+    tri(n) = tri(n - 1) + n @ hidden
+    tri(1) = 1 @ hidden
+    F = fib(10) @ hidden
+    T = tri(10) @ hidden
+}
+
 folder "Number theory" {
     y = mod(x, 3) @ color: RED
     d = gcd(12, 18) @ hidden

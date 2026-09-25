@@ -247,3 +247,37 @@ describe('dt in a ticker handler (issue #11)', { skip }, () => {
         assert.equal(emitLatex(id('dt')), '\\operatorname{dt}');
     });
 });
+
+// A base case is where a recursion stops, and Desmos takes one after a `with`
+// or as a statement of its own. Written wrong it is silent: a case Desmos does
+// not read leaves the recursion bottomless, and every value is undefined.
+describe('the base cases of a recursion', { skip }, () => {
+    const calculator = useCalculator();
+
+    test('after a `with`, as many as it takes, or as statements', async () => {
+        await calculator().load(
+            [
+                'f(x) = 2x with f(1) = 1',
+                'fib(n) = fib(n - 1) + fib(n - 2) with fib(0) = 0, fib(1) = 1',
+                'M(L, n) = M(L, n - 1) * 2 with M(L, 0) = L',
+                'h(n) = h(n - 1) + 3',
+                'h(1) = 1',
+                'h(2) = 7',
+            ].join('\n'),
+        );
+        assert.deepEqual(await calculator().getErrors(), []);
+        const value = async (source: string) => (await calculator().evaluate(source)).numericValue;
+        assert.equal(await value('f(1)'), 1);
+        assert.equal(await value('f(3)'), 6);
+        assert.equal(await value('fib(10)'), 55);
+        assert.equal(await value('M(3, 4)'), 48);
+        assert.equal(await value('h(2)'), 7);
+        assert.equal(await value('h(4)'), 13);
+    });
+
+    test('a number before a bracket of several is a product', async () => {
+        await calculator().load('r = 15\nS = (r)(1, 2, 3)');
+        assert.deepEqual(await calculator().getErrors(), []);
+        assert.equal((await calculator().evaluate('S.z')).numericValue, 45);
+    });
+});

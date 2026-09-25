@@ -219,15 +219,23 @@ export const deriv = (variable: string, body: Operand): Expression => ({
     span: SPAN,
 });
 
-const bindings = (pairs: [string, Operand][]): Binding[] =>
-    pairs.map(([name, value]) => ({
-        kind: 'Binding',
-        name: id(name),
-        value: node(value),
-        span: SPAN,
-    }));
+/** A binding's name, or `['f', 1]` for a function case, `f(1) = …`. */
+type BindingName = string | [string, ...Operand[]];
 
-export const withB = (body: Operand, ...pairs: [string, Operand][]): Expression => ({
+const bindings = (pairs: [BindingName, Operand][]): Binding[] =>
+    pairs.map(([name, value]) =>
+        typeof name === 'string'
+            ? { kind: 'Binding', name: id(name), value: node(value), span: SPAN }
+            : {
+                  kind: 'Binding',
+                  name: id(name[0]),
+                  arguments: name.slice(1).map(node),
+                  value: node(value),
+                  span: SPAN,
+              },
+    );
+
+export const withB = (body: Operand, ...pairs: [BindingName, Operand][]): Expression => ({
     kind: 'With',
     body: node(body),
     bindings: bindings(pairs),

@@ -146,6 +146,23 @@ of a definition binds more loosely than anything else, so
 `f(x) = x n with n = 3` defines `f` as `x n with n = 3`, rather than applying
 `with` to the whole definition.
 
+## Recursion
+
+A function may call itself. Where it stops is a base case: a value for
+particular arguments, which Desmos uses in place of the body. A base case can
+follow a `with`, as many as it takes, or be a statement of its own - the two
+read the same.
+
+```axis
+fib(n) = fib(n - 1) + fib(n - 2) with fib(0) = 0, fib(1) = 1
+tri(n) = tri(n - 1) + n
+tri(1) = 1
+a = fib(10) + tri(10)
+```
+
+A case after a `with` has to be of a function the file defines; on anything
+else it is `unknown-function`.
+
 ## Sums, integrals and derivatives
 
 `sum`, `prod` and `int` name their variable once, with the range it runs over,

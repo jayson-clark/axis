@@ -54,6 +54,7 @@ import type {
 import {
     AXIS_CALCULATOR_PRODUCTS,
     AXIS_DEFAULT_CONFIG,
+    AXIS_FUNCTION_NAME_SET,
     AXIS_DEFAULT_STATE,
     AXIS_MANIFEST,
     AXIS_PALETTE,
@@ -128,6 +129,13 @@ export interface DecompileExpressionOptions {
      * written as `RED` when nothing called `RED` is in the graph.
      */
     definedNames?: ReadonlySet<string>;
+    /**
+     * The functions the graph defines. Desmos reads `r\left(a,b\right)` as a
+     * product when `r` is not a function, and Axis reads `r(a, b)` as a call
+     * whatever `r` is, so with these a call on anything else is written as
+     * the product it is. Without them every call is left a call.
+     */
+    definedFunctions?: ReadonlySet<string>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +151,8 @@ export interface DecompileExpressionOptions {
 /** Turn a graph back into the `.axis` source that builds it. */
 export function decompileAxis(input: DecompileInput, options: PrintOptions = {}): DecompileResult {
     const list = input.state.expressions?.list ?? [];
-    const context = new Context(definedNames(list), JSON.stringify(list));
+    const defined = definitions(list);
+    const context = new Context(defined.names, JSON.stringify(list), defined.functions);
 
     const units: Unit[] = [];
     const config = settingsStatement(input);
@@ -211,7 +220,7 @@ export function decompileExpression(
     item: DesmosExpression,
     options: DecompileExpressionOptions = {},
 ): DecompiledStatement {
-    const context = new Context(options.definedNames ?? new Set());
+    const context = new Context(options.definedNames ?? new Set(), '', options.definedFunctions);
     if (item.type === 'folder') {
         return { statement: context.folder(item), diagnostics: [] };
     }
@@ -337,8 +346,12 @@ class Context {
     /** How many table regressions have been given names of their own. */
     private fits = 0;
 
-    constructor(defined: ReadonlySet<string>, written = '') {
+    /** The functions the graph defines, when the whole graph is known. */
+    private readonly functions: ReadonlySet<string> | undefined;
+
+    constructor(defined: ReadonlySet<string>, written = '', functions?: ReadonlySet<string>) {
         this.written = written;
+        this.functions = functions;
         this.palette = new Map(
             AXIS_PALETTE.filter(color => !defined.has(color.name)).map(color => [
                 color.hex,
@@ -386,7 +399,7 @@ class Context {
             return number(latex);
         }
         try {
-            return read(latex);
+            return this.products(read(latex));
         } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             const oneLine = latex.replace(/\s*\n\s*/g, ' ');
@@ -400,6 +413,40 @@ class Context {
             );
             return undefined;
         }
+    }
+
+    /**
+     * `r\left(a,b\right)`, where `r` is a number, is `r` times the point, and
+     * the latex reader reads it as a call - as the Axis parser would read
+     * `r(a, b)`, where the checker refuses it. So a call of two or more on a
+     * name that is neither a builtin nor a function of the graph's is made
+     * the product Desmos reads, which prints as `(r)(a, b)`. A call of one is
+     * left alone: the checker takes `r(a)` as a product already.
+     */
+    private products(node: Expression): Expression {
+        const functions = this.functions;
+        if (!functions) {
+            return node;
+        }
+        const visit = (node: Expression): Expression => {
+            const mapped = mapChildren(node, visit);
+            if (
+                mapped.kind !== 'Call' ||
+                mapped.arguments.length < 2 ||
+                functions.has(mapped.callee.name) ||
+                AXIS_FUNCTION_NAME_SET.has(mapped.callee.name)
+            ) {
+                return mapped;
+            }
+            return {
+                kind: 'Binary',
+                operator: 'implicit',
+                left: mapped.callee,
+                right: { kind: 'Tuple', elements: mapped.arguments, span: mapped.span },
+                span: mapped.span,
+            };
+        };
+        return visit(node);
     }
 
     // ── Items ────────────────────────────────────────────────────────────────
@@ -1204,13 +1251,21 @@ function diagnostic(problem: Problem, at: Span): Diagnostic {
 /**
  * The names the graph defines - `a` in `a = 1`, `f` in `f(x) = …`, a table
  * column's header - which is what decides whether a palette name is free to
- * be written as the colour it names.
+ * be written as the colour it names; and, of those, the functions, which is
+ * what decides whether a name before a bracket is called or multiplied.
  */
-function definedNames(list: readonly DesmosExpression[]): Set<string> {
+function definitions(list: readonly DesmosExpression[]): {
+    names: Set<string>;
+    functions: Set<string>;
+} {
     const names = new Set<string>();
+    const functions = new Set<string>();
     const define = (node: Expression) => {
         if (node.kind === 'Identifier') names.add(node.name);
-        if (node.kind === 'Call') names.add(node.callee.name);
+        if (node.kind === 'Call') {
+            names.add(node.callee.name);
+            functions.add(node.callee.name);
+        }
     };
     const read = (latex: string | undefined, parse = parseLatex) => {
         if (!latex) return undefined;
@@ -1238,7 +1293,7 @@ function definedNames(list: readonly DesmosExpression[]): Set<string> {
             define(tree.operands[0]);
         }
     }
-    return names;
+    return { names, functions };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

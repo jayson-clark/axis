@@ -168,6 +168,11 @@ describe('error recovery', () => {
         assert.deepEqual(codes, ['expected-binding']);
     });
 
+    test('a for that binds a case of a function', () => {
+        const { codes } = recover('y = n for n(1) = 2');
+        assert.deepEqual(codes, ['expected-binding']);
+    });
+
     test('lexer errors surface once, not again from the parser', () => {
         const { tree, codes } = recover('y = #ff00 + x\nz = "abc\nw = 1 $ 2');
         assert.equal(tree, '(= y (+ (error) x))\n(= z "abc")\n(= w 1)\n(error-statement)');
