@@ -10,6 +10,12 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Fixed
+
+- The harness gives up on a download from desmos.com after 20 seconds and says
+  which one, where a hung download used to surface only as the calculator
+  failing to load in time.
+
 ## 2.5.0 - 2026-09-25
 
 ### Added

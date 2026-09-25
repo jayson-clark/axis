@@ -36,6 +36,23 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm --filter @axis-dsl/harness exec playwright-core install --with-deps chromium
+      # The harness answers the calculator's requests from ~/.cache/axis-harness
+      # (packages/harness/src/cache.ts). Kept between runs, a run needs nothing
+      # from desmos.com. The key follows the file that pins the API version,
+      # whose number also names the directory inside, so a new calculator
+      # starts a fresh cache rather than mixing into the old one.
+      - uses: actions/cache@v6
+        id: harness-cache
+        with:
+          path: ~/.cache/axis-harness
+          key: axis-harness-${{ hashFiles('packages/desmos/src/desmos.ts') }}
+          restore-keys: axis-harness-
+      # On a miss, one calculator fills it before the suites start. Otherwise
+      # every harness test file - they run in parallel - misses at once and
+      # downloads calculator.js for itself. typecheck has built dist/ by now.
+      - name: Warm the Desmos asset cache
+        if: steps.harness-cache.outputs.cache-hit != 'true'
+        run: node packages/harness/dist/cli.js -e 'y = x'
       - run: pnpm test
 
   site:
