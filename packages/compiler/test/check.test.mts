@@ -442,3 +442,30 @@ describe('diagnostics', () => {
         }
     });
 });
+
+describe('matrices', () => {
+    test('every row has as many cells as the first', () => {
+        clean('A = [1, 2; 3, 4]\nB = [1, ; , 4]');
+        reports('A = [1, 2; 3]', 'ragged-matrix');
+        reports('A = [1; 2, 3]', 'ragged-matrix');
+    });
+
+    test('a blank is a matrix cell, but no index', () => {
+        clean('Z = [ , ; , ]');
+        reports('a = M[1, ; 2]', 'misplaced-blank');
+    });
+
+    test('an index may slice with an open range on either side', () => {
+        clean('M = [1, 2; 3, 4]\na = M[2...; ...1]');
+    });
+
+    test("a comprehension's column bindings are bound in its body", () => {
+        clean('I = [a + b for a = [1...3]; b = [1...4]]');
+        reports('I = [sum(b = 1..2, b) for a = [1...3]; b = [1...4]]', 'rebound-variable');
+    });
+
+    test('the matrix functions are built in', () => {
+        clean('A = [1, 2; 3, 4]\nd = det(A) + trace(A) + rank(A)\nB = rref(transpose(A))');
+        reports('trace(t) = t', 'assign-to-builtin');
+    });
+});

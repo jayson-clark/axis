@@ -113,6 +113,11 @@ block keyword (`folder`, `table`, `config`, `style`), and as `@{`. Inside an
 expression bracket newlines do not end anything, so a long list or piecewise
 may be spread over lines freely. Inside a block they separate entries.
 
+Inside a `[`, a `;` does not end the statement either: it parts a matrix's
+rows (`[1, 2; 3, 4]`), an index's rows from its columns (`M[2; 3]`), and a
+comprehension's row bindings from its column bindings (§5.7). Anywhere else
+it is the separator of §3.1.
+
 ## 3. Statements
 
 ### 3.1 Separation
@@ -362,18 +367,18 @@ ignores `dragMode` on one.
 
 Loosest first. Everything is left-associative unless noted.
 
-| Level | Forms                                                                       | Node                                            |
-| ----- | --------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1     | `body with a = 1, b = 2`, `body for i = L, j = M`                           | `With`, `For`                                   |
-| 2     | action run `a -> 1, b -> 2` (statement values and `action` properties only) | `Sequence`                                      |
-| 3     | `target -> value`                                                           | `Action`                                        |
-| 4     | `= < <= > >= ~`, chainable: `1 < x < 2`                                     | `Comparison`                                    |
-| 5     | `+ -`                                                                       | `Binary`                                        |
-| 6     | `* /` **and implicit multiplication**                                       | `Binary` (`op: 'implicit'` for juxtaposition)   |
-| 7     | prefix `-`, `+`; `d/dx`, whose operand is a whole product (§5.9)            | `Unary`, `Derivative`                           |
-| 8     | `^`, **right**-associative; the exponent may start with `-`                 | `Binary`                                        |
-| 9     | postfix: call `f(…)`, prime `f'(…)`, index `L[…]`, member `.x`, `!`         | `Call`, `Prime`, `Index`, `Member`, `Factorial` |
-| 10    | atoms                                                                       | see §5.2                                        |
+| Level | Forms                                                                       | Node                                                           |
+| ----- | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1     | `body with a = 1, b = 2`, `body for i = L, j = M`                           | `With`, `For`                                                  |
+| 2     | action run `a -> 1, b -> 2` (statement values and `action` properties only) | `Sequence`                                                     |
+| 3     | `target -> value`                                                           | `Action`                                                       |
+| 4     | `= < <= > >= ~`, chainable: `1 < x < 2`                                     | `Comparison`                                                   |
+| 5     | `+ -`                                                                       | `Binary`                                                       |
+| 6     | `* /` **and implicit multiplication**                                       | `Binary` (`op: 'implicit'` for juxtaposition)                  |
+| 7     | prefix `-`, `+`; `d/dx`, whose operand is a whole product (§5.9)            | `Unary`, `Derivative`                                          |
+| 8     | `^`, **right**-associative; the exponent may start with `-`                 | `Binary`                                                       |
+| 9     | postfix: call `f(…)`, prime `f'(…)`, index `L[…]` `M[…; …]`, `.x`, `!`      | `Call`, `Prime`, `Index`, `MatrixIndex`, `Member`, `Factorial` |
+| 10    | atoms                                                                       | see §5.2                                                       |
 
 Consequences, all deliberate:
 
@@ -426,6 +431,7 @@ That is the only place `=` binds more loosely than `->` and `,`. A chain
 | `(a, b)`, `(a, b, c)`                                 | `Tuple` (a point)                            |
 | `[a, b, c]`, `[1...10]`, `[1, 3...9]`, `[1, ..., 10]` | `List` (with `ListRange` elements for `...`) |
 | `[f(i) for i = [1...10]]`                             | `List` holding a `For`                       |
+| `[1, 2; 3, 4]`, `[1, 2, 3;]`, `[5; 6]`                | `Matrix`                                     |
 | `{c1: v1, c2: v2, v3}`, `{x > 0}`                     | `Piecewise`                                  |
 | `\|e\|`                                               | `Abs`                                        |
 | `sum(n = 1..10, e)`, `prod(…)`, `int(t = 0..1, e)`    | `BigOperator` (§5.9)                         |
@@ -441,6 +447,38 @@ and one without is `open-range`. A list spread over lines may end with a trailin
 may a call's arguments; a trailing comma in plain parentheses, `(a,)`, makes a
 one-element `Tuple`. An index holds exactly one expression: `L[1, 2]` is an
 error.
+
+**Matrices.** A list with a `;` in it is a matrix, written row by row: the
+`;` ends one row and starts the next, so `[1, 2; 3, 4]` is 2×2 and `[5; 6]` a
+column. A `;` before the `]` closes the last row rather than opening another,
+which is how a single row is written: `[1, 2, 3;]` is a 1×3 matrix, where
+`[1, 2, 3]` is a list. Every row has as many cells as the first
+(`ragged-matrix`). A cell may be left blank, as Desmos leaves the cells of a
+matrix made with `#23`, and a blank is 0: a comma before a `;`, before the `]`
+of a row after the first, or before another comma leaves one -
+`[1, , 3; , 5, ]`. A row of nothing is one blank cell, `[1; ; 3]`, but a
+matrix of nothing at all, `[;]`, Desmos refuses. A cell can be anything a
+list element can, a matrix included, which is a block matrix: `[A, A;]`. The
+latex is `\begin{bmatrix}1&2\\3&4\end{bmatrix}`.
+
+A matrix is indexed with a `;` between the rows and the columns it takes, each
+side a comma-separated run like a list's index and either side left empty for
+all of them: `M[2; 3]` is one entry, `M[1, 2;]` the first two rows, `M[; 2]`
+the second column, and `M[2...; 1]` slices as a list's index does. A `[`
+straight after an operand indexes it (§5.3), matrix or not, so a matrix is
+multiplied by one written after it with `*`: `A * [5; 6]`.
+
+`A ^ T` is the transpose of a matrix, written `A^{T}` as Desmos writes it:
+Desmos reads a `T` in the exponent of a matrix as the transpose even where the
+graph defines a `T` - `2 ^ T` is still a power. `transpose(A)` is the same.
+`A ^ -1` is the inverse. `det`, `trace`, `rank`, `rref`, `rows` and `columns`
+are built in (the manifest's `matrix` functions). A matrix times a point
+transforms the point: `[0, -1; 1, 0] (1, 2)`.
+
+A graph uses matrices when anything in it is a matrix, a matrix index, a
+matrix comprehension or a call of a matrix function; the calculator has them
+only when its `matrices` option is on, and the compiler turns it on for such a
+graph (§9).
 
 ### 5.3 Calls and products
 
@@ -540,6 +578,19 @@ sequence of names that are themselves actions is also a run: `R = A, B`.
 `for` binds list variables for a comprehension; `with` substitutes values into
 the expression before it. Both take a comma-separated run of `name = value`
 bindings that extends to the end of the enclosing bracket or statement.
+
+A `for` in a `[` may take a second run after a `;`, which makes a matrix: the
+bindings before the `;` run down the rows and those after it across the
+columns, `[a + b for a = [1...3]; b = [1...4]]` being 3×4. Desmos writes one
+bare, `a+b\operatorname{for}a=…;b=…`, but in Axis a `;` outside a bracket
+ends the statement, so `A = a for a = L; b = M` is two statements, and a
+matrix comprehension is always written in a list's brackets - which Desmos
+reads as the same matrix.
+
+```axis
+n = 4
+I = [{i = j: 1, 0} for i = [1...n]; j = [1...n]]
+```
 
 A `with` binding can also be a case of a function the file defines,
 `f(1) = value`: where the arguments match, `f` is the case's value instead of
@@ -729,7 +780,8 @@ left off, and a statement that cannot be written at all is left out.
 | `requires-calculator`   | a function or a `$` token the calculator the graph is for does not have                          |
 | `statement-only`        | a chart or a regression `~` anywhere but as a statement of its own                               |
 | `open-range`            | a range with an end left off anywhere but an index (`L[2...]`)                                   |
-| `misplaced-blank`       | an empty slot, `[4, , 6]`, anywhere but a table column's values                                  |
+| `misplaced-blank`       | an empty slot, `[4, , 6]`, anywhere but a table column's values or a matrix                      |
+| `ragged-matrix`         | a matrix whose rows do not all have the same number of cells (§5.2)                              |
 | `multiple-subscripts`   | a name in an expression with more than one `_` part (`x_1_2`)                                    |
 | `boolean-in-expression` | `true` or `false` in an expression - Desmos has no booleans                                      |
 | `dt-outside-ticker`     | `dt` anywhere but the ticker's handler (or a macro's body)                                       |
@@ -800,7 +852,10 @@ list with its members after it, wherever the file wrote it - Desmos accepts
 the definition nowhere else; and the ticker beside the list
 only when there is one. The options are the Axis defaults under the merged
 config, with `actions: true` added for a file with a ticker and no `actions`
-of its own - Desmos decides `auto` from the list, which the ticker is not in.
+of its own - Desmos decides `auto` from the list, which the ticker is not in -
+and `matrices: true` for a file that uses a matrix (§5.2): the API builds a
+calculator with matrices off, where desmos.com has them on, and nothing in the
+graph state says either way.
 
 Each item in the list has a deterministic id - `expr_N`, `folder_N`, `note_N`,
 `table_N`, `image_N`, and `col_N` for a column, numbered in the order they are
@@ -837,6 +892,12 @@ they build with the same printer, so generated source looks typed by hand.
   `(x)(a + b)`.
 - **Brackets.** An author's brackets are kept. A tree built without any gets
   exactly the ones §5.1 needs to read back as itself.
+- **Matrices.** A matrix of several rows and several columns that is a
+  statement's whole value - `A = [1, 2; 3, 4]` - is written as a grid, one row
+  to a line, each ending in `;`, with every cell padded on the left to the
+  widest in its column. Anywhere else, and as a single row or column, a matrix
+  stays on its line, `[1, 2; 3, 4]`, unless it is too long or the author broke
+  it. An index is written `M[2; 3]`, `M[1, 2;]`, `M[; 2]`.
 - **Metadata** stays inline when it fits, and becomes a `@{ … }` block, one
   property to a line, when it does not and there is more than one property.
   Metadata written as a block stays one. A run whose bare names would read as
@@ -925,6 +986,9 @@ round trip: `compileAxis(decompileAxis(compileAxis(s)).source)` builds the same
   are names, `pm` and `mp`. A colour typed with space round it, or as an opaque
   `rgb(…)`, is its hex, and a table column with no header and no values is
   left out, since it holds and draws nothing.
+- **A matrix comprehension** Desmos writes bare, `a+b\operatorname{for}a=L;b=M`,
+  is written in a list's brackets, `[a + b for a = L; b = M]` (§5.7). A blank
+  cell is written blank.
 - **A curve over an interval of its own parameter**, `(f(a))\operatorname{for}0<a<2`,
   is written as the same curve in `t` with `domain: 0..2`, which Desmos draws
   identically.

@@ -75,11 +75,16 @@ export function parseExpression(source: string): {
  *
  * `inAbs`: whether a `|` closes an absolute value rather than opening a new one
  * as a juxtaposed operand.
+ *
+ * `inList`: whether the bracket we are in is a `[`, where a `;` splits a
+ * matrix's rows, an index's rows from its columns, or a comprehension's row
+ * bindings from its column bindings, rather than ending the statement.
  */
 interface Context {
     newlines: boolean;
     commaRule: boolean;
     inAbs: boolean;
+    inList: boolean;
 }
 
 const COMPARISON_OPERATORS: ReadonlySet<string> = new Set(['=', '<', '<=', '>', '>=', '~']);
@@ -113,7 +118,9 @@ class Parser {
     private lastEnd = 0;
     /** The last token consumed, newlines stepped over not counted. */
     private lastToken: Token | null = null;
-    private readonly contexts: Context[] = [{ newlines: false, commaRule: false, inAbs: false }];
+    private readonly contexts: Context[] = [
+        { newlines: false, commaRule: false, inAbs: false, inList: false },
+    ];
     /** How many blocks we are inside, so recovery knows a `}` is not its to skip. */
     private blockDepth = 0;
     private readonly diagnostics: ast.Diagnostic<SyntaxDiagnosticCode>[];
@@ -537,10 +544,13 @@ class Parser {
         const brace = this.next();
 
         this.blockDepth++;
-        const result = this.withContext({ newlines: false, commaRule: false, inAbs: false }, () => {
-            const own = metadata ? this.parseMetadata() : null;
-            return { metadata: own, body: body() };
-        });
+        const result = this.withContext(
+            { newlines: false, commaRule: false, inAbs: false, inList: false },
+            () => {
+                const own = metadata ? this.parseMetadata() : null;
+                return { metadata: own, body: body() };
+            },
+        );
         this.blockDepth--;
 
         this.closeBlock(open, brace);
@@ -638,8 +648,9 @@ class Parser {
         const brace = this.next();
 
         this.blockDepth++;
-        const entries = this.withContext({ newlines: false, commaRule: false, inAbs: false }, () =>
-            this.parseProperties(),
+        const entries = this.withContext(
+            { newlines: false, commaRule: false, inAbs: false, inList: false },
+            () => this.parseProperties(),
         );
         this.blockDepth--;
 
@@ -837,12 +848,33 @@ class Parser {
         while (this.at('with') || this.at('for')) {
             const keyword = this.next().text;
             const bindings = this.parseBindings(keyword === 'with');
-            body =
-                keyword === 'with'
-                    ? { kind: 'With', body, bindings, span: this.span(start) }
-                    : { kind: 'For', body, bindings, span: this.span(start) };
+            if (keyword === 'with') {
+                body = { kind: 'With', body, bindings, span: this.span(start) };
+            } else if (this.atColumnBindings()) {
+                // `[a + b for a = L; b = M]`: a matrix, the bindings after the
+                // `;` running across its columns (spec §5.7).
+                this.next();
+                const columns = this.parseBindings(false);
+                body = { kind: 'For', body, bindings, columns, span: this.span(start) };
+            } else {
+                body = { kind: 'For', body, bindings, span: this.span(start) };
+            }
         }
         return body;
+    }
+
+    /**
+     * Whether a `;` ahead starts a matrix comprehension's column bindings: only
+     * inside a `[`, since anywhere else a `;` ends the statement, and only
+     * where a binding follows it.
+     */
+    private atColumnBindings(): boolean {
+        return (
+            this.context.inList &&
+            this.at(';') &&
+            this.peekAt(1).kind === 'identifier' &&
+            this.at('=', this.peekAt(2))
+        );
     }
 
     /**
@@ -1092,8 +1124,14 @@ class Parser {
                     span: this.span(start),
                 };
             } else if (this.at('[')) {
-                const index = this.parseBracket(']', () => {
-                    const elements = this.parseListElements();
+                const index = this.parseBracket(']', (): ast.Expression | ast.Expression[][] => {
+                    const elements = this.parseListElements(false);
+                    // `M[2; 3]`, `M[1, 2;]`, `M[; 2]`: a matrix's rows and
+                    // columns, either side left empty for all of them.
+                    if (this.at(';')) {
+                        this.next();
+                        return [elements, this.parseListElements(false)];
+                    }
                     if (elements.length === 0) {
                         return this.errorExpression('Expected an index');
                     }
@@ -1106,7 +1144,15 @@ class Parser {
                     }
                     return elements[0];
                 }).value;
-                expression = { kind: 'Index', target: expression, index, span: this.span(start) };
+                expression = Array.isArray(index)
+                    ? {
+                          kind: 'MatrixIndex',
+                          target: expression,
+                          rows: index[0],
+                          columns: index[1],
+                          span: this.span(start),
+                      }
+                    : { kind: 'Index', target: expression, index, span: this.span(start) };
             } else if (this.at('.')) {
                 this.next();
                 if (this.peek().kind !== 'identifier') {
@@ -1229,8 +1275,13 @@ class Parser {
         }
 
         if (this.at('[')) {
-            const elements = this.parseBracket(']', () => this.parseListElements()).value;
-            return { kind: 'List', elements, span: this.span(start) };
+            const rows = this.parseBracket(']', () => this.parseRows()).value;
+            if (rows.length === 1) {
+                return { kind: 'List', elements: rows[0], span: this.span(start) };
+            }
+            // A `;` before the `]` closes the last row rather than opening one.
+            if (rows[rows.length - 1].length === 0) rows.pop();
+            return this.matrix(rows, start);
         }
 
         if (this.at('{')) {
@@ -1276,7 +1327,7 @@ class Parser {
         const closed = this.closers[open] >= 0;
 
         const result = this.withContext(
-            { newlines: closed, commaRule: false, inAbs: false },
+            { newlines: closed, commaRule: false, inAbs: false, inList: closer === ']' },
             () => {
                 const value = inside();
                 // Step over the newlines before the closer while they still mean
@@ -1321,17 +1372,58 @@ class Parser {
     }
 
     /**
+     * What a `[` holds: one row for a list, and more for a matrix, each `;`
+     * starting the next. The last row is empty when a `;` closes the matrix,
+     * as it does a single row's, `[1, 2;]`.
+     */
+    private parseRows(): ast.Expression[][] {
+        const rows = [this.parseListElements(false)];
+        while (this.at(';')) {
+            this.next();
+            rows.push(this.parseListElements(true));
+        }
+        return rows;
+    }
+
+    /**
+     * A matrix from its rows. A row with nothing in it is a single blank cell,
+     * `[1; ; 3]` - but a matrix of nothing at all, `[;]`, Desmos refuses.
+     */
+    private matrix(rows: ast.Expression[][], start: number): ast.Matrix {
+        if (rows.length === 1 && rows[0].length === 0) {
+            this.error('expected-expression', 'A matrix needs at least one cell', this.span(start));
+        }
+        return {
+            kind: 'Matrix',
+            rows: rows.map(row =>
+                row.length ? row : [{ kind: 'Blank', span: { start, end: start } }],
+            ),
+            span: this.span(start),
+        };
+    }
+
+    /** Whether the elements of a list end here: at its `]`, or at a `;`. */
+    private atElementsEnd(): boolean {
+        return this.at(']') || this.at(';');
+    }
+
+    /**
      * The elements of a list, or of an index, where `...` makes a range:
      * `[1...10]`, `[1, 3...9]`, and Desmos' own `[1, ..., 10]`, which is the
      * same range spelt with commas round the dots.
+     *
+     * A comma before a `;` leaves a blank cell after it, as one between two
+     * cells does: `[1, ; 3, 4]`. So does one before the `]` of a matrix -
+     * `inMatrix`, a row after the first - where a list takes it as a trailing
+     * comma instead.
      */
-    private parseListElements(): ast.Expression[] {
+    private parseListElements(inMatrix: boolean): ast.Expression[] {
         const elements: ast.Expression[] = [];
-        if (this.at(']')) return elements;
+        if (this.atElementsEnd()) return elements;
         // An end left off - `L[2...]`, `L[...3]`, `L[2, ...]` - is read here
         // wherever it is written, and the checker says where it may be.
         const end = (): ast.Expression | null =>
-            this.at(']') ? null : this.parseTopOrError(false);
+            this.atElementsEnd() ? null : this.parseTopOrError(false);
         for (;;) {
             if (this.at('...')) {
                 const dots = this.next();
@@ -1366,7 +1458,12 @@ class Parser {
                 }
             }
             if (!this.at(',')) return elements;
-            this.next();
+            const comma = this.next();
+            if (this.at(';') || (inMatrix && this.at(']'))) {
+                const at = comma.span.end;
+                elements.push({ kind: 'Blank', span: { start: at, end: at } });
+                return elements;
+            }
             // A list spread over lines may end its last line with a comma.
             if (this.at(']')) return elements;
         }

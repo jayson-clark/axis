@@ -45,6 +45,7 @@ export interface FunctionDefinition {
         | 'inference'
         | 'chart'
         | 'geometry'
+        | 'matrix'
         | 'audio';
     /**
      * Whether Desmos knows it only in complex mode. Anywhere else it is an
@@ -1382,6 +1383,61 @@ export const AXIS_MANIFEST = {
             category: 'combinatorics',
         },
 
+        // Matrices - a graph that uses one has them switched on (spec §5.2)
+        {
+            name: 'det',
+            detail: 'Determinant of a square matrix',
+            example: 'A = [1, 2; 3, 4]\nd = det(A)',
+            snippet: 'det(${1:A})',
+            category: 'matrix',
+            latex: '\\det',
+        },
+        {
+            name: 'trace',
+            detail: 'Sum of the diagonal of a square matrix',
+            example: 'A = [1, 2; 3, 4]\nt = trace(A)',
+            snippet: 'trace(${1:A})',
+            category: 'matrix',
+        },
+        {
+            name: 'rref',
+            detail: 'Reduced row echelon form of a matrix',
+            documentation:
+                'Solves a system of equations written as its augmented matrix: the last column of the result is the solution.',
+            example: 'A = [1, 2, 5; 3, 4, 6]\nR = rref(A)',
+            snippet: 'rref(${1:A})',
+            category: 'matrix',
+        },
+        {
+            name: 'rank',
+            detail: 'The number of linearly independent rows of a matrix',
+            example: 'A = [1, 2; 2, 4]\nn = rank(A)',
+            snippet: 'rank(${1:A})',
+            category: 'matrix',
+        },
+        {
+            name: 'transpose',
+            detail: 'A matrix with its rows and columns swapped',
+            documentation:
+                'Also written `A^T`, as Desmos writes it: a `T` in the exponent of a matrix is its transpose, even where the graph defines a `T` of its own.',
+            example: 'A = [1, 2, 3; 4, 5, 6]\nB = transpose(A)',
+            snippet: 'transpose(${1:A})',
+            category: 'matrix',
+        },
+        {
+            name: 'rows',
+            detail: 'A list of the rows of a matrix, each a one-row matrix',
+            example: 'A = [1, 2; 3, 4]\nr = rows(A)[1]',
+            snippet: 'rows(${1:A})',
+            category: 'matrix',
+        },
+        {
+            name: 'columns',
+            detail: 'A list of the columns of a matrix, each a one-column matrix',
+            example: 'A = [1, 2; 3, 4]\nc = columns(A)[2]',
+            snippet: 'columns(${1:A})',
+            category: 'matrix',
+        },
         // Complex numbers - Desmos knows these only in complex mode
         {
             name: 'real',
@@ -2922,6 +2978,11 @@ export const AXIS_CONSTANT_NAME_SET: ReadonlySet<string> = new Set(AXIS_CONSTANT
 /** The functions Desmos knows only in complex mode (spec §5.3). */
 export const AXIS_COMPLEX_FUNCTION_NAMES: ReadonlySet<string> = new Set(
     AXIS_MANIFEST.functions.filter(fn => fn.complex).map(fn => fn.name),
+);
+
+/** The functions that take or make a matrix, which a graph has only with them switched on. */
+export const AXIS_MATRIX_FUNCTION_NAMES: ReadonlySet<string> = new Set(
+    AXIS_MANIFEST.functions.filter(fn => fn.category === 'matrix').map(fn => fn.name),
 );
 
 /** Every name the language defines in expressions: functions, operators and constants. */

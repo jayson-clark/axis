@@ -823,3 +823,43 @@ describe('the examples', () => {
         });
     }
 });
+
+describe('matrices', () => {
+    const latex = (source: string) =>
+        compileAxis(source).state.expressions?.list?.map(item =>
+            'latex' in item ? item.latex : undefined,
+        );
+
+    test('a matrix is a bmatrix, a blank cell nothing between its `&`s', () => {
+        assert.deepEqual(latex('A = [1, 2; 3, 4]\nZ = [1, ; , 4]\nr = [1, 2;]'), [
+            'A=\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}',
+            'Z=\\begin{bmatrix}1&\\\\&4\\end{bmatrix}',
+            'r=\\begin{bmatrix}1&2\\end{bmatrix}',
+        ]);
+    });
+
+    test('an index, a comprehension, a transpose and the functions, as Desmos writes them', () => {
+        assert.deepEqual(
+            latex(
+                'a = M[2; 3]\nb = M[1, 2;]\nc = M[; 2]\nI = [a + b for a = L; b = K]\nB = M^T\nd = det(M)\nt = trace(M)',
+            ),
+            [
+                'a=M\\left[2;3\\right]',
+                'b=M\\left[1,2;\\right]',
+                'c=M\\left[;2\\right]',
+                'I=\\left[a+b\\operatorname{for}a=L;b=K\\right]',
+                'B=M^{T}',
+                'd=\\det\\left(M\\right)',
+                't=\\operatorname{trace}\\left(M\\right)',
+            ],
+        );
+    });
+
+    test('switches matrices on for a graph that uses one, and only then', () => {
+        assert.equal(compileAxis('A = [1, 2; 3, 4]').options.matrices, true);
+        assert.equal(compileAxis('a = M[1; 1]').options.matrices, true);
+        assert.equal(compileAxis('d = det(M)').options.matrices, true);
+        assert.equal(compileAxis('I = [a for a = L; b = K]').options.matrices, true);
+        assert.equal(compileAxis('L = [1, 2]\na = L[1]').options.matrices, undefined);
+    });
+});

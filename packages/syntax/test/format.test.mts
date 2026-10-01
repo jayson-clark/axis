@@ -432,3 +432,43 @@ describe('format: random statements at narrow widths', () => {
         }
     });
 });
+
+describe('format: matrices', () => {
+    test("a statement's own matrix is a grid, its columns lined up on the right", () => {
+        assert.equal(
+            format('R = [cos(t), -sin(t); sin(t), cos(t)]'),
+            'R = [\n    cos(t), -sin(t);\n    sin(t),  cos(t);\n]',
+        );
+    });
+
+    test('a single row or column stays on its line, and so does a matrix inside an expression', () => {
+        assert.equal(format('r = [1,2,3;]'), 'r = [1, 2, 3;]');
+        assert.equal(format('v = [5;6]'), 'v = [5; 6]');
+        assert.equal(format('d = det([1,2;3,4])'), 'd = det([1, 2; 3, 4])');
+    });
+
+    test('a blank cell keeps its column', () => {
+        assert.equal(format('Z = [1, ; , 1]'), 'Z = [\n    1,  ;\n     , 1;\n]');
+    });
+
+    test('an index and a comprehension', () => {
+        assert.equal(format('a = M[2;3] + M[1,2;] + M[;2]'), 'a = M[2; 3] + M[1, 2;] + M[; 2]');
+        assert.equal(
+            format('I = [{a = b: 1, 0} for a = [1...n];b = [1...n]]'),
+            'I = [{a = b: 1, 0} for a = [1...n]; b = [1...n]]',
+        );
+    });
+
+    test('what it prints reads back as the same tree', () => {
+        for (const source of [
+            'A = [1, 2; 3, 4]',
+            'Z = [1, , 3; , 5, ]',
+            'W = [[1, 2; 3, 4], [5; 6]; [7, 8;], 9]',
+            'q = M[; 2]',
+        ]) {
+            const printed = format(source);
+            assert.ok(sameTree(parse(printed).file, parse(source).file), printed);
+            assert.equal(format(printed), printed);
+        }
+    });
+});

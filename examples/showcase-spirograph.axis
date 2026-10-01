@@ -27,11 +27,11 @@ folder "Dials" {
 diff = big - small @ hidden
 ratio = diff / small @ hidden
 
-trace(t) = (diff * cos(t) + pen * cos(ratio * t), diff * sin(t) - pen * sin(ratio * t)) @ hidden
+path(t) = (diff * cos(t) + pen * cos(ratio * t), diff * sin(t) - pen * sin(ratio * t)) @ hidden
 
 // The pattern closes once the small circle has rolled round `small` times, so
 // that is how far t has to run for the whole of it to be drawn.
-trace(t) @ color: ORANGE, lineWidth: 2, domain: 0..small * tau
+path(t) @ color: ORANGE, lineWidth: 2, domain: 0..small * tau
 
 folder "The rolling circles" {
     "The fixed outer circle."
@@ -46,6 +46,6 @@ folder "The rolling circles" {
         lineOpacity: 0.6
     }
     "The pen, riding the small circle."
-    tip = trace(w) @ color: ORANGE, pointSize: 16
+    tip = path(w) @ color: ORANGE, pointSize: 16
     arm = [centre, tip] @ color: ORANGE, lines, points: false, lineOpacity: 0.7
 }

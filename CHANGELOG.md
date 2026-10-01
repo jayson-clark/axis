@@ -10,6 +10,36 @@ function, property, statement or diagnostic is a minor one. A fix is a patch.
 
 ## Unreleased
 
+### Added
+
+- Matrices. A list with a `;` in it is a matrix, written row by row:
+  `[1, 2; 3, 4]`, a column `[5; 6]`, and a single row `[1, 2, 3;]`, whose `;`
+  is what makes it a matrix rather than a list. A cell may be left blank, as
+  Desmos' `#23` leaves them, and a cell may be a matrix. `M[2; 3]`,
+  `M[1, 2;]` and `M[; 2]` index one by rows, then columns. A comprehension
+  with a `;` between its bindings builds one,
+  `[{i = j: 1, 0} for i = [1...n]; j = [1...n]]`. `A ^ T` is the transpose and
+  `A ^ -1` the inverse, and a matrix times a point transforms it.
+- The matrix functions `det`, `trace`, `rank`, `rref`, `transpose`, `rows` and
+  `columns`.
+- A graph that uses a matrix has the calculator's `matrices` option turned on,
+  which the Desmos API leaves off. `@axis-dsl/desmos` types the option.
+- The `ragged-matrix` diagnostic, for a matrix whose rows are not all the same
+  length.
+- Decompiling reads matrices, matrix indexes and matrix comprehensions. Desmos
+  writes a comprehension bare; it is written back in a list's brackets.
+- The formatter writes a matrix that a statement defines as a grid, a row to a
+  line with its columns lined up.
+- `examples/22-matrices.axis`, and a guide page on matrices.
+
+### Changed
+
+- **Breaking:** `det`, `trace`, `rank`, `rref`, `transpose`, `rows` and
+  `columns` are built in now, so a file that defines one of them -
+  `trace(t) = …` - reports `assign-to-builtin`. Rename it; the decompiler
+  already writes such a name from a graph as `t_race`.
+  `examples/showcase-spirograph.axis` renames its `trace(t)` to `path(t)`.
+
 ### Fixed
 
 - The harness gives up on a download from desmos.com after 20 seconds and says

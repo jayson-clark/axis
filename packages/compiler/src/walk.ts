@@ -12,7 +12,7 @@
 // references to anything a macro could stand for, and every pass agrees on that
 // because it is decided here.
 
-import type { Expression, Statement } from '@axis-dsl/syntax';
+import type { Binding, Expression, Statement } from '@axis-dsl/syntax';
 
 /** Every expression directly under `node`, in source order. */
 export function childrenOf(node: Expression): Expression[] {
@@ -33,6 +33,8 @@ export function childrenOf(node: Expression): Expression[] {
             return node.elements;
         case 'ListRange':
             return [node.from, node.to].filter(end => end !== null);
+        case 'Matrix':
+            return node.rows.flat();
         case 'Piecewise':
             return [
                 ...node.branches.flatMap(branch =>
@@ -56,6 +58,8 @@ export function childrenOf(node: Expression): Expression[] {
             return [node.body];
         case 'Index':
             return [node.target, node.index];
+        case 'MatrixIndex':
+            return [node.target, ...node.rows, ...node.columns];
         case 'Member':
             return [node.target, ...(node.arguments ?? [])];
         case 'Action':
@@ -64,7 +68,9 @@ export function childrenOf(node: Expression): Expression[] {
         case 'For':
             return [
                 node.body,
-                ...node.bindings.flatMap(binding => [...(binding.arguments ?? []), binding.value]),
+                ...[...node.bindings, ...((node.kind === 'For' && node.columns) || [])].flatMap(
+                    binding => [...(binding.arguments ?? []), binding.value],
+                ),
             ];
     }
 }
@@ -103,6 +109,10 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
         case 'Sequence': {
             const elements = list(node.elements);
             return elements === node.elements ? node : { ...node, elements };
+        }
+        case 'Matrix': {
+            const rows = node.rows.map(list);
+            return rows.every((row, index) => row === node.rows[index]) ? node : { ...node, rows };
         }
         case 'ListRange': {
             const from = node.from && map(node.from);
@@ -163,6 +173,14 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
                 ? node
                 : { ...node, target, index };
         }
+        case 'MatrixIndex': {
+            const target = map(node.target);
+            const rows = list(node.rows);
+            const columns = list(node.columns);
+            return target === node.target && rows === node.rows && columns === node.columns
+                ? node
+                : { ...node, target, rows, columns };
+        }
         case 'Member': {
             const target = map(node.target);
             const args = node.arguments && list(node.arguments);
@@ -181,18 +199,24 @@ export function mapChildren(node: Expression, map: (child: Expression) => Expres
         case 'For': {
             const body = map(node.body);
             let changed = body !== node.body;
-            const bindings = node.bindings.map(binding => {
-                const value = map(binding.value);
-                const args = binding.arguments?.map(map);
-                if (
-                    value === binding.value &&
-                    (args ?? []).every((arg, i) => arg === binding.arguments![i])
-                ) {
-                    return binding;
-                }
-                changed = true;
-                return args ? { ...binding, arguments: args, value } : { ...binding, value };
-            });
+            const mapBindings = (bindings: Binding[]) =>
+                bindings.map(binding => {
+                    const value = map(binding.value);
+                    const args = binding.arguments?.map(map);
+                    if (
+                        value === binding.value &&
+                        (args ?? []).every((arg, i) => arg === binding.arguments![i])
+                    ) {
+                        return binding;
+                    }
+                    changed = true;
+                    return args ? { ...binding, arguments: args, value } : { ...binding, value };
+                });
+            const bindings = mapBindings(node.bindings);
+            if (node.kind === 'For' && node.columns) {
+                const columns = mapBindings(node.columns);
+                return changed ? { ...node, body, bindings, columns } : node;
+            }
             return changed ? { ...node, body, bindings } : node;
         }
     }

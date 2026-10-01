@@ -394,10 +394,38 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 return;
             }
 
+            case 'MatrixIndex':
+                // Either side may slice with an open range, `M[2...; 1]`, as
+                // a list's index may.
+                for (const range of [...node.rows, ...node.columns]) {
+                    if (range.kind === 'ListRange') slices.add(range);
+                }
+                for (const child of childrenOf(node)) {
+                    checkExpression(child, scope);
+                }
+                return;
+
+            case 'Matrix': {
+                const columns = node.rows[0].length;
+                const ragged = node.rows.find(row => row.length !== columns);
+                if (ragged) {
+                    report(
+                        'ragged-matrix',
+                        `Every row of a matrix has as many cells as the first, which has ${columns}; this one has ${ragged.length}. Leave a cell blank, \`[1, ; 3, 4]\`, rather than out.`,
+                        { start: ragged[0].span.start, end: ragged[ragged.length - 1].span.end },
+                    );
+                }
+                // A blank cell is Desmos' own, and stands for 0.
+                for (const cell of node.rows.flat()) {
+                    if (cell.kind !== 'Blank') checkExpression(cell, scope);
+                }
+                return;
+            }
+
             case 'Blank':
                 report(
                     'misplaced-blank',
-                    'An empty slot, `[4, , 6]`, is a blank table cell, and only a table column’s values may have one.',
+                    'An empty slot, `[4, , 6]`, is a blank table cell or matrix cell, and only a table column’s values and a matrix may have one.',
                     node.span,
                 );
                 return;
@@ -495,7 +523,11 @@ export function checkProgram(program: Program, symbols: Symbols): CheckResult {
                 // A binding's value is read outside the bindings, and the body
                 // inside them.
                 const bound = new Set(scope.bound);
-                for (const binding of node.bindings) {
+                const bindings =
+                    node.kind === 'For'
+                        ? [...node.bindings, ...(node.columns ?? [])]
+                        : node.bindings;
+                for (const binding of bindings) {
                     if (binding.arguments) {
                         // `f(1) = 1` binds no name: it is a case of a function
                         // the file defines, so there has to be one - a

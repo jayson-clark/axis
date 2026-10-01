@@ -218,6 +218,7 @@ export type Expression =
     | Tuple
     | List
     | ListRange
+    | Matrix
     | Piecewise
     | Abs
     | Unary
@@ -228,6 +229,7 @@ export type Expression =
     | BigOperator
     | Derivative
     | Index
+    | MatrixIndex
     | Member
     | Factorial
     | Action
@@ -290,6 +292,16 @@ export interface Tuple extends NodeBase {
 export interface List extends NodeBase {
     kind: 'List';
     elements: Expression[];
+}
+
+/**
+ * `[1, 2; 3, 4]`: a matrix, row by row. A list with a `;` in it is one, so a
+ * single row is written with its `;` still on, `[1, 2;]`. A cell may be a
+ * `Blank`, as a matrix fresh from Desmos' `#23` is all blanks.
+ */
+export interface Matrix extends NodeBase {
+    kind: 'Matrix';
+    rows: Expression[][];
 }
 
 /** `a...b` inside a list or an index. */
@@ -418,6 +430,17 @@ export interface Index extends NodeBase {
     index: Expression;
 }
 
+/**
+ * `M[2; 3]`, `M[1, 2;]`, `M[; 2]`: the rows before the `;` and the columns
+ * after it, as Desmos indexes a matrix. A side left empty means all of them.
+ */
+export interface MatrixIndex extends NodeBase {
+    kind: 'MatrixIndex';
+    target: Expression;
+    rows: Expression[];
+    columns: Expression[];
+}
+
 /** `P.x`, `L.count`, and called: `D.cdf(1)`, `L.quantile(0.5)` */
 export interface Member extends NodeBase {
     kind: 'Member';
@@ -470,11 +493,17 @@ export interface With extends NodeBase {
     bindings: Binding[];
 }
 
-/** `body for i = [1...10], j = L` */
+/**
+ * `body for i = [1...10], j = L`, and a matrix comprehension,
+ * `[a + b for a = [1...3]; b = [1...4]]`: the bindings before the `;` run down
+ * the rows and those after it, in `columns`, across them.
+ */
 export interface For extends NodeBase {
     kind: 'For';
     body: Expression;
     bindings: Binding[];
+    /** The column bindings of a matrix comprehension; absent on a list's. */
+    columns?: Binding[];
 }
 
 /** Where an expression should have been and was not, already reported. */
@@ -483,9 +512,9 @@ export interface ErrorExpression extends NodeBase {
 }
 
 /**
- * The empty slot in `[4, , 6]`: a table cell left blank (spec §3.2). The
- * parser reads one in any list, and the checker allows it only in a table
- * column's values.
+ * The empty slot in `[4, , 6]`: a table cell left blank (spec §3.2), or a
+ * matrix cell. The parser reads one in any list, and the checker allows it
+ * only in a table column's values and in a matrix.
  */
 export interface Blank extends NodeBase {
     kind: 'Blank';

@@ -43,8 +43,12 @@ export const COMPILER_DIAGNOSTICS = {
         example: 'L = [1, 2, 3]\nH = histogram(L)',
     },
     'misplaced-blank': {
-        summary: "an empty slot, `[4, , 6]`, anywhere but a table column's values",
+        summary: "an empty slot, `[4, , 6]`, anywhere but a table column's values or a matrix",
         example: 'L = [1, , 3]',
+    },
+    'ragged-matrix': {
+        summary: 'a matrix whose rows do not all have the same number of cells (§5.2)',
+        example: 'A = [1, 2; 3]',
     },
     'open-range': {
         summary: 'a range with an end left off anywhere but an index (`L[2...]`)',

@@ -99,6 +99,9 @@ type Token = { start: number; end: number } & (
     /** A TeX group's braces - grouping, not a piecewise. */
     | { type: 'group-open' }
     | { type: 'group-close' }
+    /** `\begin{bmatrix}` and `\end{bmatrix}`: a matrix's brackets. */
+    | { type: 'matrix-open' }
+    | { type: 'matrix-close' }
     | { type: 'symbol'; text: string }
     | { type: 'end' }
 );
@@ -175,6 +178,11 @@ function tokenize(latex: string): Token[] {
                     index += 2;
                     continue;
                 }
+                if (symbol === '\\') {
+                    // A matrix's row break.
+                    push({ type: 'symbol', text: '\\\\', start, end: start + 2 });
+                    continue;
+                }
                 const bracket = DELIMITERS[`\\${symbol}`];
                 if (bracket) {
                     push({
@@ -214,6 +222,19 @@ function tokenize(latex: string): Token[] {
                     sized: true,
                     start,
                     end,
+                });
+                continue;
+            }
+
+            if (name === 'begin' || name === 'end') {
+                const environment = /^\s*\{bmatrix\}/.exec(latex.slice(end));
+                if (!environment) {
+                    throw new LatexParseError(`'\\${name}' of anything but a bmatrix`, start);
+                }
+                push({
+                    type: name === 'begin' ? 'matrix-open' : 'matrix-close',
+                    start,
+                    end: end + environment[0].length,
                 });
                 continue;
             }
@@ -261,7 +282,7 @@ function tokenize(latex: string): Token[] {
             continue;
         }
 
-        const symbol = /^(?:\.\.\.|<=|>=|[-+*/=<>,:!.^_'])/.exec(rest);
+        const symbol = /^(?:\.\.\.|<=|>=|[-+*/=<>,:;&!.^_'])/.exec(rest);
         if (symbol) {
             push({ type: 'symbol', text: symbol[0], start, end: start + symbol[0].length });
             continue;
@@ -352,6 +373,12 @@ class Parser {
     private position = 0;
     /** Bare bars open around the point being read, which a bare bar then closes. */
     private bars = 0;
+    /**
+     * Whether the expression about to be read is a list's own element, where a
+     * matrix comprehension stands bare - rather than anywhere else, where Axis
+     * needs it in brackets. Read once, as the element starts.
+     */
+    private listElement = false;
 
     constructor(
         private readonly latex: string,
@@ -402,6 +429,8 @@ class Parser {
      */
     private bindingLevel(allowSequence: boolean): Expression {
         const start = this.peek().start;
+        const listElement = this.listElement;
+        this.listElement = false;
         let body = allowSequence ? definition(this.sequence()) : this.action();
 
         for (;;) {
@@ -411,6 +440,26 @@ class Parser {
             }
             this.advance();
             const bindings = this.bindings(token.name === 'with');
+            if (token.name === 'for' && this.isSymbol(';') && this.bindingFollows(false)) {
+                // `a+b\operatorname{for}a=L;b=M`: a matrix comprehension,
+                // its column bindings after the `;`. Desmos writes one bare;
+                // Axis writes it in a list's brackets, since a `;` anywhere
+                // else ends the statement (spec §5.7) - so one that is not a
+                // list's whole content already is given them.
+                this.advance();
+                const columns = this.bindings(false);
+                const comprehension: Expression = {
+                    kind: 'For',
+                    body,
+                    bindings,
+                    columns,
+                    span: this.span(start),
+                };
+                body = listElement
+                    ? comprehension
+                    : { kind: 'List', elements: [comprehension], span: this.span(start) };
+                continue;
+            }
             body = {
                 kind: token.name === 'with' ? 'With' : 'For',
                 body,
@@ -605,7 +654,21 @@ class Parser {
                 // Brackets after anything index it; that is Desmos' reading,
                 // and the emitter never writes a list beside a value.
                 this.advance();
-                const elements = this.elements('[', true);
+                const elements = this.items('[', true);
+                if (this.eatSymbol(';')) {
+                    // `M\left[1,2;3\right]`: a matrix's rows, then its columns.
+                    const columns = this.items('[', true);
+                    this.expectClose('[');
+                    target = {
+                        kind: 'MatrixIndex',
+                        target,
+                        rows: elements,
+                        columns,
+                        span: this.span(start),
+                    };
+                    continue;
+                }
+                this.expectClose('[');
                 const index: Expression =
                     elements.length === 1
                         ? elements[0]
@@ -690,6 +753,9 @@ class Parser {
                 this.advance();
                 return { kind: 'Abs', expression, span: this.span(token.start) };
             }
+
+            case 'matrix-open':
+                return this.matrix(token.start);
 
             case 'group-open': {
                 // A TeX group is only grouping: `{a+b}` is `a+b`.
@@ -1144,16 +1210,26 @@ class Parser {
      * is how v1 wrote one.
      */
     private elements(delimiter: Delimiter, ranges: boolean): Expression[] {
+        const elements = this.items(delimiter, ranges);
+        this.expectClose(delimiter);
+        return elements;
+    }
+
+    /**
+     * The elements of {@link elements}, up to but not including the closing
+     * bracket - or a `;`, which in an index parts a matrix's rows from its
+     * columns.
+     */
+    private items(delimiter: Delimiter, ranges: boolean): Expression[] {
         const elements: Expression[] = [];
-        if (this.peekClose(delimiter)) {
-            this.advance();
+        const atEnd = () => this.peekClose(delimiter) || this.isSymbol(';');
+        if (atEnd()) {
             return elements;
         }
 
         // An end left off, `x\left[2...\right]` or `\left[...3\right]`,
         // is a slice to the end or from the start of what it indexes.
-        const end = (): Expression | null =>
-            this.peekClose(delimiter) ? null : this.bindingLevel(false);
+        const end = (): Expression | null => (atEnd() ? null : this.bindingLevel(false));
         for (;;) {
             if (ranges && this.isSymbol('...')) {
                 const start = this.peek().start;
@@ -1172,6 +1248,8 @@ class Parser {
                 });
             } else {
                 const start = this.peek().start;
+                // A list's own element may be a matrix comprehension, bare.
+                this.listElement = delimiter === '[';
                 const element = this.bindingLevel(false);
                 if (ranges && this.eatSymbol('...')) {
                     const to = this.isSymbol(',') ? null : end();
@@ -1185,9 +1263,36 @@ class Parser {
                 break;
             }
         }
-
-        this.expectClose(delimiter);
         return elements;
+    }
+
+    /**
+     * `\begin{bmatrix}1&2\\3&4\end{bmatrix}`: cells parted by `&`, rows by
+     * `\\`. A cell with nothing in it is a blank, which is what a matrix made
+     * with `#23` is full of.
+     */
+    private matrix(start: number): Expression {
+        this.advance();
+        const rows: Expression[][] = [];
+        let row: Expression[] = [];
+        for (;;) {
+            const next = this.peek();
+            const empty =
+                next.type === 'matrix-close' || this.isSymbol('&') || this.isSymbol('\\\\');
+            row.push(
+                empty
+                    ? { kind: 'Blank', span: { start: next.start, end: next.start } }
+                    : this.bindingLevel(false),
+            );
+            if (this.eatSymbol('&')) continue;
+            rows.push(row);
+            if (this.eatSymbol('\\\\')) {
+                row = [];
+                continue;
+            }
+            this.expect('matrix-close', "Expected '\\end{bmatrix}'");
+            return { kind: 'Matrix', rows, span: this.span(start) };
+        }
     }
 
     /**
@@ -1310,6 +1415,7 @@ class Parser {
             case 'letter':
             case 'open':
             case 'group-open':
+            case 'matrix-open':
                 return true;
             case 'operatorname':
                 return token.name !== 'with' && token.name !== 'for';
