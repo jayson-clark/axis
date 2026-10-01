@@ -25,6 +25,7 @@ Read in order, each file assumes only what came before it.
 | `19-styles.axis`                | `style name { … }`, `use:`, styles using styles, and which property wins                             |
 | `20-complex-numbers.axis`       | `allowComplex`, `i`, `real`, `imag`, `conj`, `arg`, and complex numbers drawn as points              |
 | `21-geometry.axis`              | `calculator: GEOMETRY`, `segment`, `circle`, `intersection`, `glider`, measurements, transformations |
+| `22-matrices.axis`              | `[1, 2; 3, 4]`, `A ^ T`, `A ^ -1`, `det`, `rref`, `M[2; 3]`, matrix comprehensions, rotating a point |
 
 The picture under `images/` is what `18-images.axis` draws. The files under
 `lib/` are what `16-imports.axis` imports. They are ordinary

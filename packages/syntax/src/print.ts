@@ -163,7 +163,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
 // one line, each item on a line of its own with its comma, and its closer
 // starting the next.
 
-type Doc = string | Doc[] | Group;
+type Doc = string | Doc[] | Group | Grid;
 
 interface Group {
     kind: 'group';
@@ -190,11 +190,23 @@ function group(open: string, items: Doc[], close: string, authorBroken = false):
     };
 }
 
-const isGroup = (doc: Doc): doc is Group => typeof doc === 'object' && !Array.isArray(doc);
+/**
+ * A matrix: rows of cells. Flat it is `[1, 2; 3, 4]`, and a single row keeps
+ * the `;` that makes it one, `[1, 2;]`. Broken, each row is a line of its own
+ * ending in `;`, its cells padded so that the columns line up.
+ */
+interface Grid {
+    kind: 'grid';
+    rows: Doc[][];
+    broken: boolean;
+}
+
+const isGroup = (doc: Doc): doc is Group | Grid => typeof doc === 'object' && !Array.isArray(doc);
 
 function containsBreak(doc: Doc): boolean {
     if (typeof doc === 'string') return false;
     if (Array.isArray(doc)) return doc.some(containsBreak);
+    if (doc.kind === 'grid') return doc.broken || doc.rows.some(row => row.some(containsBreak));
     return doc.broken || doc.items.some(containsBreak);
 }
 
@@ -202,8 +214,31 @@ function containsBreak(doc: Doc): boolean {
 function flat(doc: Doc): string {
     if (typeof doc === 'string') return doc;
     if (Array.isArray(doc)) return doc.map(flat).join('');
+    if (doc.kind === 'grid') {
+        const rows = doc.rows.map(row => row.map(flat).join(', ')).join('; ');
+        return `[${rows}${doc.rows.length === 1 ? ';' : ''}]`;
+    }
     const items = doc.items.map(flat).join(', ');
     return doc.open + items + doc.close;
+}
+
+/**
+ * A matrix's rows, a line apiece, each cell padded on the left to the width of
+ * the widest in its column - so the signs and the digits of a column of
+ * numbers line up. A blank cell is padded like any other, so the cells
+ * after it stay in their columns.
+ */
+function gridLines(rows: Doc[][]): string[] {
+    const cells = rows.map(row => row.map(flat));
+    const widths: number[] = [];
+    for (const row of cells) {
+        row.forEach(
+            (cell, column) => (widths[column] = Math.max(widths[column] ?? 0, cell.length)),
+        );
+    }
+    return cells.map(
+        row => `${row.map((cell, column) => cell.padStart(widths[column])).join(', ')};`,
+    );
 }
 
 function join(docs: Doc[], separator: string): Doc[] {
@@ -219,12 +254,25 @@ function lineParts(docs: Doc[]): Doc[] {
     return docs.flatMap((doc): Doc[] => {
         if (typeof doc === 'string') return doc === '' ? [] : [doc];
         if (Array.isArray(doc)) return lineParts(doc);
+        if (doc.kind === 'grid') return [doc];
         if (doc.items.length === 0) return [doc.open + doc.close];
         if (doc.items.length === 1 && !doc.broken) {
             return [doc.open, ...lineParts([doc.items[0]]), doc.close];
         }
         return [doc];
     });
+}
+
+/**
+ * A statement's value as a grid, a row to a line, when it is a matrix of
+ * several rows and several columns: that is how a matrix reads. One inside an
+ * expression - an argument, a factor - stays on its line unless it has to
+ * break, as a single row or column always does.
+ */
+function spread(node: ast.Expression, doc: Doc): Doc {
+    if (node.kind !== 'Matrix' || !isGroup(doc) || doc.kind !== 'grid') return doc;
+    const columns = Math.max(...node.rows.map(row => row.length));
+    return node.rows.length > 1 && columns > 1 ? { ...doc, broken: true } : doc;
 }
 
 const longest = (lines: string[]) => lines.reduce((most, line) => Math.max(most, line.length), 0);
@@ -293,6 +341,7 @@ function levelOf(expression: ast.Expression): number {
         case 'Call':
         case 'Prime':
         case 'Index':
+        case 'MatrixIndex':
         case 'Member':
         case 'Factorial':
             return 9;
@@ -406,10 +455,13 @@ class Printer {
             return [
                 this.expression(expression.operands[0], 5, context),
                 ' = ',
-                this.expression(expression.operands[1], 1, context),
+                spread(expression.operands[1], this.expression(expression.operands[1], 1, context)),
             ];
         }
-        return this.expression(expression, 1, { ...RUN, allowRun, leftEdge: true });
+        return spread(
+            expression,
+            this.expression(expression, 1, { ...RUN, allowRun, leftEdge: true }),
+        );
     }
 
     /** An expression where the grammar reads at least `level`, bracketed if it binds looser. */
@@ -511,6 +563,18 @@ class Printer {
                     ']',
                     this.authorBroke(expression.span.start, expression.elements[0]),
                 );
+            case 'Matrix': {
+                // Broken where the author broke it, or a cell had to be; a
+                // statement's own matrix is broken by `spread` besides.
+                const rows = expression.rows.map(row => this.elements(row));
+                return {
+                    kind: 'grid',
+                    rows,
+                    broken:
+                        this.authorBroke(expression.span.start, expression.rows[0][0]) ||
+                        rows.some(row => row.some(containsBreak)),
+                };
+            }
             case 'ListRange':
                 // Level 2 at either end: a `with` is bracketed rather than left
                 // to wonder whether the `...` or a comma after it is its own.
@@ -623,6 +687,18 @@ class Printer {
                     this.expression(expression.target, 9, context),
                     group('[', [this.expression(expression.index, 1, ELEMENT)], ']'),
                 ];
+            case 'MatrixIndex': {
+                const rows = join(this.elements(expression.rows), ', ');
+                const columns = join(this.elements(expression.columns), ', ');
+                return [
+                    this.expression(expression.target, 9, context),
+                    '[',
+                    rows,
+                    expression.columns.length ? '; ' : ';',
+                    columns,
+                    ']',
+                ];
+            }
             case 'Member': {
                 const target = this.expression(expression.target, 9, context);
                 if (!expression.arguments) {
@@ -658,12 +734,10 @@ class Printer {
                     ', ',
                 );
             case 'With':
-            case 'For':
-                return [
-                    this.expression(expression.body, 1, { ...context, last: true }),
-                    expression.kind === 'With' ? ' with ' : ' for ',
+            case 'For': {
+                const bindings = (list: ast.Binding[]) =>
                     join(
-                        expression.bindings.map(binding => [
+                        list.map(binding => [
                             binding.name.name,
                             binding.arguments
                                 ? ['(', join(this.elements(binding.arguments), ', '), ')']
@@ -672,8 +746,18 @@ class Printer {
                             this.expression(binding.value, 4, inner),
                         ]),
                         ', ',
-                    ),
+                    );
+                const columns =
+                    expression.kind === 'For' && expression.columns
+                        ? ['; ', bindings(expression.columns)]
+                        : '';
+                return [
+                    this.expression(expression.body, 1, { ...context, last: true }),
+                    expression.kind === 'With' ? ' with ' : ' for ',
+                    bindings(expression.bindings),
+                    columns,
                 ];
+            }
         }
     }
 
@@ -804,7 +888,8 @@ class Printer {
         for (let index = 0; index < parts.length; index++) {
             const part = parts[index];
             const text = flat(part);
-            if (isGroup(part) && part.items.length > 1 && column + text.length - 1 >= this.width) {
+            const several = isGroup(part) && (part.kind === 'grid' || part.items.length > 1);
+            if (several && column + text.length - 1 >= this.width) {
                 const broken = this.breakAt(parts, index, level);
                 return longest(broken) < line.length ? broken : [line];
             }
@@ -814,7 +899,19 @@ class Printer {
     }
 
     private breakAt(parts: Doc[], index: number, level: number): string[] {
-        const open = parts[index] as Group;
+        const open = parts[index] as Group | Grid;
+        if (open.kind === 'grid') {
+            // A row that has to break itself - a block matrix of broken ones -
+            // cannot be lined up with the rest, so each row is laid out alone.
+            const rows = open.rows.some(row => row.some(containsBreak))
+                ? open.rows.flatMap(row => this.fit([join(row, ', '), ';'], level + 1))
+                : gridLines(open.rows).map(line => this.indentOf(level + 1) + line);
+            return [
+                ...this.fit([...parts.slice(0, index), '['], level),
+                ...rows,
+                ...this.fit([']', ...parts.slice(index + 1)], level),
+            ];
+        }
         const { items } = open;
         return [
             ...this.fit([...parts.slice(0, index), open.open], level),

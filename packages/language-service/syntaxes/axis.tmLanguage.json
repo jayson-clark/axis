@@ -512,6 +512,10 @@
                     "match": "\\b(?:histogram|dotplot|boxplot|stats)\\b"
                 },
                 {
+                    "name": "support.function.matrix.axis",
+                    "match": "\\b(?:det|trace|rref|rank|transpose|rows|columns)\\b"
+                },
+                {
                     "name": "support.function.complex.axis",
                     "match": "\\b(?:real|imag|conj|arg)\\b"
                 },

@@ -1,0 +1,67 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Matrices - written row by row, indexed, built, and put to work on points
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A list with a `;` in it is a matrix: the `;` ends one row and starts the
+// next, so a single row keeps its `;` on, [1, 2, 3;], to be a matrix rather
+// than a list. A graph that uses a matrix has them switched on; nothing in
+// the file needs to say so.
+
+"Matrices"
+
+A = [
+    2, 1;
+    1, 3;
+]
+v = [1; 2]
+r = [1, 2, 3;]
+
+folder "Arithmetic" {
+    "Scaling, adding, multiplying - the dimensions have to agree."
+    B = 2A + A @ hidden
+    Av = A * v @ hidden
+    "A^T is the transpose and A^-1 the inverse."
+    At = A ^ T @ hidden
+    Ai = A ^ -1 @ hidden
+    I2 = A * Ai @ hidden
+}
+
+folder "What a matrix tells you" {
+    d = det(A) @ hidden
+    t = trace(A) @ hidden
+    n = rank([1, 2; 2, 4]) @ hidden
+    "rref solves a system written as its augmented matrix: 2x + y = 5, x + 3y = 10."
+    S = rref([2, 1, 5; 1, 3, 10]) @ hidden
+}
+
+folder "Taking one apart" {
+    "An index names rows before the ; and columns after it, either left empty for all of them."
+    a12 = A[1; 2] @ hidden
+    top = A[1;] @ hidden
+    right = A[; 2] @ hidden
+    first = rows(A)[1] @ hidden
+    second = columns(A)[2] @ hidden
+}
+
+folder "Building one" {
+    "A comprehension with a ; runs down the rows, then across the columns."
+    N = 4 @ slider: 1..6 step 1
+    I = [{i = j: 1, 0} for i = [1...N]; j = [1...N]] @ hidden
+    "A cell can be a matrix of its own, and one left blank is 0."
+    M = [A, A;] @ hidden
+    Z = [
+        1,  ;
+         , 1;
+    ] @ hidden
+}
+
+folder "Transforming points" {
+    "A 2x2 matrix times a point moves it: here, a turn through angle s about the origin."
+    s = 0.6 @ slider: 0..tau
+    R = [
+        cos(s), -sin(s);
+        sin(s),  cos(s);
+    ] @ hidden
+    P = (3, 1) @ color: BLUE, label: "P", showLabel
+    R P @ color: RED, label: "RP", showLabel
+}

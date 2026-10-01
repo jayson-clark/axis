@@ -46,6 +46,7 @@ import {
     AXIS_DEFAULT_STATE,
     AXIS_GRAPH_PROPERTY_NAMES,
     AXIS_MANIFEST,
+    AXIS_MATRIX_FUNCTION_NAMES,
     AXIS_PALETTE_HEX,
     AXIS_STATE_PROPERTY_NAMES,
     AXIS_VIEWPORT_PROPERTY_NAMES,
@@ -169,6 +170,9 @@ export function lowerProgram(
     // The statements that define a geometry token, placed once the calculator
     // the graph is for is known.
     const tokens = new Set<DesmosExpressionItem>();
+    // Whether anything lowered writes a matrix, which the calculator has only
+    // with them switched on.
+    let matrices = false;
     let entryTicker: TickerState | undefined;
 
     // Ids are handed out in the order expressions reach the list, so the same
@@ -220,6 +224,9 @@ export function lowerProgram(
         }
         if (expanded && own) {
             touched = true;
+        }
+        if (!matrices && someNode(expression, usesMatrices)) {
+            matrices = true;
         }
         try {
             return emitLatex(expression);
@@ -929,7 +936,7 @@ export function lowerProgram(
 
     const ticker = entryTicker ?? importedTicker;
     const config = new Map([...importedConfigs, ...entryConfigs].flatMap(layer => [...layer]));
-    const { options, graph, flags } = splitConfig(config, ticker !== undefined);
+    const { options, graph, flags } = splitConfig(config, ticker !== undefined, matrices);
 
     // A token is defined in the geometry calculator's hidden folder or
     // nowhere - Desmos refuses the definition anywhere else - so on that
@@ -1025,6 +1032,7 @@ function configValue(property: Property, valueType: string): unknown {
 function splitConfig(
     config: ReadonlyMap<string, unknown>,
     hasTicker: boolean,
+    hasMatrices: boolean,
 ): { options: CalculatorOptions; graph: GraphSettings; flags: GraphStateFlags } {
     // Axis's own defaults sit under whatever the file wrote, so a config
     // block that names one of them still has the last word. Each bucket has
@@ -1043,6 +1051,15 @@ function splitConfig(
     // itself, including `actions: false`, still has the last word.
     if (hasTicker && !config.has('actions')) {
         options.actions = true;
+    }
+
+    // The API builds a calculator with matrices switched off, where
+    // desmos.com has them on, and a calculator without them refuses every
+    // matrix in the graph. Nothing in the file says so - there is no setting
+    // to write, and none in the graph state either - so a graph that uses
+    // one has them on.
+    if (hasMatrices) {
+        options.matrices = true;
     }
 
     for (const [key, value] of config) {
@@ -1156,4 +1173,25 @@ function hexColor(node: Expression): string | undefined {
         return AXIS_PALETTE_HEX.get(node.name);
     }
     return undefined;
+}
+
+/**
+ * Whether a node is a matrix, or needs one: a matrix literal, a matrix index,
+ * a matrix comprehension, or a function that takes one. `A^T` alone needs
+ * nothing - the `A` it transposes is a matrix from one of these.
+ */
+function usesMatrices(node: Expression): boolean {
+    switch (node.kind) {
+        case 'Matrix':
+        case 'MatrixIndex':
+            return true;
+        case 'For':
+            return node.columns !== undefined;
+        case 'Call':
+            return AXIS_MATRIX_FUNCTION_NAMES.has(node.callee.name);
+        case 'Member':
+            return AXIS_MATRIX_FUNCTION_NAMES.has(node.name.name);
+        default:
+            return false;
+    }
 }

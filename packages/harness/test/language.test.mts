@@ -212,6 +212,15 @@ const CALLS: Record<string, string> = {
     conj: 'conj(3 + 4i)',
     arg: 'arg(3 + 4i)',
 
+    // matrix - matrices are switched on for the graph that has them
+    det: 'det([1, 2; 3, 4])',
+    trace: 'trace([1, 2; 3, 4])',
+    rref: 'rref([1, 2; 3, 4])',
+    rank: 'rank([1, 2; 2, 4])',
+    transpose: 'transpose([1, 2; 3, 4])',
+    rows: 'rows([1, 2; 3, 4])[1]',
+    columns: 'columns([1, 2; 3, 4])[2]',
+
     // audio - a frequency in hertz and a volume of 0 to 1. Nothing is heard in
     // a headless browser, but Desmos still says whether it knows the name.
     tone: 'tone(440, 0.5)',
@@ -250,6 +259,9 @@ const VALUES: Record<string, number> = {
     imag: 4,
     radius: 2,
     area: 6,
+    det: -2,
+    trace: 5,
+    rank: 1,
     perimeter: 12,
 };
 
@@ -838,5 +850,103 @@ describe('the operators Axis writes for you', { skip }, () => {
         await loadClean(calculator(), 'P = (3, 4)\na = P.x + P.y');
 
         assert.equal((await calculator().evaluate('a')).numericValue, 7);
+    });
+});
+
+describe('matrices', { skip }, () => {
+    const calculator = useCalculator();
+
+    /** What each statement of the graph comes to, in order. */
+    const values = async (): Promise<unknown[]> =>
+        (await calculator().inspectExpressions()).map(
+            expression =>
+                (expression.analysis?.evaluation as { value?: unknown } | undefined)?.value,
+        );
+
+    test('a matrix is written row by row, and a graph that has one has them switched on', async () => {
+        const result = await calculator().load(
+            'A = [1, 2; 3, 4]\nr = [1, 2, 3;]\nv = [5; 6]\nZ = [ , ; , 4]\nY = [1; ; 3]',
+        );
+
+        assert.deepEqual(result.diagnostics, []);
+        assert.equal(result.options.matrices, true);
+        assert.deepEqual(await values(), [
+            [
+                [1, 2],
+                [3, 4],
+            ],
+            [[1, 2, 3]],
+            [[5], [6]],
+            [
+                [0, 0],
+                [0, 4],
+            ],
+            [[1], [0], [3]],
+        ]);
+        assert.deepEqual(await calculator().getErrors(), []);
+    });
+
+    test('a graph without a matrix leaves them as the API has them', async () => {
+        const result = await calculator().load('y = x');
+
+        assert.equal(result.options.matrices, undefined);
+    });
+
+    test('an index takes rows before the `;` and columns after it', async () => {
+        await loadClean(
+            calculator(),
+            'M = [1, 2, 3; 4, 5, 6; 7, 8, 9]\na = M[2; 3]\nb = M[1, 2;]\nc = M[; 2]\nd = M[2...; 1]',
+        );
+
+        assert.deepEqual((await values()).slice(1), [
+            6,
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+            ],
+            [[2], [5], [8]],
+            [[4], [7]],
+        ]);
+    });
+
+    test('a comprehension with a `;` runs down the rows, then across the columns', async () => {
+        await loadClean(calculator(), 'I = [{a = b: 1, 0} for a = [1...2]; b = [1...3]]');
+
+        assert.deepEqual((await values())[0], [
+            [1, 0, 0],
+            [0, 1, 0],
+        ]);
+    });
+
+    test('A^T is the transpose even where T is defined, and A^-1 the inverse', async () => {
+        await loadClean(calculator(), 'A = [1, 2; 3, 4]\nT = 5\nB = A^T\nC = A^-1\nn = 2^T');
+
+        const [, , transposed, inverse, power] = await values();
+        assert.deepEqual(transposed, [
+            [1, 3],
+            [2, 4],
+        ]);
+        assert.deepEqual(inverse, [
+            [-2, 1],
+            [1.5, -0.5],
+        ]);
+        assert.equal(power, 32);
+    });
+
+    test('a matrix multiplies a matrix, and transforms a point', async () => {
+        await loadClean(
+            calculator(),
+            'A = [1, 2; 3, 4]\nw = A * [5; 6]\nB = [A, A;]\nP = [0, -1; 1, 0] (1, 2)',
+        );
+
+        const [, product, block] = await values();
+        assert.deepEqual(product, [[17], [39]]);
+        assert.deepEqual(block, [
+            [1, 2, 1, 2],
+            [3, 4, 3, 4],
+        ]);
+        const [point] = (await calculator().inspectExpressions()).slice(3);
+        assert.equal(point.analysis?.isGraphable, true);
+        assert.deepEqual(await calculator().getErrors(), []);
     });
 });

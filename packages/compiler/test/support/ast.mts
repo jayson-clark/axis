@@ -291,6 +291,8 @@ export function show(tree: Expression): string {
             return `tuple(${tree.elements.map(show).join(', ')})`;
         case 'List':
             return `[${tree.elements.map(show).join(', ')}]`;
+        case 'Matrix':
+            return `[${tree.rows.map(row => row.map(show).join(', ')).join('; ')};]`;
         case 'ListRange':
             return `${tree.from ? show(tree.from) : ''}...${tree.to ? show(tree.to) : ''}`;
         case 'Piecewise':
@@ -318,6 +320,8 @@ export function show(tree: Expression): string {
             return `(d/d${tree.variable.name} ${show(tree.body)})`;
         case 'Index':
             return `${show(tree.target)}[${show(tree.index)}]`;
+        case 'MatrixIndex':
+            return `${show(tree.target)}[${tree.rows.map(show).join(', ')}; ${tree.columns.map(show).join(', ')}]`;
         case 'Member':
             return `${show(tree.target)}.${tree.name.name}${tree.arguments ? `(${tree.arguments.map(show).join(', ')})` : ''}`;
         case 'Factorial':
@@ -328,9 +332,12 @@ export function show(tree: Expression): string {
             return `seq(${tree.elements.map(show).join(', ')})`;
         case 'With':
         case 'For':
-            return `(${show(tree.body)} ${tree.kind.toLowerCase()} ${tree.bindings
-                .map(b => `${b.name.name} = ${show(b.value)}`)
-                .join(', ')})`;
+            return `(${show(tree.body)} ${tree.kind.toLowerCase()} ${[
+                tree.bindings,
+                ...(tree.kind === 'For' && tree.columns ? [tree.columns] : []),
+            ]
+                .map(run => run.map(b => `${b.name.name} = ${show(b.value)}`).join(', '))
+                .join('; ')})`;
         case 'ErrorExpression':
             return '<error>';
         case 'Blank':

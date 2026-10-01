@@ -1166,3 +1166,41 @@ describe('decompileExpression, decompileSettings and decompileTicker', () => {
         assert.equal(decompileTicker({ playing: true }).statement, null);
     });
 });
+
+describe('matrices', () => {
+    test('writes a matrix, an index, a comprehension and the functions back', () => {
+        roundTrip('A = [\n    1, 2;\n    3, 4;\n]');
+        roundTrip('r = [1, 2, 3;]\nv = [5; 6]');
+        roundTrip('Z = [\n    1,  ;\n     , 4;\n]');
+        roundTrip('a = M[2; 3] + M[1, 2;] + M[; 2]');
+        roundTrip('I = [{a = b: 1, 0} for a = [1...3]; b = [1...3]]');
+        roundTrip('A = [1, 2; 3, 4] * [5; 6]\nB = A ^ T\nC = A ^ -1');
+        roundTrip('d = det(M) + trace(M) + rank(M)\nR = rref(transpose(M))\nr = rows(M)[1]');
+    });
+
+    test("reads Desmos' bare matrix comprehension into a list's brackets", () => {
+        assert.equal(
+            fromState(
+                items({
+                    type: 'expression',
+                    id: '1',
+                    latex: 'I=a+b\\operatorname{for}a=\\left[1...3\\right];b=\\left[1...4\\right]',
+                }),
+            ),
+            'I = [a + b for a = [1...3]; b = [1...4]]\n',
+        );
+    });
+
+    test('reads a matrix of blanks, as `#23` makes one', () => {
+        assert.equal(
+            fromState(
+                items({
+                    type: 'expression',
+                    id: '1',
+                    latex: '\\begin{bmatrix}&\\\\&\\end{bmatrix}',
+                }),
+            ),
+            '[\n    , ;\n    , ;\n]\n',
+        );
+    });
+});

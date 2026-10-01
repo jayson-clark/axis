@@ -500,7 +500,11 @@ class Analyzer {
                 // The values a binding takes are read where the `with` or `for`
                 // stands; only the expression it binds for sees the names.
                 const scope = new Map<string, SymbolDefinition>();
-                for (const binding of node.bindings) {
+                const bindings =
+                    node.kind === 'For'
+                        ? [...node.bindings, ...(node.columns ?? [])]
+                        : node.bindings;
+                for (const binding of bindings) {
                     this.expression(binding.value, scopes);
                     if (binding.arguments) {
                         // `f(1) = 1` names no local: it is a case of `f`,
@@ -553,6 +557,8 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
             return node.elements;
         case 'ListRange':
             return [node.from, node.to].filter(end => end !== null);
+        case 'Matrix':
+            return node.rows.flat();
         case 'Piecewise':
             return [
                 ...node.branches.flatMap(branch =>
@@ -575,6 +581,8 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
             return [node.variable, node.body];
         case 'Index':
             return [node.target, node.index];
+        case 'MatrixIndex':
+            return [node.target, ...node.rows, ...node.columns];
         case 'Member':
             return [node.target, node.name, ...(node.arguments ?? [])];
         case 'Factorial':
@@ -585,11 +593,9 @@ export function expressionChildren(node: ast.Expression): ast.Expression[] {
         case 'For':
             return [
                 node.body,
-                ...node.bindings.flatMap(binding => [
-                    binding.name,
-                    ...(binding.arguments ?? []),
-                    binding.value,
-                ]),
+                ...[...node.bindings, ...((node.kind === 'For' && node.columns) || [])].flatMap(
+                    binding => [binding.name, ...(binding.arguments ?? []), binding.value],
+                ),
             ];
     }
 }

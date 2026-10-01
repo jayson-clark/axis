@@ -326,3 +326,50 @@ describe('calculus (spec §5.9)', () => {
         assert.deepEqual(recover("y = f'").codes, ['unexpected-token']);
     });
 });
+
+describe('matrices (spec §5.2)', () => {
+    test('a list with a `;` in it is a matrix, row by row', () => {
+        assert.equal(expr('[1, 2; 3, 4]'), '(matrix [1 2] [3 4])');
+        assert.equal(expr('[5; 6]'), '(matrix [5] [6])');
+        assert.equal(expr('[A, A; B, B]'), '(matrix [A A] [B B])');
+    });
+
+    test('a `;` before the `]` closes the last row, so one row keeps it', () => {
+        assert.equal(expr('[1, 2, 3;]'), '(matrix [1 2 3])');
+        assert.equal(expr('[1, 2; 3, 4;]'), '(matrix [1 2] [3 4])');
+        assert.equal(expr('[1, 2, 3]'), '(list 1 2 3)');
+    });
+
+    test('a cell may be blank, before a `;`, before the `]` of a later row, or between commas', () => {
+        assert.equal(expr('[1, ; , 4]'), '(matrix [1 _] [_ 4])');
+        assert.equal(expr('[1, , 3; , 5, ]'), '(matrix [1 _ 3] [_ 5 _])');
+        assert.equal(expr('[ , ; , ]'), '(matrix [_ _] [_ _])');
+        assert.equal(expr('[1; ; 3]'), '(matrix [1] [_] [3])');
+    });
+
+    test('a matrix spreads over lines as a list does', () => {
+        assert.equal(expr('[\n    1, 2;\n    3, 4;\n]'), '(matrix [1 2] [3 4])');
+    });
+
+    test('an index with a `;` takes rows, then columns, either side empty for all', () => {
+        assert.equal(expr('M[2; 3]'), '(index M [2] [3])');
+        assert.equal(expr('M[1, 2;]'), '(index M [1 2] [])');
+        assert.equal(expr('M[; 2]'), '(index M [] [2])');
+        assert.equal(expr('M[2...; 1]'), '(index M [(... 2 _)] [1])');
+    });
+
+    test('a comprehension with a `;` binds rows before it and columns after it', () => {
+        assert.equal(
+            expr('[a + b for a = [1...3]; b = [1...4]]'),
+            '(list (for (+ a b) [(a (list (... 1 3)))] [(b (list (... 1 4)))]))',
+        );
+    });
+
+    test('outside a bracket a `;` still ends the statement', () => {
+        assert.equal(tree('A = a for a = L; b = 2'), '(= A (for a (a L)))\n(= b 2)');
+    });
+
+    test('a matrix of nothing at all is an error', () => {
+        assert.deepEqual(recover('X = [;]').codes, ['expected-expression']);
+    });
+});

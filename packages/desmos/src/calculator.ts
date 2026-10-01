@@ -71,6 +71,11 @@ export interface CalculatorOptions extends CommonCalculatorOptions {
     forceEnableGeometryFunctions?: boolean;
     /** New in v1.12. When false, derivatives and integrals are disabled. */
     calculus?: boolean;
+    /**
+     * Matrix literals, indexing and functions. Off unless asked for, though
+     * desmos.com has them on. Undocumented.
+     */
+    matrices?: boolean;
     pasteGraphLink?: boolean;
     /** Pauses animations behind an opt-in cover for `prefers-reduced-motion`. */
     showReducedMotionCover?: boolean;

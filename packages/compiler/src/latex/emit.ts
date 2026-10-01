@@ -99,6 +99,7 @@ function levelOf(node: Expression): number {
             return isCross(node) ? LEVEL.product : LEVEL.postfix;
         case 'Prime':
         case 'Index':
+        case 'MatrixIndex':
         case 'Member':
         case 'Factorial':
             return LEVEL.postfix;
@@ -172,6 +173,11 @@ function emit(node: Expression): string {
             return `\\left(${elements(node.elements)}\\right)`;
         case 'List':
             return `\\left[${listElements(node.elements)}\\right]`;
+        case 'Matrix':
+            // A blank cell is nothing between its `&`s, as Desmos keeps one.
+            return `\\begin{bmatrix}${node.rows
+                .map(row => row.map(cell => at(cell, LEVEL.action)).join('&'))
+                .join('\\\\')}\\end{bmatrix}`;
         case 'ListRange':
             return `${node.from ? at(node.from, LEVEL.additive) : ''}...${node.to ? at(node.to, LEVEL.additive) : ''}`;
         case 'Piecewise': {
@@ -234,6 +240,8 @@ function emit(node: Expression): string {
                 return `${at(node.target, LEVEL.postfix)}\\left[${listElements(node.index.elements)}\\right]`;
             }
             return `${at(node.target, LEVEL.postfix)}\\left[${elements([node.index])}\\right]`;
+        case 'MatrixIndex':
+            return `${at(node.target, LEVEL.postfix)}\\left[${elements(node.rows)};${elements(node.columns)}\\right]`;
         case 'Member':
             return node.arguments
                 ? `${member(node.target)}.${memberLatex(node.name.name)}\\left(${elements(node.arguments)}\\right)`
@@ -252,7 +260,7 @@ function emit(node: Expression): string {
         case 'With':
             return scoped(node.body, '\\operatorname{with}', node.bindings);
         case 'For':
-            return scoped(node.body, '\\operatorname{for}', node.bindings);
+            return scoped(node.body, '\\operatorname{for}', node.bindings, node.columns);
         case 'Blank':
             // A blank table cell, which Desmos keeps as the empty string.
             return '';
@@ -400,16 +408,26 @@ function value(node: Expression, last: boolean): string {
 }
 
 /**
- * `body\operatorname{with}a=1,b=2`. A binding's value is bracketed below the
+ * `body\operatorname{with}a=1,b=2`, and a matrix comprehension's
+ * `body\operatorname{for}a=L;b=M`. A binding's value is bracketed below the
  * level of a sum, since the `=` and the commas around it are the binding's.
  */
-function scoped(body: Expression, keyword: string, bindings: readonly Binding[]): string {
-    const written = bindings
-        .map(
-            ({ name, arguments: args, value }) =>
-                `${identifierLatex(name.name)}${args ? `\\left(${elements(args)}\\right)` : ''}=${at(value, LEVEL.additive)}`,
-        )
-        .join(',');
+function scoped(
+    body: Expression,
+    keyword: string,
+    bindings: readonly Binding[],
+    columns?: readonly Binding[],
+): string {
+    const run = (list: readonly Binding[]) =>
+        list
+            .map(
+                ({ name, arguments: args, value }) =>
+                    `${identifierLatex(name.name)}${args ? `\\left(${elements(args)}\\right)` : ''}=${at(value, LEVEL.additive)}`,
+            )
+            .join(',');
+    // A matrix comprehension's column bindings follow its row bindings after
+    // a `;`, as Desmos writes them.
+    const written = columns ? `${run(bindings)};${run(columns)}` : run(bindings);
     // A chain of them reads left to right, as Desmos reads it - `a with b = 1
     // for n = L` is the `with`, then the `for` over it - so a `with` or a
     // `for` as the body needs no brackets.

@@ -111,6 +111,8 @@ export function debugTree(node: Node | null): string {
             return list('tuple', ...all(node.elements));
         case 'List':
             return list('list', ...all(node.elements));
+        case 'Matrix':
+            return list('matrix', ...node.rows.map(row => `[${all(row).join(' ')}]`));
         case 'ListRange':
             return list(
                 '...',
@@ -159,6 +161,13 @@ export function debugTree(node: Node | null): string {
             return list(`d/d${node.variable.name}`, debugTree(node.body));
         case 'Index':
             return list('index', debugTree(node.target), debugTree(node.index));
+        case 'MatrixIndex':
+            return list(
+                'index',
+                debugTree(node.target),
+                `[${all(node.rows).join(' ')}]`,
+                `[${all(node.columns).join(' ')}]`,
+            );
         case 'Member':
             return node.arguments
                 ? list('.', debugTree(node.target), node.name.name, ...all(node.arguments))
@@ -176,7 +185,14 @@ export function debugTree(node: Node | null): string {
         case 'With':
             return list('with', debugTree(node.body), ...all(node.bindings));
         case 'For':
-            return list('for', debugTree(node.body), ...all(node.bindings));
+            return node.columns
+                ? list(
+                      'for',
+                      debugTree(node.body),
+                      `[${all(node.bindings).join(' ')}]`,
+                      `[${all(node.columns).join(' ')}]`,
+                  )
+                : list('for', debugTree(node.body), ...all(node.bindings));
         case 'ErrorExpression':
             return '(error)';
         case 'Blank':
